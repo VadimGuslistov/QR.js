@@ -821,8 +821,9 @@ Decoder.decode=function(bits)
 
 
 var FORMAT_INFO_MASK_QR = 0x5412;
-var FORMAT_INFO_DECODE_LOOKUP = new Array(new Array(0x5412, 0x00), new Array(0x5125, 0x01), new Array(0x5E7C, 0x02), new Array(0x5B4B, 0x03), new Array(0x45F9, 0x04), new Array(0x40CE, 0x05), new Array(0x4F97, 0x06), new Array(0x4AA0, 0x07), new Array(0x77C4, 0x08), new Array(0x72F3, 0x09), new Array(0x7DAA, 0x0A), new Array(0x789D, 0x0B), new Array(0x662F, 0x0C), new Array(0x6318, 0x0D), new Array(0x6C41, 0x0E), new Array(0x6976, 0x0F), new Array(0x1689, 0x10), new Array(0x13BE, 0x11), new Array(0x1CE7, 0x12), new Array(0x19D0, 0x13), new Array(0x0762, 0x14), new Array(0x0255, 0x15), new Array(0x0D0C, 0x16), new Array(0x083B, 0x17), new Array(0x355F, 0x18), new Array(0x3068, 0x19), new Array(0x3F31, 0x1A), new Array(0x3A06, 0x1B), new Array(0x24B4, 0x1C), new Array(0x2183, 0x1D), new Array(0x2EDA, 0x1E), new Array(0x2BED, 0x1F));
-var BITS_SET_IN_HALF_BYTE = new Array(0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4);
+var FORMAT_INFO_DECODE_LOOKUP = new Uint32Array([0x541200, 0x512501, 0x5E7C02, 0x5B4B03, 0x45F904, 0x40CE05, 0x4F9706, 0x4AA007, 0x77C408, 0x72F309, 0x7DAA0A, 0x789D0B, 0x662F0C, 0x63180D, 0x6C410E, 0x69760F, 0x168910, 0x13BE11, 0x1CE712, 0x19D013, 0x076214, 0x025515, 0x0D0C16, 0x083B17, 0x355F18, 0x306819, 0x3F311A, 0x3A061B, 0x24B41C, 0x21831D, 0x2EDA1E, 0x2BED1F])
+
+var BITS_SET_IN_HALF_BYTE = new Uint8Array([0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4])
 
 
 function FormatInformation(formatInfo)
@@ -873,22 +874,24 @@ FormatInformation.doDecodeFormatInformation=function( maskedFormatInfo)
 	// Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
 	var bestDifference = 0xffffffff;
 	var bestFormatInfo = 0;
-	for (var i = 0; i < FORMAT_INFO_DECODE_LOOKUP.length; i++)
-	{
-		var decodeInfo = FORMAT_INFO_DECODE_LOOKUP[i];
-		var targetInfo = decodeInfo[0];
-		if (targetInfo == maskedFormatInfo)
-		{
+	var decodeInfo,targetInfo
+	var l = FORMAT_INFO_DECODE_LOOKUP.length
+	var bitsDifference
+	var i = 0
+	do{
+	   decodeInfo = targetInfo =  FORMAT_INFO_DECODE_LOOKUP[i++]
+	   targetInfo = targetInfo >>> 8
+	   decodeInfo = decodeInfo & 0xff
+	   if (targetInfo == maskedFormatInfo){
 			// Found an exact match
-			return new FormatInformation(decodeInfo[1]);
-		}
-		var bitsDifference = this.numBitsDiffering(maskedFormatInfo, targetInfo);
-		if (bitsDifference < bestDifference)
-		{
-			bestFormatInfo = decodeInfo[1];
+			return new FormatInformation(decodeInfo);
+	   }
+       bitsDifference = this.numBitsDiffering(maskedFormatInfo, targetInfo);
+       if (bitsDifference < bestDifference){
+			bestFormatInfo = decodeInfo;
 			bestDifference = bitsDifference;
 		}
-	}
+	}while(i<l)
 	// Hamming distance of the 32 masked codes is 7, by construction, so <= 3 bits
 	// differing means we found a match
 	if (bestDifference <= 3)
