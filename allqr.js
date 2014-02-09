@@ -561,7 +561,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
 		}
 	this.getECBlocksForLevel=function( ecLevel)
 	{
-		return this.ecBlocks[ecLevel.ordinal()];
+		return this.ecBlocks[ecLevel.ordinal];
 	}
 }
 
@@ -759,7 +759,7 @@ Decoder.decode=function(bits)
 	}
 	
 	// Decode the contents of that stream of bytes
-	var reader = new QRCodeDataBlockReader(resultBytes, version.versionNumber, ecLevel.Bits);
+	var reader = new QRCodeDataBlockReader(resultBytes, version.versionNumber, ecLevel.bits);
 	return reader;
 	//return DecodedBitStreamParser.decode(resultBytes, version, ecLevel);
 }
@@ -791,7 +791,7 @@ Decoder.decode=function(bits)
 var FORMAT_INFO_MASK_QR = 0x5412;
 var FORMAT_INFO_DECODE_LOOKUP = new Uint32Array([0x541200, 0x512501, 0x5E7C02, 0x5B4B03, 0x45F904, 0x40CE05, 0x4F9706, 0x4AA007, 0x77C408, 0x72F309, 0x7DAA0A, 0x789D0B, 0x662F0C, 0x63180D, 0x6C410E, 0x69760F, 0x168910, 0x13BE11, 0x1CE712, 0x19D013, 0x076214, 0x025515, 0x0D0C16, 0x083B17, 0x355F18, 0x306819, 0x3F311A, 0x3A061B, 0x24B41C, 0x21831D, 0x2EDA1E, 0x2BED1F])
 
-var BITS_SET_IN_HALF_BYTE = new Uint8Array([0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4])
+
 
 
 function FormatInformation(formatInfo)
@@ -809,7 +809,7 @@ function FormatInformation(formatInfo)
 	});
 	this.GetHashCode=function()
 	{
-		return (this.errorCorrectionLevel.ordinal() << 3) |  dataMask;
+		return (this.errorCorrectionLevel.ordinal << 3) |  dataMask;
 	}
 	this.Equals=function( o)
 	{
@@ -827,6 +827,7 @@ function numBitsDiffering(a,b){
     
     return ((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
 }
+
 
 
 FormatInformation.decodeFormatInformation=function( maskedFormatInfo)
@@ -898,39 +899,30 @@ FormatInformation.doDecodeFormatInformation=function( maskedFormatInfo)
 */
 
 
-function ErrorCorrectionLevel(ordinal,  bits, name)
+function ErrorCorrectionLevel(ordinal,  bits)
 {
-	this.ordinal_Renamed_Field = ordinal;
+	this.ordinal = ordinal;
 	this.bits = bits;
-	this.name = name;
-	this.__defineGetter__("Bits", function()
-	{
-		return this.bits;
-	});
-	this.__defineGetter__("Name", function()
-	{
-		return this.name;
-	});
-	this.ordinal=function()
-	{
-		return this.ordinal_Renamed_Field;
-	}
 }
 
 ErrorCorrectionLevel.forBits=function( bits)
 {
-	if (bits < 0 || bits >= FOR_BITS.length)
-	{
-		throw "ArgumentException";
-	}
-	return FOR_BITS[bits];
+    var ret = ErrorCorrectionLevel.lvls[bits]
+    if(!ret){
+        throw "Invalid Error Correction Level"
+    }
+    return ret
 }
+ErrorCorrectionLevel.lvls = [
+new ErrorCorrectionLevel(1, 0x00), //M
+new ErrorCorrectionLevel(0, 0x01), //L
+new ErrorCorrectionLevel(3, 0x02), //H 
+new ErrorCorrectionLevel(2, 0x03),
 
-var L = new ErrorCorrectionLevel(0, 0x01, "L");
-var M = new ErrorCorrectionLevel(1, 0x00, "M");
-var Q = new ErrorCorrectionLevel(2, 0x03, "Q");
-var H = new ErrorCorrectionLevel(3, 0x02, "H");
-var FOR_BITS = new Array( M, L, H, Q);
+]
+
+
+
 /*
   Ported to JavaScript by Lazar Laszlo 2011 
   
@@ -972,18 +964,16 @@ function BitMatrix( width,  height)
 		rowSize++;
 	}
 	this.rowSize = rowSize;
-	this.bits = new Array(rowSize * height);
-	for(var i=0;i<this.bits.length;i++)
-		this.bits[i]=0;
-	
-	this.__defineGetter__("Width", function()
-	{
-		return this.width;
-	});
-	this.__defineGetter__("Height", function()
-	{
-		return this.height;
-	});
+	this.bit = new Int32Array(rowSize * height)
+    this.loaded = 0
+    this.loaded_point = 0
+    this.load = function(point){
+        this.bit[this.loaded_point] = this.loaded
+        this.loaded= this.bit[point]
+        this.loaded_point = point
+    }
+
+
 	this.__defineGetter__("Dimension", function()
 	{
 		if (this.width != this.height)
@@ -996,25 +986,36 @@ function BitMatrix( width,  height)
 	this.get_Renamed=function( x,  y)
 		{
 			var offset = y * this.rowSize + (x >> 5);
-			return ((URShift(this.bits[offset], (x & 0x1f))) & 1) != 0;
+			if(offset != this.loaded_point){
+			    this.load(offset)
+			}
+			return ((URShift(this.loaded, (x & 0x1f))) & 1) != 0;
 		}
 	this.set_Renamed=function( x,  y)
 		{
 			var offset = y * this.rowSize + (x >> 5);
-			this.bits[offset] |= 1 << (x & 0x1f);
+			if(offset != this.loaded_point){
+			    this.load(offset)
+			}
+			this.loaded |= 1 << (x & 0x1f);
 		}
 	this.flip=function( x,  y)
 		{
 			var offset = y * this.rowSize + (x >> 5);
-			this.bits[offset] ^= 1 << (x & 0x1f);
+			if(offset != this.loaded_point){
+			    this.load(offset)
+			}
+			this.loaded ^= 1 << (x & 0x1f);
 		}
 	this.clear=function()
 		{
-			var max = this.bits.length;
+			var max = this.bit.length;
 			for (var i = 0; i < max; i++)
 			{
-				this.bits[i] = 0;
+				this.bit[i] = 0;
 			}
+		    this.loaded=0
+		    this.loaded_point=0
 		}
 	this.setRegion=function( left,  top,  width,  height)
 		{
@@ -1032,14 +1033,23 @@ function BitMatrix( width,  height)
 			{
 				throw "The region must fit inside the matrix";
 			}
+		    // fix me did this actually reduce the hits on the arr
+	
+		    var offset,point
 			for (var y = top; y < bottom; y++)
 			{
-				var offset = y * this.rowSize;
+				offset = y * this.rowSize;
 				for (var x = left; x < right; x++)
 				{
-					this.bits[offset + (x >> 5)] |= 1 << (x & 0x1f);
+				    point = offset + (x >> 5)
+				    if(point != this.loaded_point){
+			          this.load(point)
+			         }
+				    
+					this.loaded |= 1 << (x & 0x1f);
 				}
 			}
+		    
 		}
 }/*
   Ported to JavaScript by Lazar Laszlo 2011 
@@ -2182,7 +2192,7 @@ Decoder.decode=function(bits)
 	}
 	
 	// Decode the contents of that stream of bytes
-	var reader = new QRCodeDataBlockReader(resultBytes, version.versionNumber, ecLevel.Bits);
+	var reader = new QRCodeDataBlockReader(resultBytes, version.versionNumber, ecLevel.bits);
 	return reader;
 	//return DecodedBitStreamParser.decode(resultBytes, version, ecLevel);
 }
@@ -4391,7 +4401,7 @@ function grayScaleBitmapVeto2(grayScale,w,h)
 }
 
 addEventListener('message', function(e) {
-  //var buff = gray_from_canvas(e.data.buff);
+  var buff = gray_from_canvas(e.data.buff);
   var start = new Date();
   var w = e.data.w
   var h = e.data.h
@@ -4405,18 +4415,20 @@ addEventListener('message', function(e) {
   //bits = normlized_gray_diff(stackBlurGray(buff,w,h,2),stackBlurGray(buff,w,h,4),5)
   //grayScaleBitmapVeto(buff,bits,w,h)
   //buff = undefined
-  var bits = grayScaleBitmapVeto2(gray_from_canvas2(e.data.buff),w,h) 
-  //var bits = grayScaleBitmapVeto2(buff,w,h) 
+  //var bits = grayScaleBitmapVeto2(gray_from_canvas2(e.data.buff),w,h) 
+  var bits = grayScaleBitmapVeto2(buff,w,h) 
   //postMessage(bits_to_canvas_buff(bits))
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))
- 
+  var ret
   try{
+      
+      ret = qrcode.process(bits,w,h)
       console.log(new Date() - start)
-      postMessage(qrcode.process(bits,w,h))
+      postMessage(ret)
       
       self.close()
   } catch(e){
-      
+      console.log(e)
       return
   }
 }, false);
