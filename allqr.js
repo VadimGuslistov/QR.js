@@ -55,7 +55,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 ;stackBlurGray=(function (){
 //===============================
 
-var mul_table = [
+var mul_table = new Uint16Array([
         512,512,456,512,328,456,335,512,405,328,271,456,388,335,292,512,
         454,405,364,328,298,271,496,456,420,388,360,335,312,292,273,512,
         482,454,428,405,383,364,345,328,312,298,284,271,259,496,475,456,
@@ -71,10 +71,10 @@ var mul_table = [
         451,446,442,437,433,428,424,420,416,412,408,404,400,396,392,388,
         385,381,377,374,370,367,363,360,357,354,350,347,344,341,338,335,
         332,329,326,323,320,318,315,312,310,307,304,302,299,297,294,292,
-        289,287,285,282,280,278,275,273,271,269,267,265,263,261,259];
+        289,287,285,282,280,278,275,273,271,269,267,265,263,261,259]);
         
    
-var shg_table = [
+var shg_table = new Uint8Array([
 	     9, 11, 12, 13, 13, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 17, 
 		17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19, 
 		19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20,
@@ -90,7 +90,7 @@ var shg_table = [
 		24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
 		24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
 		24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
-		24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24 ];
+		24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24 ]);
 
 
 
@@ -326,8 +326,8 @@ GridSampler.checkAndNudgePoints=function( image,  points)
 			var nudged = true;
 			for (var offset = 0; offset < points.length && nudged; offset += 2)
 			{
-				var x = Math.floor (points[offset]);
-				var y = Math.floor( points[offset + 1]);
+				var x = points[offset]|0;
+				var y = points[offset + 1]|0;
 				if (x < - 1 || x > width || y < - 1 || y > height)
 				{
 					throw "Error.checkAndNudgePoints ";
@@ -358,8 +358,8 @@ GridSampler.checkAndNudgePoints=function( image,  points)
 			nudged = true;
 			for (var offset = points.length - 2; offset >= 0 && nudged; offset -= 2)
 			{
-				var x = Math.floor( points[offset]);
-				var y = Math.floor( points[offset + 1]);
+				var x = points[offset]|0;
+				var y = points[offset + 1]|0;
 				if (x < - 1 || x > width || y < - 1 || y > height)
 				{
 					throw "Error.checkAndNudgePoints ";
@@ -390,49 +390,48 @@ GridSampler.checkAndNudgePoints=function( image,  points)
 	
 
 
-GridSampler.sampleGrid3=function( image,  dimension,  transform)
+GridSampler.sampleGrid3=function( image,  dimension,  transform){
+		var bits = new BitMatrix(dimension);
+		var points = new Float32Array(dimension << 1);
+		for (var y = 0; y < dimension; y++)
 		{
-			var bits = new BitMatrix(dimension);
-			var points = new Array(dimension << 1);
-			for (var y = 0; y < dimension; y++)
+			var max = points.length;
+			var iValue =  y + 0.5;
+			for (var x = 0; x < max; x += 2)
 			{
-				var max = points.length;
-				var iValue =  y + 0.5;
+				points[x] =  (x >> 1) + 0.5;
+				points[x + 1] = iValue;
+			}
+			transform.transformPoints1(points);
+			// Quick check to see if points transformed to something inside the image;
+			// sufficient to check the endpoints
+			GridSampler.checkAndNudgePoints(image, points);
+			try
+			{
 				for (var x = 0; x < max; x += 2)
 				{
-					points[x] =  (x >> 1) + 0.5;
-					points[x + 1] = iValue;
-				}
-				transform.transformPoints1(points);
-				// Quick check to see if points transformed to something inside the image;
-				// sufficient to check the endpoints
-				GridSampler.checkAndNudgePoints(image, points);
-				try
-				{
-					for (var x = 0; x < max; x += 2)
-					{
-						var xpoint = (Math.floor( points[x]) * 4) + (Math.floor( points[x + 1]) * qrcode.width * 4);
-                        var bit = image[Math.floor( points[x])+ qrcode.width* Math.floor( points[x + 1])];
-						
-						//bits[x >> 1][ y]=bit;
-						if(bit)
-							bits.set_Renamed(x >> 1, y);
-					}
-				}
-				catch ( aioobe)
-				{
-					// This feels wrong, but, sometimes if the finder patterns are misidentified, the resulting
-					// transform gets "twisted" such that it maps a straight line of points to a set of points
-					// whose endpoints are in bounds, but others are not. There is probably some mathematical
-					// way to detect this about the transformation that I don't know yet.
-					// This results in an ugly runtime exception despite our clever checks above -- can't have
-					// that. We could check each point's coordinates but that feels duplicative. We settle for
-					// catching and wrapping ArrayIndexOutOfBoundsException.
-					throw "Error.checkAndNudgePoints";
+					var xpoint = ((points[x]|0) << 2) + ((points[x + 1]|0) * qrcode.width << 2);
+                    var bit = image[Math.floor( points[x])+ qrcode.width* Math.floor( points[x + 1])];
+					
+					//bits[x >> 1][ y]=bit;
+					if(bit)
+						bits.set_Renamed(x >> 1, y);
 				}
 			}
-			return bits;
+			catch ( aioobe)
+			{
+				// This feels wrong, but, sometimes if the finder patterns are misidentified, the resulting
+				// transform gets "twisted" such that it maps a straight line of points to a set of points
+				// whose endpoints are in bounds, but others are not. There is probably some mathematical
+				// way to detect this about the transformation that I don't know yet.
+				// This results in an ugly runtime exception despite our clever checks above -- can't have
+				// that. We could check each point's coordinates but that feels duplicative. We settle for
+				// catching and wrapping ArrayIndexOutOfBoundsException.
+				throw "Error.checkAndNudgePoints";
+			}
 		}
+		return bits;
+}
 
 GridSampler.sampleGridx=function( image,  dimension,  p1ToX,  p1ToY,  p2ToX,  p2ToY,  p3ToX,  p3ToY,  p4ToX,  p4ToY,  p1FromX,  p1FromY,  p2FromX,  p2FromY,  p3FromX,  p3FromY,  p4FromX,  p4FromY)
 {
@@ -470,15 +469,6 @@ function ECB(count,  dataCodewords)
 {
 	this.count = count;
 	this.dataCodewords = dataCodewords;
-	
-	this.__defineGetter__("Count", function()
-	{
-		return this.count;
-	});
-	this.__defineGetter__("DataCodewords", function()
-	{
-		return this.dataCodewords;
-	});
 }
 
 function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
@@ -488,12 +478,7 @@ function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
 		this.ecBlocks = new Array(ecBlocks1, ecBlocks2);
 	else
 		this.ecBlocks = new Array(ecBlocks1);
-	
-	this.__defineGetter__("ECCodewordsPerBlock", function()
-	{
-		return this.ecCodewordsPerBlock;
-	});
-	
+
 	this.__defineGetter__("TotalECCodewords", function()
 	{
 		return  this.ecCodewordsPerBlock * this.NumBlocks;
@@ -509,10 +494,7 @@ function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
 		return total;
 	});
 	
-	this.getECBlocks=function()
-			{
-				return this.ecBlocks;
-			}
+	
 }
 
 function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks2,  ecBlocks3,  ecBlocks4)
@@ -522,32 +504,17 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
 	this.ecBlocks = new Array(ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4);
 	
 	var total = 0;
-	var ecCodewords = ecBlocks1.ECCodewordsPerBlock;
-	var ecbArray = ecBlocks1.getECBlocks();
+	var ecCodewords = ecBlocks1.ecCodewordsPerBlock;
+	var ecbArray = ecBlocks1.ecBlocks;
 	for (var i = 0; i < ecbArray.length; i++)
 	{
 		var ecBlock = ecbArray[i];
-		total += ecBlock.Count * (ecBlock.DataCodewords + ecCodewords);
+		total += ecBlock.count * (ecBlock.dataCodewords + ecCodewords);
 	}
 	this.totalCodewords = total;
+	this.DimensionForVersion = 17 + 4 * versionNumber
 	
-	this.__defineGetter__("VersionNumber", function()
-	{
-		return  this.versionNumber;
-	});
 	
-	this.__defineGetter__("AlignmentPatternCenters", function()
-	{
-		return  this.alignmentPatternCenters;
-	});
-	this.__defineGetter__("TotalCodewords", function()
-	{
-		return  this.totalCodewords;
-	});
-	this.__defineGetter__("DimensionForVersion", function()
-	{
-		return  17 + 4 * this.versionNumber;
-	});
 	
 	this.buildFunctionPattern=function()
 		{
@@ -598,7 +565,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
 	}
 }
 
-Version.VERSION_DECODE_INFO = new Array(0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78, 0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EC, 0x18EC4, 0x191E1, 0x1AFAB, 0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B, 0x2542E, 0x26A64, 0x27541, 0x28C69);
+Version.VERSION_DECODE_INFO = new Uint32Array([0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78, 0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EC, 0x18EC4, 0x191E1, 0x1AFAB, 0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B, 0x2542E, 0x26A64, 0x27541, 0x28C69]);
 
 Version.VERSIONS = buildVersions();
 
@@ -641,7 +608,7 @@ Version.decodeVersionInformation=function( versionBits)
 		}
 		// Otherwise see if this is the closest to a real version info bit string
 		// we have seen so far
-		var bitsDifference = FormatInformation.numBitsDiffering(versionBits, targetVersion);
+		var bitsDifference = numBitsDiffering(versionBits, targetVersion);
 		if (bitsDifference < bestDifference)
 		{
 			bestVersion = i + 7;
@@ -658,6 +625,7 @@ Version.decodeVersionInformation=function( versionBits)
 	return null;
 }
 
+// fix me this is fucking nutz
 function buildVersions()
 {
 	return new Array(new Version(1, new Array(), new ECBlocks(7, new ECB(1, 19)), new ECBlocks(10, new ECB(1, 16)), new ECBlocks(13, new ECB(1, 13)), new ECBlocks(17, new ECB(1, 9))), 
@@ -791,7 +759,7 @@ Decoder.decode=function(bits)
 	}
 	
 	// Decode the contents of that stream of bytes
-	var reader = new QRCodeDataBlockReader(resultBytes, version.VersionNumber, ecLevel.Bits);
+	var reader = new QRCodeDataBlockReader(resultBytes, version.versionNumber, ecLevel.Bits);
 	return reader;
 	//return DecodedBitStreamParser.decode(resultBytes, version, ecLevel);
 }
@@ -850,12 +818,16 @@ function FormatInformation(formatInfo)
 	}
 }
 
-FormatInformation.numBitsDiffering=function( a,  b)
-{
-	a ^= b; // a now has a 1 bit exactly where its bit differs with b's
-	// Count bits set quickly with a series of lookups:
-	return BITS_SET_IN_HALF_BYTE[a & 0x0F] + BITS_SET_IN_HALF_BYTE[(URShift(a, 4) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 8) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 12) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 16) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 20) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 24) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 28) & 0x0F)];
+function numBitsDiffering(a,b){
+    a ^= b; // a now has a 1 bit exactly where its bit differs with b's
+    // Count bits with ultra fast method
+	// see http://graphics.stanford.edu/~seander/bithacks.html
+    a = a - ((a >> 1) & 0x55555555);                    // reuse input as temporary
+    a = (a & 0x33333333) + ((a >> 2) & 0x33333333);     // temp
+    
+    return ((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
 }
+
 
 FormatInformation.decodeFormatInformation=function( maskedFormatInfo)
 {
@@ -886,7 +858,7 @@ FormatInformation.doDecodeFormatInformation=function( maskedFormatInfo)
 			// Found an exact match
 			return new FormatInformation(decodeInfo);
 	   }
-       bitsDifference = this.numBitsDiffering(maskedFormatInfo, targetInfo);
+       bitsDifference = numBitsDiffering(maskedFormatInfo, targetInfo);
        if (bitsDifference < bestDifference){
 			bestFormatInfo = decodeInfo;
 			bestDifference = bitsDifference;
@@ -1112,7 +1084,7 @@ function DataBlock(numDataCodewords,  codewords)
 DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 {
 	
-	if (rawCodewords.length != version.TotalCodewords)
+	if (rawCodewords.length != version.totalCodewords)
 	{
 		throw "ArgumentException";
 	}
@@ -1123,10 +1095,10 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 	
 	// First count the total number of data blocks
 	var totalBlocks = 0;
-	var ecBlockArray = ecBlocks.getECBlocks();
+	var ecBlockArray = ecBlocks.ecBlocks;
 	for (var i = 0; i < ecBlockArray.length; i++)
 	{
-		totalBlocks += ecBlockArray[i].Count;
+		totalBlocks += ecBlockArray[i].count;
 	}
 	
 	// Now establish DataBlocks of the appropriate size and number of data codewords
@@ -1135,10 +1107,10 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 	for (var j = 0; j < ecBlockArray.length; j++)
 	{
 		var ecBlock = ecBlockArray[j];
-		for (var i = 0; i < ecBlock.Count; i++)
+		for (var i = 0; i < ecBlock.count; i++)
 		{
-			var numDataCodewords = ecBlock.DataCodewords;
-			var numBlockCodewords = ecBlocks.ECCodewordsPerBlock + numDataCodewords;
+			var numDataCodewords = ecBlock.dataCodewords;
+			var numBlockCodewords = ecBlocks.ecCodewordsPerBlock + numDataCodewords;
 			result[numResultBlocks++] = new DataBlock(numDataCodewords, new Array(numBlockCodewords));
 		}
 	}
@@ -1158,7 +1130,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 	}
 	longerBlocksStartAt++;
 	
-	var shorterBlocksNumDataCodewords = shorterBlocksTotalCodewords - ecBlocks.ECCodewordsPerBlock;
+	var shorterBlocksNumDataCodewords = shorterBlocksTotalCodewords - ecBlocks.ecCodewordsPerBlock;
 	// The last elements of result may be 1 element longer;
 	// first fill out as many elements as all of them have
 	var rawCodewordsOffset = 0;
@@ -1341,7 +1313,7 @@ function BitMatrixParser(bitMatrix)
 			var functionPattern = version.buildFunctionPattern();
 			
 			var readingUp = true;
-			var result = new Array(version.TotalCodewords);
+			var result = new Array(version.totalCodewords);
 			var resultOffset = 0;
 			var currentByte = 0;
 			var bitsRead = 0;
@@ -1382,7 +1354,7 @@ function BitMatrixParser(bitMatrix)
 				}
 				readingUp ^= true; // readingUp = !readingUp; // switch directions
 			}
-			if (resultOffset != version.TotalCodewords)
+			if (resultOffset != version.totalCodewords)
 			{
 				throw "Error readCodewords";
 			}
@@ -1801,8 +1773,8 @@ function ReedSolomonDecoder(field)
 
 function GF256( primitive)
 {
-	this.expTable = new Array(256);
-	this.logTable = new Array(256);
+	this.expTable = new Uint8Array(256);
+	this.logTable = new Uint8Array(256);
 	var x = 1;
 	for (var i = 0; i < 256; i++)
 	{
@@ -1817,11 +1789,9 @@ function GF256( primitive)
 	{
 		this.logTable[this.expTable[i]] = i;
 	}
-	// logTable[0] == 0 but this should never be used
-	var at0=new Array(1);at0[0]=0;
-	this.zero = new GF256Poly(this, new Array(at0));
-	var at1=new Array(1);at1[0]=1;
-	this.one = new GF256Poly(this, new Array(at1));
+
+	this.zero = new GF256Poly(this, new Uint8Array([0]));
+	this.one = new GF256Poly(this, new Uint8Array([1]));
 	
 	this.__defineGetter__("Zero", function()
 	{
@@ -2212,7 +2182,7 @@ Decoder.decode=function(bits)
 	}
 	
 	// Decode the contents of that stream of bytes
-	var reader = new QRCodeDataBlockReader(resultBytes, version.VersionNumber, ecLevel.Bits);
+	var reader = new QRCodeDataBlockReader(resultBytes, version.versionNumber, ecLevel.Bits);
 	return reader;
 	//return DecodedBitStreamParser.decode(resultBytes, version, ecLevel);
 }
@@ -2253,27 +2223,26 @@ function PerspectiveTransform( a11,  a21,  a31,  a12,  a22,  a32,  a13,  a23,  a
 	this.a31 = a31;
 	this.a32 = a32;
 	this.a33 = a33;
-	this.transformPoints1=function( points)
+	this.transformPoints1=function( points){
+		var max = points.length;
+		var a11 = this.a11;
+		var a12 = this.a12;
+		var a13 = this.a13;
+		var a21 = this.a21;
+		var a22 = this.a22;
+		var a23 = this.a23;
+		var a31 = this.a31;
+		var a32 = this.a32;
+		var a33 = this.a33;
+		for (var i = 0; i < max; i += 2)
 		{
-			var max = points.length;
-			var a11 = this.a11;
-			var a12 = this.a12;
-			var a13 = this.a13;
-			var a21 = this.a21;
-			var a22 = this.a22;
-			var a23 = this.a23;
-			var a31 = this.a31;
-			var a32 = this.a32;
-			var a33 = this.a33;
-			for (var i = 0; i < max; i += 2)
-			{
-				var x = points[i];
-				var y = points[i + 1];
-				var denominator = a13 * x + a23 * y + a33;
-				points[i] = (a11 * x + a21 * y + a31) / denominator;
-				points[i + 1] = (a12 * x + a22 * y + a32) / denominator;
-			}
+			var x = points[i];
+			var y = points[i + 1];
+			var denominator = a13 * x + a23 * y + a33;
+			points[i] = (a11 * x + a21 * y + a31) / denominator;
+			points[i + 1] = (a12 * x + a22 * y + a32) / denominator;
 		}
+	}
 	this. transformPoints2=function(xValues, yValues)
 		{
 			var n = xValues.length;
@@ -2576,7 +2545,7 @@ function Detector(image)
 			
 			var alignmentPattern = null;
 			// Anything above version 1 has an alignment pattern
-			if (provisionalVersion.AlignmentPatternCenters.length > 0)
+			if (provisionalVersion.alignmentPatternCenters.length > 0)
 			{
 				
 				// Guess where a "bottom right" finder pattern would have been
@@ -2697,12 +2666,11 @@ qrcode.decode_utf8 = function ( s )
         return s;
 }
 qrcode.process = function(image,w,h){
-    try {
-        var start = new Date().getTime();
+        
 
         qrcode.width = w
         qrcode.height = h
-        //var image = qrcode.grayScaleToBitmap(qrcode.grayscale(buff));
+
 
        
         
@@ -2723,17 +2691,11 @@ qrcode.process = function(image,w,h){
                 str+=String.fromCharCode(data[i][j]);
         }
         
-        var end = new Date().getTime();
-        var time = end - start;
-        console.log(time);
+
         
         return qrcode.decode_utf8(str);
-        //alert("Time:" + time + " Code: "+str);
-    
-    } catch (e){
-        console.log(e)
-        return false
-    }
+
+   
 }
 
 
@@ -3293,7 +3255,7 @@ function FinderPatternFinder()
 			for (var i = 0; i < max; i++)
 			{
 				var center =  this.possibleCenters[i];
-				if (center.Count >= CENTER_QUORUM)
+				if (center.count >= CENTER_QUORUM)
 				{
 					if (firstConfirmedCenter == null)
 					{
@@ -3322,7 +3284,7 @@ function FinderPatternFinder()
 			for (var i = 0; i < max; i++)
 			{
 				var pattern =  this.possibleCenters[i];
-				if (pattern.Count >= CENTER_QUORUM)
+				if (pattern.count >= CENTER_QUORUM)
 				{
 					confirmedCount++;
 					totalModuleSize += pattern.EstimatedModuleSize;
@@ -3784,7 +3746,7 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
 * limitations under the License.
 */
 
-
+var tableRomanAndFigure = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', '$', '%', '*', '+', '-', '.', '/', ':']
 function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
 {
 	this.blockPointer = 0;
@@ -3897,7 +3859,7 @@ function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
 			var length = dataLength;
 			var intData = 0;
 			var strData = "";
-			var tableRomanAndFigure = new Array('0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', '$', '%', '*', '+', '-', '.', '/', ':');
+
 			do 
 			{
 				if (length > 1)
@@ -3956,17 +3918,10 @@ function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
 		}
 	this.get8bitByteArray=function( dataLength)
 		{
-			var length = dataLength;
-			var intData = 0;
-			var output = new Array();
+			var i=0;
+			var output = new Uint8Array(dataLength);
 			
-			do 
-			{
-				intData = this.getNextBits(8);
-				output.push( intData);
-				length--;
-			}
-			while (length > 0);
+			do{output[i++] = this.getNextBits(8)}while (i<dataLength);
 			return output;
 		}
     this.getKanjiString=function( dataLength)
@@ -4042,7 +3997,6 @@ function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
 						{
 							
 							case MODE_NUMBER: 
-								//canvas.println("Mode: Figure");
 								var temp_str = this.getFigureString(dataLength);
 								var ta = new Array(temp_str.length);
 								for(var j=0;j<temp_str.length;j++)
@@ -4438,6 +4392,7 @@ function grayScaleBitmapVeto2(grayScale,w,h)
 
 addEventListener('message', function(e) {
   //var buff = gray_from_canvas(e.data.buff);
+  var start = new Date();
   var w = e.data.w
   var h = e.data.h
   //e = undefined
@@ -4454,16 +4409,16 @@ addEventListener('message', function(e) {
   //var bits = grayScaleBitmapVeto2(buff,w,h) 
   //postMessage(bits_to_canvas_buff(bits))
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))
-  
-  var ret = qrcode.process(bits,w,h)
-  //ret = false
-  if(ret !== false){
-      console.log('and we exit')
-      //postMessage(bits_to_canvas_buff(bits))
-      postMessage(ret)
+ 
+  try{
+      console.log(new Date() - start)
+      postMessage(qrcode.process(bits,w,h))
+      
       self.close()
+  } catch(e){
+      
+      return
   }
-  console.log('and we go')
 }, false);
 
 //=============================
