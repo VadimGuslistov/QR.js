@@ -2181,9 +2181,16 @@ function Detector(image,w,h)
 
 	this.distance=function( pattern1,  pattern2)
 	{
-		var xDiff = pattern1.X - pattern2.X;
+	     // ultra fast aprox distance
+	    // i don't quite understand how it works it has to do with gradients i think
+	    // this value is fine for what we are doing here
+	    var x = Math.abs(pattern1.X - pattern2.X)
+        var y = Math.abs(pattern1.Y - pattern2.Y)
+
+        return (x<y) ? (x * 1.4142135623730950488016887242097 + y - x):(y * 1.4142135623730950488016887242097 + x - y)
+		/*var xDiff = pattern1.X - pattern2.X;
 		var yDiff = pattern1.Y - pattern2.Y;
-		return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));
+		return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));*/
 	}
 	this.computeDimension=function( topLeft,  topRight,  bottomLeft,  moduleSize)
 		{
@@ -2204,14 +2211,14 @@ function Detector(image,w,h)
 			// should be
 			var allowance = Math.floor (allowanceFactor * overallEstModuleSize);
 			var alignmentAreaLeftX = Math.max(0, estAlignmentX - allowance);
-			var alignmentAreaRightX = Math.min(qrcode.width - 1, estAlignmentX + allowance);
+			var alignmentAreaRightX = Math.min(this.width - 1, estAlignmentX + allowance);
 			if (alignmentAreaRightX - alignmentAreaLeftX < overallEstModuleSize * 3)
 			{
 				throw "Error";
 			}
 			
 			var alignmentAreaTopY = Math.max(0, estAlignmentY - allowance);
-			var alignmentAreaBottomY = Math.min(qrcode.height - 1, estAlignmentY + allowance);
+			var alignmentAreaBottomY = Math.min(this.height - 1, estAlignmentY + allowance);
 			
 			var alignmentFinder = new AlignmentPatternFinder(this.image, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize, this.resultPointCallback);
 			return alignmentFinder.find();
@@ -2437,9 +2444,16 @@ qrcode.orderBestPatterns=function(patterns)
 			
 			function distance( pattern1,  pattern2)
 			{
-				var xDiff = pattern1.X - pattern2.X;
+			    // ultra fast aprox distance
+			    // i don't quite understnad how it works it has to do with gradients i think
+			    // this value is fine for what we are doing here
+			    var x = Math.abs(pattern1.X - pattern2.X)
+                var y = Math.abs(pattern1.Y - pattern2.Y)
+        
+                return (x<y) ? (x * 1.4142135623730950488016887242097 + y - x):(y * 1.4142135623730950488016887242097 + x - y)
+				/*var xDiff = pattern1.X - pattern2.X;
 				var yDiff = pattern1.Y - pattern2.Y;
-				return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));
+				return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));*/
 			}
 			
 			/// <summary> Returns the z component of the cross product between vectors BC and BA.</summary>
@@ -2586,8 +2600,8 @@ function FinderPatternFinder()
 			{
 				return false;
 			}
-			var moduleSize = Math.floor((totalModuleSize << INTEGER_MATH_SHIFT) / 7);
-			var maxVariance = Math.floor(moduleSize / 2);
+			var moduleSize = Math.floor((totalModuleSize << INTEGER_MATH_SHIFT) * 0.142857143); // 0.142857143 = 1/7 so we are dividing by 7 as computers multiply faster than they divide (actually they find the number to multiply and then multiply) 
+			var maxVariance = Math.floor(moduleSize * 0.5); // divide by 2
 			// Allow less than 50% variance from 1-1-3-1-1 proportions
 			return Math.abs(moduleSize - (stateCount[0] << INTEGER_MATH_SHIFT)) < maxVariance && Math.abs(moduleSize - (stateCount[1] << INTEGER_MATH_SHIFT)) < maxVariance && Math.abs(3 * moduleSize - (stateCount[2] << INTEGER_MATH_SHIFT)) < 3 * maxVariance && Math.abs(moduleSize - (stateCount[3] << INTEGER_MATH_SHIFT)) < maxVariance && Math.abs(moduleSize - (stateCount[4] << INTEGER_MATH_SHIFT)) < maxVariance;
 		}
@@ -4335,15 +4349,17 @@ addEventListener('message', function(e) {
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))
   function post(bits){
       var ret
+      var start = new Date()
       try{
           //console.log(new Date() - start)
           ret = qrcode.process(bits,w,h)
-          //console.log(new Date() - start)
+          console.log(new Date() - start)
 
           postMessage(ret)
           
           self.close()
         } catch(e){
+            console.log(new Date() - start)
             return
         }
   }
