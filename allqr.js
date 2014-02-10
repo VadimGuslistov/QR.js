@@ -2044,11 +2044,12 @@ function DetectorResult(bits,  points)
 }
 
 
-function Detector(image)
+function Detector(image,w,h)
 {
 	this.image=image;
 	this.resultPointCallback = null;
-	
+	this.width = w
+	this.height = h
 	this.sizeOfBlackWhiteBlackRun=function( fromX,  fromY,  toX,  toY)
 		{
 			// Mild variant of Bresenham's algorithm;
@@ -2078,14 +2079,14 @@ function Detector(image)
 				if (state == 1)
 				{
 					// In white pixels, looking for black
-					if (this.image[realX + realY*qrcode.width])
+					if (this.image[realX + realY*this.width])
 					{
 						state++;
 					}
 				}
 				else
 				{
-					if (!this.image[realX + realY*qrcode.width])
+					if (!this.image[realX + realY*this.width])
 					{
 						state++;
 					}
@@ -2128,10 +2129,10 @@ function Detector(image)
 				scale =  fromX /  (fromX - otherToX);
 				otherToX = 0;
 			}
-			else if (otherToX >= qrcode.width)
+			else if (otherToX >= this.width)
 			{
-				scale =  (qrcode.width - 1 - fromX) /  (otherToX - fromX);
-				otherToX = qrcode.width - 1;
+				scale =  (this.width - 1 - fromX) /  (otherToX - fromX);
+				otherToX = this.width - 1;
 			}
 			var otherToY = Math.floor (fromY - (toY - fromY) * scale);
 			
@@ -2141,10 +2142,10 @@ function Detector(image)
 				scale =  fromY /  (fromY - otherToY);
 				otherToY = 0;
 			}
-			else if (otherToY >= qrcode.height)
+			else if (otherToY >= this.height)
 			{
-				scale =  (qrcode.height - 1 - fromY) /  (otherToY - fromY);
-				otherToY = qrcode.height - 1;
+				scale =  (this.height - 1 - fromY) /  (otherToY - fromY);
+				otherToY = this.height - 1;
 			}
 			otherToX = Math.floor (fromX + (otherToX - fromX) * scale);
 			
@@ -2180,8 +2181,8 @@ function Detector(image)
 
 	this.distance=function( pattern1,  pattern2)
 	{
-		xDiff = pattern1.X - pattern2.X;
-		yDiff = pattern1.Y - pattern2.Y;
+		var xDiff = pattern1.X - pattern2.X;
+		var yDiff = pattern1.Y - pattern2.Y;
 		return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));
 	}
 	this.computeDimension=function( topLeft,  topRight,  bottomLeft,  moduleSize)
@@ -2393,7 +2394,7 @@ qrcode.process = function(image,w,h){
        
         
         
-        var detector = new Detector(image);
+        var detector = new Detector(image,w,h);
     
         var qRCodeMatrix = detector.detect();
         
@@ -2417,84 +2418,6 @@ qrcode.process = function(image,w,h){
 }
 
 
-qrcode.getMiddleBrightnessPerArea=function(image)
-{
-    var numSqrtArea = 4;
-    //obtain middle brightness((min + max) / 2) per area
-    var areaWidth = Math.floor(qrcode.width / numSqrtArea);
-    var areaHeight = Math.floor(qrcode.height / numSqrtArea);
-    var minmax = new Array(numSqrtArea);
-    for (var i = 0; i < numSqrtArea; i++)
-    {
-        minmax[i] = new Array(numSqrtArea);
-        for (var i2 = 0; i2 < numSqrtArea; i2++)
-        {
-            minmax[i][i2] = new Array(0,0);
-        }
-    }
-    for (var ay = 0; ay < numSqrtArea; ay++)
-    {
-        for (var ax = 0; ax < numSqrtArea; ax++)
-        {
-            minmax[ax][ay][0] = 0xFF;
-            for (var dy = 0; dy < areaHeight; dy++)
-            {
-                for (var dx = 0; dx < areaWidth; dx++)
-                {
-                    var target = image[areaWidth * ax + dx+(areaHeight * ay + dy)*qrcode.width];
-                    if (target < minmax[ax][ay][0])
-                        minmax[ax][ay][0] = target;
-                    if (target > minmax[ax][ay][1])
-                        minmax[ax][ay][1] = target;
-                }
-            }
-            //minmax[ax][ay][0] = (minmax[ax][ay][0] + minmax[ax][ay][1]) / 2;
-        }
-    }
-    var middle = new Array(numSqrtArea);
-    for (var i3 = 0; i3 < numSqrtArea; i3++)
-    {
-        middle[i3] = new Array(numSqrtArea);
-    }
-    for (var ay = 0; ay < numSqrtArea; ay++)
-    {
-        for (var ax = 0; ax < numSqrtArea; ax++)
-        {
-            middle[ax][ay] = Math.floor((minmax[ax][ay][0] + minmax[ax][ay][1]) / 2);
-            //Console.out.print(middle[ax][ay] + ",");
-        }
-        //Console.out.println("");
-    }
-    //Console.out.println("");
-    
-    return middle;
-}
-
-qrcode.grayScaleToBitmap=function(grayScale)
-{
-    var middle = qrcode.getMiddleBrightnessPerArea(grayScale);
-    var sqrtNumArea = middle.length;
-    var areaWidth = Math.floor(qrcode.width / sqrtNumArea);
-    var areaHeight = Math.floor(qrcode.height / sqrtNumArea);
-    var bitmap = new Array(qrcode.height*qrcode.width);
-    
-    for (var ay = 0; ay < sqrtNumArea; ay++)
-    {
-        for (var ax = 0; ax < sqrtNumArea; ax++)
-        {
-            for (var dy = 0; dy < areaHeight; dy++)
-            {
-                for (var dx = 0; dx < areaWidth; dx++)
-                {
-                    bitmap[areaWidth * ax + dx+ (areaHeight * ay + dy)*qrcode.width] = (grayScale[areaWidth * ax + dx+ (areaHeight * ay + dy)*qrcode.width] < middle[ax][ay])?true:false;
-                }
-            }
-        }
-    }
-    return bitmap;
-}
-
-
 
 
 
@@ -2507,7 +2430,7 @@ function URShift( number,  bits)
         return (number >> bits) + (2 << ~bits);
 }
 
-
+// fix me OMG WHYYYYY
 Array.prototype.remove = function(from, to) {
   var rest = this.slice((to || from) + 1 || this.length);
   this.length = from < 0 ? this.length + from : from;
@@ -2526,8 +2449,8 @@ qrcode.orderBestPatterns=function(patterns)
 			
 			function distance( pattern1,  pattern2)
 			{
-				xDiff = pattern1.X - pattern2.X;
-				yDiff = pattern1.Y - pattern2.Y;
+				var xDiff = pattern1.X - pattern2.X;
+				var yDiff = pattern1.Y - pattern2.Y;
 				return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));
 			}
 			
@@ -3707,53 +3630,6 @@ function numBitsDiffering(a,b){
 }
 
 
-function normlized_gray_diff(_1,_2,white){
-    var i = 0
-    l = _1.length
-    var ret = new Uint8Array(_1.length)
-    var cur,cur1,cur2
-    do{
-       cur1 = _1[i] 
-       cur2 = _2[i]
-       cur =  ((cur1 - cur2)) * 2
-       if (cur <= white){
-           if(cur1 < 100){
-                ret[i] = 1 
-           }
-       }
-       
-       
-       i++ 
-    }while(i<l)
-    return ret
-}
-function normlized_gray_diff2(_1,_2,buff,w,h){
-    var i = 0
-    l = _1.length
-    var ret = new Uint8Array(buff)
-    var cur,cur1,cur2
-    do{
-       cur1 = _1[i] 
-       cur2 = _2[i]
-       cur =  cur1 - cur2
-       if(cur < 0){
-           cur = ret[i]+cur
-           if(cur<0){
-               cur = 0
-           }
-           ret[i] = cur
-       } else {
-           ret[i] = cur
-       }
-        
-       
-       
-       
-       i++ 
-    }while(i<l)
-    return ret
-}
-
 function gray_from_canvas(buff){
   buff = new Uint32Array(buff.buffer)
   var grey = new Uint8Array(buff.length)
@@ -4142,66 +4018,7 @@ function strech_grey(grey){
   return {bits:bits,g1:grey,g2:grey2}
 }
 
-function bw1(buff){
-  buff = new Uint32Array(buff.buffer)
-  var grey = new Uint8Array(buff.length)
-  var count = new Uint32Array(256)
-  var r,b,g,cur,i,l,_min=255,_max=0,_mid
-  i=0
-  l = buff.length
-  do{
-       cur = buff[i]
-       r = (cur>>>16)&0xff
-       b = (cur>>>8)&0xff
-       g = cur&0xff
-       cur = ((Math.max(r,g,b)+Math.min(r,b,g))*0.5)|0
-       if(cur < _min){
-           _min = cur
-       }
-       if(cur > _max){
-           _max = cur
-       }
-       count[cur]++
-       grey[i++]  = cur
-      
-  }while(i<l)
-   _mid = ((_max - _min)*0.5)|0
-   var upper1=0,upper2=0
-   var upper_val1=0,upper_val2=0
-   i = _min
-   do{
-       cur = count[i]
-       if(cur >= upper1){
-           upper_val1 = i
-           upper1 = cur
-       } else if(cur >= upper2){
-           upper_val2 = i
-           upper2 = cur
-       }
-       i++
-   }while(i<_mid)
-  
-   
-   i = 0
-   l = grey.length
 
-   
-   do{
-       cur = grey[i]
-       if(cur <= upper_val1){
-           cur = 1
-       } else if(cur <= upper_val2){
-           cur = 1
-       } else {
-           cur = 0
-       }
-        grey[i] = cur
-       i++
-   }while(i<l)
-   
- 
-  return grey
-}
 
 function bits_to_canvas_buff(buff){
     var _c = new Uint8Array(buff.length*4)
@@ -4395,62 +4212,8 @@ function middleBinary_looks_cool(image,w,h)
     
     return bits
 }
-function grayScaleBitmapVeto(grayScale,bits,w,h)
-{
-    var _middle = getMiddleBrightnessPerArea(grayScale,w,h);
-    var middle = _middle.middle
-    var sqrtNumArea = _middle.a;
-    var areaWidth = Math.floor(w / sqrtNumArea);
-    var areaHeight = Math.floor(h / sqrtNumArea);
-    var point,point2
-    var ay,ax,dy,dx
-    var aw_ax
-    var Xah_ay_dy
-    var pixg,pixm,_min,_max,diff,_1per,dark,light
-    var cut
-    ay = 0
-   
-    do{
-        ax = 0
-        do{
-            aw_ax = areaWidth * ax
-            pixm =  middle[ax + ay * sqrtNumArea]
-            _min = pixm >>> 8
-            _max = pixm & 0xff
-            _1per = 1/((_max-_min)*0.01)
-            cut = ((_max-_min) < 20)
-            dy=0
-            do{
-                Xah_ay_dy = (areaHeight * ay + dy)*w
-                dx = 0
-                do{
-                    point = aw_ax + dx+ Xah_ay_dy
-                        if(cut){
-                            bits[point] = 0
-                            dx++
-                            continue
-                        }
-                        pixg = grayScale[point] 
-                        dark = Math.abs(_min - pixg)*_1per
-                        light = Math.abs(_max - pixg)*_1per
-                        if(light < 40){
-                           bits[point] = 0 
-                        } else if (dark < 30 ){
-                            bits[point] = 1 
-                        }
-                    
-                    
-                    dx++
-                }while(dx < areaWidth)
-                dy++
-            }while(dy < areaHeight)
-            ax++
-        }while(ax < sqrtNumArea)
-        ay++
-    }while(ay < sqrtNumArea)
-    
-    
-}
+
+
 function grayScaleBitmapVeto2(grayScale,g1,g2,w,h)
 {
     var bits = new Uint8Array(grayScale)
