@@ -3,6 +3,39 @@
 //=============================
 
 /*
+QR.js - Kenneth Lichtenberger 2014
+
+optimised QR code reader for HTML5 utilising web workers
+
+Unless in conflict with original license of derived or copied work this code is licensed for all to use and read under the terms of the MIT licence
+
+------------------------
+The MIT License (MIT)
+
+Copyright (c)  2014 Kenneth Lichtenberger
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+ 
+*/
+
+
+/*
 
 This code was derived by Kenneth Lichtenberger from StackBlur 
 The algo is the same - contains speed tweaks and is adapted to work with a 8bit Gray array
@@ -17,12 +50,6 @@ Contact: 	mario@quasimondo.com
 Website:	http://www.quasimondo.com/StackBlurForCanvas
 Twitter:	@quasimondo
 
-In case you find this class useful - especially in commercial pgojects -
-I am not totally unhappy for a small donation to my PayPal account
-mario@quasimondo.de
-
-Or support me on flattr: 
-https://flattr.com/thing/72791/StackBlur-a-fast-almost-Gaussian-Blur-Effect-for-CanvasJavascript
 /-----------------------------------------------------
 
 StackBlur Copyright verbatim form org code:
@@ -291,14 +318,20 @@ return stackBlurGray
 
 //code below this line did not come from BlurStack
 
+
 /*
+ 
+  
+  the code below this line was derived from a port of ZXing to JavaScript by Lazar Laszlo
+  Much of the code has been modified for speed and to fit well as a JavaScript library
+  
+  Copyright from org code:
+  ----------------------------------------------
   Ported to JavaScript by Lazar Laszlo 2011 
   
   lazarsoft@gmail.com, www.lazarsoft.info
   
-*/
 
-/*
 *
 * Copyright 2007 ZXing authors
 *
@@ -313,6 +346,8 @@ return stackBlurGray
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 * See the License for the specific language governing permissions and
 * limitations under the License.
+  ----------------------------------------------
+
 */
 
 
@@ -439,30 +474,6 @@ GridSampler.sampleGridx=function( image,  dimension,  p1ToX,  p1ToY,  p2ToX,  p2
 			
 	return GridSampler.sampleGrid3(image, dimension, transform);
 }
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
 
 
 function ECB(count,  dataCodewords)
@@ -625,7 +636,8 @@ Version.decodeVersionInformation=function( versionBits)
 	return null;
 }
 
-// fix me this is fucking nutz
+// fix me this is nutz
+
 function buildVersions()
 {
 	return new Array(new Version(1, new Array(), new ECBlocks(7, new ECB(1, 19)), new ECBlocks(10, new ECB(1, 16)), new ECBlocks(13, new ECB(1, 13)), new ECBlocks(17, new ECB(1, 9))), 
@@ -668,29 +680,8 @@ function buildVersions()
 	new Version(38, new Array(6, 32, 58, 84, 110, 136, 162), new ECBlocks(30, new ECB(4, 122), new ECB(18, 123)), new ECBlocks(28, new ECB(13, 46), new ECB(32, 47)), new ECBlocks(30, new ECB(48, 24), new ECB(14, 25)), new ECBlocks(30, new ECB(42, 15), new ECB(32, 16))), 
 	new Version(39, new Array(6, 26, 54, 82, 110, 138, 166), new ECBlocks(30, new ECB(20, 117), new ECB(4, 118)), new ECBlocks(28, new ECB(40, 47), new ECB(7, 48)), new ECBlocks(30, new ECB(43, 24), new ECB(22, 25)), new ECBlocks(30, new ECB(10, 15), new ECB(67, 16))), 
 	new Version(40, new Array(6, 30, 58, 86, 114, 142, 170), new ECBlocks(30, new ECB(19, 118), new ECB(6, 119)), new ECBlocks(28, new ECB(18, 47), new ECB(31, 48)), new ECBlocks(30, new ECB(34, 24), new ECB(34, 25)), new ECBlocks(30, new ECB(20, 15), new ECB(61, 16))));
-}/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
+}
 
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 Decoder={};
@@ -700,7 +691,7 @@ Decoder.correctErrors=function( codewordBytes,  numDataCodewords)
 {
 	var numCodewords = codewordBytes.length;
 	// First read into an array of ints
-	var codewordsInts = new Array(numCodewords);
+	var codewordsInts = new Uint8Array(numCodewords);
 	for (var i = 0; i < numCodewords; i++)
 	{
 		codewordsInts[i] = codewordBytes[i] & 0xFF;
@@ -740,17 +731,17 @@ Decoder.decode=function(bits)
 	var totalBytes = 0;
 	for (var i = 0; i < dataBlocks.length; i++)
 	{
-		totalBytes += dataBlocks[i].NumDataCodewords;
+		totalBytes += dataBlocks[i].numDataCodewords;
 	}
-	var resultBytes = new Array(totalBytes);
+	var resultBytes = new Uint8Array(totalBytes);
 	var resultOffset = 0;
 	
 	// Error-correct and copy data blocks together into a stream of bytes
 	for (var j = 0; j < dataBlocks.length; j++)
 	{
 		var dataBlock = dataBlocks[j];
-		var codewordBytes = dataBlock.Codewords;
-		var numDataCodewords = dataBlock.NumDataCodewords;
+		var codewordBytes = dataBlock.codewords;
+		var numDataCodewords = dataBlock.numDataCodewords;
 		Decoder.correctErrors(codewordBytes, numDataCodewords);
 		for (var i = 0; i < numDataCodewords; i++)
 		{
@@ -761,32 +752,8 @@ Decoder.decode=function(bits)
 	// Decode the contents of that stream of bytes
 	var reader = new QRCodeDataBlockReader(resultBytes, version.versionNumber, ecLevel.bits);
 	return reader;
-	//return DecodedBitStreamParser.decode(resultBytes, version, ecLevel);
+
 }
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
 
 var FORMAT_INFO_MASK_QR = 0x5412;
 var FORMAT_INFO_DECODE_LOOKUP = new Uint32Array([0x541200, 0x512501, 0x5E7C02, 0x5B4B03, 0x45F904, 0x40CE05, 0x4F9706, 0x4AA007, 0x77C408, 0x72F309, 0x7DAA0A, 0x789D0B, 0x662F0C, 0x63180D, 0x6C410E, 0x69760F, 0x168910, 0x13BE11, 0x1CE712, 0x19D013, 0x076214, 0x025515, 0x0D0C16, 0x083B17, 0x355F18, 0x306819, 0x3F311A, 0x3A061B, 0x24B41C, 0x21831D, 0x2EDA1E, 0x2BED1F])
@@ -818,15 +785,6 @@ function FormatInformation(formatInfo)
 	}
 }
 
-function numBitsDiffering(a,b){
-    a ^= b; // a now has a 1 bit exactly where its bit differs with b's
-    // Count bits with ultra fast method
-	// see http://graphics.stanford.edu/~seander/bithacks.html
-    a = a - ((a >> 1) & 0x55555555);                    // reuse input as temporary
-    a = (a & 0x33333333) + ((a >> 2) & 0x33333333);     // temp
-    
-    return ((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
-}
 
 
 
@@ -874,29 +832,7 @@ FormatInformation.doDecodeFormatInformation=function( maskedFormatInfo)
 	return null;
 }
 
-		/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
 
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function ErrorCorrectionLevel(ordinal,  bits)
@@ -923,29 +859,6 @@ new ErrorCorrectionLevel(2, 0x03),
 
 
 
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function BitMatrix( width,  height)
@@ -1051,44 +964,14 @@ function BitMatrix( width,  height)
 			}
 		    
 		}
-}/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
+}
 
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function DataBlock(numDataCodewords,  codewords)
 {
 	this.numDataCodewords = numDataCodewords;
 	this.codewords = codewords;
-	
-	this.__defineGetter__("NumDataCodewords", function()
-	{
-		return this.numDataCodewords;
-	});
-	this.__defineGetter__("Codewords", function()
-	{
-		return this.codewords;
-	});
 }	
 	
 DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
@@ -1168,29 +1051,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 	}
 	return result;
 }
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
 
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function BitMatrixParser(bitMatrix)
@@ -1370,29 +1231,8 @@ function BitMatrixParser(bitMatrix)
 			}
 			return result;
 		}
-}/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
+}
 
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 DataMask = {};
@@ -1577,29 +1417,6 @@ function DataMask111()
 
 DataMask.DATA_MASKS = new Array(new DataMask000(), new DataMask001(), new DataMask010(), new DataMask011(), new DataMask100(), new DataMask101(), new DataMask110(), new DataMask111());
 
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function ReedSolomonDecoder(field)
@@ -1756,30 +1573,6 @@ function ReedSolomonDecoder(field)
 		}
 }
 
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
 
 function GF256( primitive)
 {
@@ -1871,30 +1664,6 @@ GF256.addOrSubtract=function( a,  b)
 {
 	return a ^ b;
 }
-
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function GF256Poly(field,  coefficients)
@@ -2101,29 +1870,7 @@ function GF256Poly(field,  coefficients)
 			
 			return new Array(quotient, remainder);
 		}
-}/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+}
 
 
 Decoder={};
@@ -2173,17 +1920,17 @@ Decoder.decode=function(bits)
 	var totalBytes = 0;
 	for (var i = 0; i < dataBlocks.length; i++)
 	{
-		totalBytes += dataBlocks[i].NumDataCodewords;
+		totalBytes += dataBlocks[i].numDataCodewords;
 	}
-	var resultBytes = new Array(totalBytes);
+	var resultBytes = new Uint8Array(totalBytes);
 	var resultOffset = 0;
 	
 	// Error-correct and copy data blocks together into a stream of bytes
 	for (var j = 0; j < dataBlocks.length; j++)
 	{
 		var dataBlock = dataBlocks[j];
-		var codewordBytes = dataBlock.Codewords;
-		var numDataCodewords = dataBlock.NumDataCodewords;
+		var codewordBytes = dataBlock.codewords;
+		var numDataCodewords = dataBlock.numDataCodewords;
 		Decoder.correctErrors(codewordBytes, numDataCodewords);
 		for (var i = 0; i < numDataCodewords; i++)
 		{
@@ -2197,29 +1944,6 @@ Decoder.decode=function(bits)
 	//return DecodedBitStreamParser.decode(resultBytes, version, ecLevel);
 }
 
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function PerspectiveTransform( a11,  a21,  a31,  a12,  a22,  a32,  a13,  a23,  a33)
@@ -2610,22 +2334,6 @@ function Detector(image)
 	}
 }
 
-/*
-   Copyright 2011 Lazar Laszlo (lazarsoft@gmail.com, www.lazarsoft.info)
-   
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
-
 
 qrcode = {};
 
@@ -2805,29 +2513,7 @@ Array.prototype.remove = function(from, to) {
   this.length = from < 0 ? this.length + from : from;
   return this.push.apply(this, rest);
 };
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
 
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 var MIN_SKIP = 3;
@@ -3454,29 +3140,6 @@ function FinderPatternFinder()
 		return new FinderPatternInfo(patternInfo);
 	};
 }
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function AlignmentPattern(posX, posY,  estimatedModuleSize)
@@ -3732,29 +3395,8 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
 			throw "Couldn't find enough alignment patterns";
 		}
 	
-}/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
+}
 
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 var tableRomanAndFigure = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', ' ', '$', '%', '*', '+', '-', '.', '/', ':']
 function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
@@ -4050,6 +3692,20 @@ function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
 	});
 }
 
+/*
+Code below this line is by Kenneth Lichtenberger with no credit due unless noted
+*/
+
+function numBitsDiffering(a,b){
+    a ^= b; // a now has a 1 bit exactly where its bit differs with b's
+    // Count bits with ultra fast method
+	// see http://graphics.stanford.edu/~seander/bithacks.html
+    a = a - ((a >> 1) & 0x55555555);                    // reuse input as temporary
+    a = (a & 0x33333333) + ((a >> 2) & 0x33333333);     // temp
+    
+    return ((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
+}
+
 
 function normlized_gray_diff(_1,_2,white){
     var i = 0
@@ -4142,16 +3798,16 @@ function gray_from_canvas2(buff){
       
   }while(i<l)
    _mid = ((_max - _min)*0.5)|0
-   var uppper1=0,upper2=0,lower1=0,lower2=0
-   var uppper_val1=0,upper_val2=0
+   var upper1=0,upper2=0,lower1=0,lower2=0
+   var upper_val1=0,upper_val2=0
    i = _min
    do{
        cur = count[i]
-       if(cur >= uppper1){
-           uppper_val1 = i
+       if(cur >= upper1){
+           upper_val1 = i
            upper1 = cur
        } else if(cur >= upper2){
-           uppper_val2 = i
+           upper_val2 = i
            upper2 = cur
        }
        i++
@@ -4181,7 +3837,7 @@ function gray_from_canvas2(buff){
 
    do{
        cur = grey[i]
-       if(cur <= uppper_val1){
+       if(cur <= upper_val1){
            cur = 0
        } else if(cur <= upper_val2){
            cur = 1
@@ -4228,16 +3884,16 @@ function gray_from_canvas3(buff){
       
   }while(i<l)
    _mid = ((_max - _min)*0.5)|0
-   var uppper1=0,upper2=0,lower1=0,lower2=0
-   var uppper_val1=0,upper_val2=0
+   var upper1=0,upper2=0,lower1=0,lower2=0
+   var upper_val1=0,upper_val2=0
    i = _min
    do{
        cur = count[i]
-       if(cur >= uppper1){
-           uppper_val1 = i
+       if(cur >= upper1){
+           upper_val1 = i
            upper1 = cur
        } else if(cur >= upper2){
-           uppper_val2 = i
+           upper_val2 = i
            upper2 = cur
        }
        i++
@@ -4260,27 +3916,27 @@ function gray_from_canvas3(buff){
    i = 0
    l = grey.length
 
-   
-   var upperX = 2/upper_val2
-
-   var lowerX = 254/lower_val2 
+   var upper_set = Math.min(upper_val1,upper_val2)
+   var upper_other = (upper_set == upper_val1) ? upper_val1:upper_val1
+   var upperX = 1/upper_other 
+   var lower_set = Math.max(lower_val2,lower_val1)
+   var lower_other = (lower_val1 == lower_set)? lower_val1:lower_val2
+   var lowerX = 254/lower_other 
    
    do{
        cur = grey[i]
        
-       if(cur <= uppper_val1){
+       if(cur <= upper_other){
            bits[i] =1
-           cur = 0
-       } else if(cur <= upper_val2){
-            bits[i] =1
-           cur = 1
-       } else if(cur <= _mid){
+
+       } 
+      if(cur <= upper_other){
+          cur = 0
+      } else if(cur <= _mid){
            cur = (cur * upperX)|0
-       }else if(cur >= lower_val1){
+       }else if(cur >= lower_other ){
            cur = 255
-       } else if(cur >= lower_val2){
-           cur = 254
-       } else {
+       } else{
            cur = (cur * lowerX)|0
        }
         grey2[i] = cur
@@ -4290,8 +3946,118 @@ function gray_from_canvas3(buff){
  
   return {bits:bits,g1:grey,g2:grey2}
 }
+
+function gray_from_canvas4(image,w,h)
+{
+    // about the same xy to middle box as org code everything else is quite a bit different
+    image = new Uint32Array(image.buffer)
+    var numSqrtArea = 4;
+
+    var areaWidth = Math.floor(w / numSqrtArea);
+    var areaHeight = Math.floor(h / numSqrtArea);
+    var grey = new Uint8Array(image.length)
+    var r,b,g
+    var _min,_max,diff,point,count
+    for (var ay = 0; ay < numSqrtArea; ay++)
+    {
+        for (var ax = 0; ax < numSqrtArea; ax++)
+        {
+            _min = 0xFF;
+            _max = 0
+            var count = new Uint32Array(256)
+            for (var dy = 0; dy < areaHeight; dy++)
+            {
+                for (var dx = 0; dx < areaWidth; dx++)
+                {
+                    point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
+                    var target = image[point];
+                    r = (target>>>16)&0xff
+                    b = (target>>>8)&0xff
+                    g = target&0xff
+                    target = ((Math.max(r,g,b)+Math.min(r,b,g))*0.5)|0
+                    grey[point]= target
+                    if(target < 10 || target > 245) continue
+                    count[target]++
+                    if (target < _min)
+                        _min = target
+                    if (target > _max)
+                         
+                        _max = target
+                }
+            }
+            var _mid = ((_max - _min)*0.5)|0
+            var upper1=0,upper2=0,lower1=0,lower2=0
+            var upper_val1=0,upper_val2=0
+            var i = _min
+            var cur
+            do{
+               cur = count[i]
+               if(cur >= upper1){
+                   upper_val1 = i
+                   upper1 = cur
+               } else if(cur >= upper2){
+                   upper_val2 = i
+                   upper2 = cur
+               }
+               i++
+            }while(i<_mid)
+           var lower_val1=0,lower_val2=0
+           i = _mid
+           var l = _max+1
+           do{
+               cur = count[i]
+               if(cur >= lower1){
+                   lower_val1 = i
+                   lower1 = cur
+               } else if(cur >= lower2){
+                   lower_val2 = i
+                   lower2 = cur
+               }
+               i++
+           }while(i<l)
+           
+           
+        
+           var upper_set = Math.min(upper_val1,upper_val2)
+           var upper_other = (upper_set == upper_val1) ? upper_val1:upper_val1
+           var upperX = upper_set/upper_other 
+           var lower_set = Math.max(lower_val2,lower_val1)
+           var lower_other = (lower_val1 == lower_set)? lower_val1:lower_val2
+           var lowerX = 254/lower_other 
+
+            for (var dy = 0; dy < areaHeight; dy++)
+            {
+                for (var dx = 0; dx < areaWidth; dx++)
+                {
+                    point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
+                    cur = grey[point]
+       
+                   
+                  if(cur >= upper_set && cur <= upper_other){
+                      cur = upper_set
+                  } else if(cur <= _mid){
+                       cur = (cur * upperX)|0
+                   }else if(cur >= lower_other ){
+                       cur = 255
+                   } else{
+                       cur = (cur * lowerX)|0
+                   }
+                    grey[point] = cur
+                    
+                }
+            }
+
+            
+        }
+    }
+    
+    
+    return grey
+}
 function strech_grey(grey){
+
   var l = grey.length
+
   var grey2 = new Uint8Array(l)
   var bits = new Uint8Array(l)
   var count = new Uint32Array(256)
@@ -4300,8 +4066,7 @@ function strech_grey(grey){
   
   do{
        cur = grey[i++]
-       if(cur<=2 || cur >= 254)
-        continue
+       if(cur > 245 || cur < 10) continue
        if(cur < _min){
            _min = cur
        }
@@ -4309,19 +4074,20 @@ function strech_grey(grey){
            _max = cur
        }
        count[cur]++
+       
       
   }while(i<l)
    _mid = ((_max - _min)*0.5)|0
-   var uppper1=0,upper2=0,lower1=0,lower2=0
-   var uppper_val1=0,upper_val2=0
+   var upper1=0,upper2=0,lower1=0,lower2=0
+   var upper_val1=0,upper_val2=0
    i = _min
    do{
        cur = count[i]
-       if(cur >= uppper1){
-           uppper_val1 = i
+       if(cur >= upper1){
+           upper_val1 = i
            upper1 = cur
        } else if(cur >= upper2){
-           uppper_val2 = i
+           upper_val2 = i
            upper2 = cur
        }
        i++
@@ -4344,27 +4110,28 @@ function strech_grey(grey){
    i = 0
    l = grey.length
 
-   
-   var upperX = 2/upper_val2
-
-   var lowerX = 254/lower_val2 
+   var upper_set = Math.min(upper_val1,upper_val2)
+   var upper_other = (upper_set == upper_val1) ? upper_val1:upper_val1
+   var upperX = upper_set/upper_other 
+   var lower_set = Math.max(lower_val2,lower_val1)
+   var lower_other = (lower_val1 == lower_set)? lower_val1:lower_val2
+   var lowerX = 254/lower_other 
    
    do{
        cur = grey[i]
        
-       if(cur <= uppper_val1){
+       if(cur <= upper_other){
            bits[i] =1
-           cur = 0
-       } else if(cur <= upper_val2){
-            bits[i] =1
-           cur = 1
-       } else if(cur <= _mid){
+
+       } 
+      if(cur >= upper_set && cur <= upper_other){
+          cur = upper_set
+      }
+      if(cur <= _mid && cur > upper_other){
            cur = (cur * upperX)|0
-       }else if(cur >= lower_val1){
+       }else if(cur >= lower_other ){
            cur = 255
-       } else if(cur >= lower_val2){
-           cur = 254
-       } else {
+       } else{
            cur = (cur * lowerX)|0
        }
         grey2[i] = cur
@@ -4399,16 +4166,16 @@ function bw1(buff){
       
   }while(i<l)
    _mid = ((_max - _min)*0.5)|0
-   var uppper1=0,upper2=0
-   var uppper_val1=0,upper_val2=0
+   var upper1=0,upper2=0
+   var upper_val1=0,upper_val2=0
    i = _min
    do{
        cur = count[i]
-       if(cur >= uppper1){
-           uppper_val1 = i
+       if(cur >= upper1){
+           upper_val1 = i
            upper1 = cur
        } else if(cur >= upper2){
-           uppper_val2 = i
+           upper_val2 = i
            upper2 = cur
        }
        i++
@@ -4421,7 +4188,7 @@ function bw1(buff){
    
    do{
        cur = grey[i]
-       if(cur <= uppper_val1){
+       if(cur <= upper_val1){
            cur = 1
        } else if(cur <= upper_val2){
            cur = 1
@@ -4467,8 +4234,11 @@ function gray_to_canvas_buff(buff){
     }while(i<l)
     return _c
 }
+
+
 function getMiddleBrightnessPerArea(image,w,h)
 {
+    // about the same xy to middle box as org code everything else is quite a bit different
     var numSqrtArea = 4;
     var l = numSqrtArea*numSqrtArea
 
@@ -4508,6 +4278,122 @@ function getMiddleBrightnessPerArea(image,w,h)
     
     
     return {middle:middle,a:numSqrtArea}
+}
+
+function middleBinary(image,w,h)
+{
+    // about the same xy to middle box as org code everything else is quite a bit different
+    var numSqrtArea = 4;
+    var l = numSqrtArea*numSqrtArea
+
+    var areaWidth = Math.floor(w / numSqrtArea);
+    var areaHeight = Math.floor(h / numSqrtArea);
+    var bits = new Uint8Array(image.length)
+
+    var _min,_max,diff
+    for (var ay = 0; ay < numSqrtArea; ay++)
+    {
+        for (var ax = 0; ax < numSqrtArea; ax++)
+        {
+            _min = 0xFF;
+            _max = 0
+            for (var dy = 0; dy < areaHeight; dy++)
+            {
+                for (var dx = 0; dx < areaWidth; dx++)
+                {
+                    var target = image[areaWidth * ax + dx+(areaHeight * ay + dy)*w];
+                    if(target <= 1 || target >= 254) continue
+                    if (target < _min)
+                         //diff = (_min - target)*0.25
+                        _min = ((_min * 3) +target)*0.25
+                    if (target > _max)
+                         //diff = (target - _max)*0.25
+                        _max = ((_max * 3) +target)*0.25
+                }
+            }
+
+            var point
+            var _1per = 1/((_max-_min)*0.01)
+            for (var dy = 0; dy < areaHeight; dy++)
+            {
+                for (var dx = 0; dx < areaWidth; dx++)
+                {
+                    point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
+                    var target = image[point];
+                    var dark = Math.abs(_min - target)*_1per
+                    var light = Math.abs(_max - target)*_1per
+                        if(dark <= 40 || target <= _min){
+                            bits[point] = 1
+                        } 
+                    
+                }
+            }
+
+            
+        }
+    }
+    
+    
+    return bits
+}
+
+
+function middleBinary_looks_cool(image,w,h)
+{
+    // this was a mistake but it paints edges so it may be good for CV  
+    // about the same xy to middle box as org code everything else is quite a bit different
+    var numSqrtArea = 4;
+    var l = numSqrtArea*numSqrtArea
+
+    var areaWidth = Math.floor(w / numSqrtArea);
+    var areaHeight = Math.floor(h / numSqrtArea);
+    var bits = new Uint8Array(image.length)
+
+    var _min,_max,diff
+    for (var ay = 0; ay < numSqrtArea; ay++)
+    {
+        for (var ax = 0; ax < numSqrtArea; ax++)
+        {
+            _min = 0xFF;
+            _max = 0
+            for (var dy = 0; dy < areaHeight; dy++)
+            {
+                for (var dx = 0; dx < areaWidth; dx++)
+                {
+                    var target = image[areaWidth * ax + dx+(areaHeight * ay + dy)*w];
+                    if(target <= 1 || target >= 254) continue
+                    if (target < _min)
+                         //diff = (_min - target)*0.25
+                        _min = ((_min * 3) +target)*0.25
+                    if (target > _max)
+                         //diff = (target - _max)*0.25
+                        _max = ((_max * 3) +target)*0.25
+                }
+            }
+
+            var point
+            var _1per = 1/((_max-_min)*0.01)
+            for (var dy = 0; dy < areaHeight; dy++)
+            {
+                for (var dx = 0; dx < areaWidth; dx++)
+                {
+                    point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
+                    var target = image[point];
+                    var dark = Math.abs(_min - target)*_1per
+                    var light = Math.abs(_max - target)*_1per
+                        if(dark <= 20){
+                            bits[point] = 1
+                        } 
+                    
+                }
+            }
+
+            
+        }
+    }
+    
+    
+    return bits
 }
 function grayScaleBitmapVeto(grayScale,bits,w,h)
 {
@@ -4565,11 +4451,10 @@ function grayScaleBitmapVeto(grayScale,bits,w,h)
     
     
 }
-function grayScaleBitmapVeto2(grayScale,w,h)
+function grayScaleBitmapVeto2(grayScale,g1,g2,w,h)
 {
     var bits = new Uint8Array(grayScale)
-    var g1 = stackBlurGray(grayScale,w,h,2)
-    var g2 = stackBlurGray(grayScale,w,h,4)
+
     var _middle = getMiddleBrightnessPerArea(grayScale,w,h);
     var middle = _middle.middle
     var sqrtNumArea = _middle.a;
@@ -4634,8 +4519,48 @@ function grayScaleBitmapVeto2(grayScale,w,h)
     return bits
 }
 
+function blur_enhanced_binary(g1,g2,bits){
+    var l = bits.length
+    var ret = new Uint8Array(l)
+    var i = 0
+    var diff
+    var pix1,pix2,pix3,pix4,pix5,pix6,
+        pix7,pix8,pix9,pix10,pix11,pix12,x,y
+    do{
+        diff = g1[i] - g2[i]
+        if(diff < 3){
+           
+            pix1 = i+1
+            pix2 = i+2
+            pix3 = i+3
+            pix4 = i-1
+            pix5 = i-2
+            pix6 = i-3
+            
+            if(
+                
+                bits[i] ||
+                (pix1 < l && bits[pix1]) ||
+                (pix2 < l && bits[pix2]) ||
+                (pix3 < l && bits[pix3]) ||
+                
+                (pix4 > -1 && bits[pix4]) ||
+                (pix5 > -1 && bits[pix5]) ||
+                (pix6 > -1 && bits[pix6]) 
+
+
+            ) {
+                ret[i] = 1
+            } 
+        } 
+        i++
+    }while(i<l)
+    return ret
+}
+
+
+
 addEventListener('message', function(e) {
-  //var buff = gray_from_canvas(e.data.buff);
   var start = new Date();
   var w = e.data.w
   var h = e.data.h
@@ -4652,35 +4577,94 @@ addEventListener('message', function(e) {
   //var bits = grayScaleBitmapVeto2(gray_from_canvas2(e.data.buff),w,h) 
   //var bits = grayScaleBitmapVeto2(buff,w,h) 
 
-  var dat = gray_from_canvas3(e.data.buff)
+  
   
   //var bits = bw1(e.data.buff)
-  postMessage(bits_to_canvas_buff(dat.bits))
+  
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))
-  var ret
-  try{
-      console.log(new Date() - start)
-      ret = qrcode.process(bits,w,h)
-      console.log(new Date() - start)
-      postMessage(ret)
-      
-      self.close()
-  } catch(e){
-      
+  function post(bits){
+      var ret
+      try{
+          //console.log(new Date() - start)
+          ret = qrcode.process(bits,w,h)
+          //console.log(new Date() - start)
+
+          postMessage(ret)
+          
+          self.close()
+        } catch(e){
+            return
+        }
   }
-  var dat = strech_grey(dat.g2)
-  postMessage(bits_to_canvas_buff(dat.bits))
-  var ret
-  try{
-      console.log(new Date() - start)
-      ret = qrcode.process(bits,w,h)
-      console.log(new Date() - start)
-      postMessage(ret)
-      
-      self.close()
-  } catch(e){
-      
-  }
+  var dat
+  dat = gray_from_canvas(e.data.buff)
+  var g1_1 = stackBlurGray(dat,w,h,2)
+  var g1_2 = stackBlurGray(dat,w,h,4)
+  var _bits =grayScaleBitmapVeto2(dat,g1_1,g1_2,w,h)
+  
+  
+  post(_bits)
+  dat = gray_from_canvas4(e.data.buff,w,h)
+  var g1_1 = stackBlurGray(dat,w,h,2)
+  var g1_2 = stackBlurGray(dat,w,h,4)
+  _bits =grayScaleBitmapVeto2(dat,g1_1,g1_2,w,h)
+  //postMessage(bits_to_canvas_buff(_bits))
+  post(_bits)
+  return
+  var 
+  
+  dat = strech_grey(dat)
+  dat = dat.g2
+  //postMessage(gray_to_canvas_buff(dat))
+
+  e = undefined
+  var bits = middleBinary(dat,w,h)
+  post(bits)
+  
+
+  var g1_1 = stackBlurGray(dat,w,h,2)
+  var g1_2 = stackBlurGray(dat,w,h,4)
+  var _bits = blur_enhanced_binary(g1_1,g1_2,bits)
+  post(_bits)
+  _bits =grayScaleBitmapVeto2(dat,g1_1,g1_2,w,h)
+  post(_bits)
+  postMessage(bits_to_canvas_buff(_bits))
+  
+
+  return
+  
+  post(bits)
+
+
+      var g1_1 = stackBlurGray(dat.g2,w,h,2)
+      var g1_2 = stackBlurGray(dat.g2,w,h,4)
+      var _bits = blur_enhanced_binary(g1_1,g1_2,bits)
+      post(_bits)
+
+
+    
+    //postMessage(bits_to_canvas_buff(_bits))
+    post(_bits)
+  
+
+    dat = strech_grey(dat.g2)
+
+    bits = middleBinary(dat.g2,w,h)
+    post(bits)
+
+  
+
+    g1_1 = stackBlurGray(dat.g2,w,h,4)
+    g1_2 = stackBlurGray(dat.g2,w,h,6)
+    _bits = blur_enhanced_binary(g1_1,g1_2,bits)
+    
+    post(_bits)
+  
+  
+  return
+
+ 
+  
   
 }, false);
 
