@@ -2181,8 +2181,8 @@ function Detector(image,w,h)
 
 	this.distance=function( pattern1,  pattern2)
 	{
-		xDiff = pattern1.X - pattern2.X;
-		yDiff = pattern1.Y - pattern2.Y;
+		var xDiff = pattern1.X - pattern2.X;
+		var yDiff = pattern1.Y - pattern2.Y;
 		return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));
 	}
 	this.computeDimension=function( topLeft,  topRight,  bottomLeft,  moduleSize)
@@ -2418,84 +2418,6 @@ qrcode.process = function(image,w,h){
 }
 
 
-qrcode.getMiddleBrightnessPerArea=function(image)
-{
-    var numSqrtArea = 4;
-    //obtain middle brightness((min + max) / 2) per area
-    var areaWidth = Math.floor(qrcode.width / numSqrtArea);
-    var areaHeight = Math.floor(qrcode.height / numSqrtArea);
-    var minmax = new Array(numSqrtArea);
-    for (var i = 0; i < numSqrtArea; i++)
-    {
-        minmax[i] = new Array(numSqrtArea);
-        for (var i2 = 0; i2 < numSqrtArea; i2++)
-        {
-            minmax[i][i2] = new Array(0,0);
-        }
-    }
-    for (var ay = 0; ay < numSqrtArea; ay++)
-    {
-        for (var ax = 0; ax < numSqrtArea; ax++)
-        {
-            minmax[ax][ay][0] = 0xFF;
-            for (var dy = 0; dy < areaHeight; dy++)
-            {
-                for (var dx = 0; dx < areaWidth; dx++)
-                {
-                    var target = image[areaWidth * ax + dx+(areaHeight * ay + dy)*qrcode.width];
-                    if (target < minmax[ax][ay][0])
-                        minmax[ax][ay][0] = target;
-                    if (target > minmax[ax][ay][1])
-                        minmax[ax][ay][1] = target;
-                }
-            }
-            //minmax[ax][ay][0] = (minmax[ax][ay][0] + minmax[ax][ay][1]) / 2;
-        }
-    }
-    var middle = new Array(numSqrtArea);
-    for (var i3 = 0; i3 < numSqrtArea; i3++)
-    {
-        middle[i3] = new Array(numSqrtArea);
-    }
-    for (var ay = 0; ay < numSqrtArea; ay++)
-    {
-        for (var ax = 0; ax < numSqrtArea; ax++)
-        {
-            middle[ax][ay] = Math.floor((minmax[ax][ay][0] + minmax[ax][ay][1]) / 2);
-            //Console.out.print(middle[ax][ay] + ",");
-        }
-        //Console.out.println("");
-    }
-    //Console.out.println("");
-    
-    return middle;
-}
-
-qrcode.grayScaleToBitmap=function(grayScale)
-{
-    var middle = qrcode.getMiddleBrightnessPerArea(grayScale);
-    var sqrtNumArea = middle.length;
-    var areaWidth = Math.floor(qrcode.width / sqrtNumArea);
-    var areaHeight = Math.floor(qrcode.height / sqrtNumArea);
-    var bitmap = new Array(qrcode.height*qrcode.width);
-    
-    for (var ay = 0; ay < sqrtNumArea; ay++)
-    {
-        for (var ax = 0; ax < sqrtNumArea; ax++)
-        {
-            for (var dy = 0; dy < areaHeight; dy++)
-            {
-                for (var dx = 0; dx < areaWidth; dx++)
-                {
-                    bitmap[areaWidth * ax + dx+ (areaHeight * ay + dy)*qrcode.width] = (grayScale[areaWidth * ax + dx+ (areaHeight * ay + dy)*qrcode.width] < middle[ax][ay])?true:false;
-                }
-            }
-        }
-    }
-    return bitmap;
-}
-
-
 
 
 
@@ -2508,7 +2430,7 @@ function URShift( number,  bits)
         return (number >> bits) + (2 << ~bits);
 }
 
-
+// fix me OMG WHYYYYY
 Array.prototype.remove = function(from, to) {
   var rest = this.slice((to || from) + 1 || this.length);
   this.length = from < 0 ? this.length + from : from;
@@ -2527,8 +2449,8 @@ qrcode.orderBestPatterns=function(patterns)
 			
 			function distance( pattern1,  pattern2)
 			{
-				xDiff = pattern1.X - pattern2.X;
-				yDiff = pattern1.Y - pattern2.Y;
+				var xDiff = pattern1.X - pattern2.X;
+				var yDiff = pattern1.Y - pattern2.Y;
 				return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));
 			}
 			

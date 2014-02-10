@@ -2191,22 +2191,10 @@ function Detector(image,w,h)
 			var tltrCentersDimension = Math.round(this.distance(topLeft, topRight) / moduleSize);
 			var tlblCentersDimension = Math.round(this.distance(topLeft, bottomLeft) / moduleSize);
 			var dimension = ((tltrCentersDimension + tlblCentersDimension) >> 1) + 7;
-			switch (dimension & 0x03)
-			{
-				
-				// mod 4
-				case 0: 
-					dimension++;
-					break;
-					// 1? do nothing
-				
-				case 2: 
-					dimension--;
-					break;
-				
-				case 3: 
-					throw "Error";
-				}
+			var _dimension = dimension & 0x03
+			if(_dimension >2) throw "Dimension Error"
+			dimension= (!_dimension) ? dimension++:(_dimension==2) ? dimension--:dimension
+			
 			return dimension;
 		}
 
