@@ -2179,24 +2179,12 @@ function Detector(image,w,h)
 			return (this.calculateModuleSizeOneWay(topLeft, topRight) + this.calculateModuleSizeOneWay(topLeft, bottomLeft)) / 2.0;
 		}
 
-	this.distance=function( pattern1,  pattern2)
-	{
-	     // ultra fast aprox distance
-	    // i don't quite understand how it works it has to do with gradients i think
-	    // this value is fine for what we are doing here
-	    var x = Math.abs(pattern1.X - pattern2.X)
-        var y = Math.abs(pattern1.Y - pattern2.Y)
 
-        return (x<y) ? (x * 1.4142135623730950488016887242097 + y - x):(y * 1.4142135623730950488016887242097 + x - y)
-		/*var xDiff = pattern1.X - pattern2.X;
-		var yDiff = pattern1.Y - pattern2.Y;
-		return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));*/
-	}
 	this.computeDimension=function( topLeft,  topRight,  bottomLeft,  moduleSize)
 		{
-			
-			var tltrCentersDimension = Math.round(this.distance(topLeft, topRight) / moduleSize);
-			var tlblCentersDimension = Math.round(this.distance(topLeft, bottomLeft) / moduleSize);
+			moduleSize = 1/moduleSize
+			var tltrCentersDimension = Math.round(topLeft.distance(topRight) * moduleSize);
+			var tlblCentersDimension = Math.round(topLeft.distance(bottomLeft) * moduleSize);
 			var dimension = ((tltrCentersDimension + tlblCentersDimension) >> 1) + 7;
 			var _dimension = dimension & 0x03
 			if(_dimension >2) throw "Dimension Error"
@@ -2442,19 +2430,6 @@ var CENTER_QUORUM = 2;
 qrcode.orderBestPatterns=function(patterns)
 		{
 			
-			function distance( pattern1,  pattern2)
-			{
-			    // ultra fast aprox distance
-			    // i don't quite understnad how it works it has to do with gradients i think
-			    // this value is fine for what we are doing here
-			    var x = Math.abs(pattern1.X - pattern2.X)
-                var y = Math.abs(pattern1.Y - pattern2.Y)
-        
-                return (x<y) ? (x * 1.4142135623730950488016887242097 + y - x):(y * 1.4142135623730950488016887242097 + x - y)
-				/*var xDiff = pattern1.X - pattern2.X;
-				var yDiff = pattern1.Y - pattern2.Y;
-				return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));*/
-			}
 			
 			/// <summary> Returns the z component of the cross product between vectors BC and BA.</summary>
 			function crossProductZ( pointA,  pointB,  pointC)
@@ -2465,10 +2440,13 @@ qrcode.orderBestPatterns=function(patterns)
 			}
 
 			
-			// Find distances between pattern centers
-			var zeroOneDistance = distance(patterns[0], patterns[1]);
-			var oneTwoDistance = distance(patterns[1], patterns[2]);
-			var zeroTwoDistance = distance(patterns[0], patterns[2]);
+
+			
+			
+			var zeroOneDistance = patterns[0].distance(patterns[1])
+			var oneTwoDistance = patterns[1].distance(patterns[2])
+			var zeroTwoDistance = patterns[0].distance(patterns[2])
+			
 			
 			var pointA, pointB, pointC;
 			// Assume one closest to other two is B; A and C will just be guesses at first
@@ -2508,43 +2486,46 @@ qrcode.orderBestPatterns=function(patterns)
 		}
 
 
-function FinderPattern(posX, posY,  estimatedModuleSize)
-{
+function FinderPattern(posX, posY,  estimatedModuleSize){
 	this.x=posX;
 	this.y=posY;
+	this.X=posX
+	this.Y=posY
 	this.count = 1;
 	this.estimatedModuleSize = estimatedModuleSize;
-	
-	this.__defineGetter__("EstimatedModuleSize", function()
-	{
-		return this.estimatedModuleSize;
-	}); 
-	this.__defineGetter__("Count", function()
-	{
-		return this.count;
-	});
-	this.__defineGetter__("X", function()
-	{
-		return this.x;
-	});
-	this.__defineGetter__("Y", function()
-	{
-		return this.y;
-	});
-	this.incrementCount = function()
-	{
-		this.count++;
-	}
-	this.aboutEquals=function( moduleSize,  i,  j)
+	this.estimatedModuleSizeX = 1/estimatedModuleSize // for faster div of this.estimatedModuleSize 
+}
+
+FinderPattern.prototype = {
+    aboutEquals:function( moduleSize,  i,  j){
+        // x = x*(x>>31|1) is abs for a float
+        // fix me dose it cost more to use the input as a var?
+        
+        i = i-this.y
+        i = i*(i>>31|1)
+        j = j - this.x
+        j = j*(j>>31|1)
+		if (i <= moduleSize && j <= moduleSize)
 		{
-			if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
-			{
-				var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
-				return moduleSizeDiff <= 1.0 || moduleSizeDiff / this.estimatedModuleSize <= 1.0;
-			}
-			return false;
+			var moduleSizeDiff = moduleSize - this.estimatedModuleSize
+			moduleSizeDiff = moduleSizeDiff*(moduleSizeDiff>>31|1)
+			return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeX <= 1.0;
 		}
-	
+		return false;
+	},
+	distance:function (b){
+	   
+        
+        var x = this.x - b.x
+	    var y = this.y - b.y
+	    // abs for float faster to way faster than Math.abs
+	    // faster than (x<0)? -x:x too
+        x = x*(x>>31|1)
+        y = y*(y>>31|1)
+        
+        return (x<y) ? (x * 1.4142135623730950488016887242097 + y - x):(y * 1.4142135623730950488016887242097 + x - y)
+        
+	}
 }
 
 function FinderPatternInfo(patternCenters)
@@ -2607,7 +2588,7 @@ function FinderPatternFinder()
 		}
 	this.centerFromEnd=function( stateCount,  end)
 		{
-			return  (end - stateCount[4] - stateCount[3]) - stateCount[2] / 2.0;
+			return  (end - stateCount[4] - stateCount[3]) - stateCount[2] * 0.5;
 		}
 	this.crossCheckVertical=function( startI,  centerJ,  maxCount,  originalStateCountTotal)
 		{
@@ -2773,7 +2754,7 @@ function FinderPatternFinder()
 				centerJ = this.crossCheckHorizontal(Math.floor( centerJ), Math.floor( centerI), stateCount[2], stateCountTotal);
 				if (!isNaN(centerJ))
 				{
-					var estimatedModuleSize =   stateCountTotal / 7.0;
+					var estimatedModuleSize =   stateCountTotal *0.142857143 // divide by  7.0;
 					var found = false;
 					var max = this.possibleCenters.length;
 					for (var index = 0; index < max; index++)
@@ -2782,7 +2763,7 @@ function FinderPatternFinder()
 						// Look for about the same center and module size:
 						if (center.aboutEquals(estimatedModuleSize, centerI, centerJ))
 						{
-							center.incrementCount();
+							center.center++;
 							found = true;
 							break;
 						}
@@ -2820,15 +2801,15 @@ function FinderPatternFinder()
                 var square = 0.0;
 				for (var i = 0; i < startSize; i++)
 				{
-					//totalModuleSize +=  this.possibleCenters[i].EstimatedModuleSize;
-                    var	centerValue=this.possibleCenters[i].EstimatedModuleSize;
+
+                    var	centerValue=this.possibleCenters[i].estimatedModuleSize;
 					totalModuleSize += centerValue;
 					square += (centerValue * centerValue);
 				}
 				var average = totalModuleSize /  startSize;
                 this.possibleCenters.sort(function(center1,center2) {
-				      var dA=Math.abs(center2.EstimatedModuleSize - average);
-				      var dB=Math.abs(center1.EstimatedModuleSize - average);
+				      var dA=Math.abs(center2.estimatedModuleSize - average);
+				      var dB=Math.abs(center1.estimatedModuleSize - average);
 				      if (dA < dB) {
 				    	  return (-1);
 				      } else if (dA == dB) {
@@ -2843,8 +2824,8 @@ function FinderPatternFinder()
 				for (var i = 0; i < this.possibleCenters.length && this.possibleCenters.length > 3; i++)
 				{
 					var pattern =  this.possibleCenters[i];
-					//if (Math.abs(pattern.EstimatedModuleSize - average) > 0.2 * average)
-                    if (Math.abs(pattern.EstimatedModuleSize - average) > limit)
+					//if (Math.abs(pattern.estimatedModuleSize - average) > 0.2 * average)
+                    if (Math.abs(pattern.estimatedModuleSize - average) > limit)
 					{
 						this.possibleCenters.remove(i);
 						i--;
@@ -2908,7 +2889,7 @@ function FinderPatternFinder()
 				if (pattern.count >= CENTER_QUORUM)
 				{
 					confirmedCount++;
-					totalModuleSize += pattern.EstimatedModuleSize;
+					totalModuleSize += pattern.estimatedModuleSize;
 				}
 			}
 			if (confirmedCount < 3)
@@ -2924,7 +2905,7 @@ function FinderPatternFinder()
 			for (var i = 0; i < max; i++)
 			{
 				pattern = this.possibleCenters[i];
-				totalDeviation += Math.abs(pattern.EstimatedModuleSize - average);
+				totalDeviation += Math.abs(pattern.estimatedModuleSize - average);
 			}
 			return totalDeviation <= 0.05 * totalModuleSize;
 		}
@@ -3013,6 +2994,7 @@ function FinderPatternFinder()
 									while (j < maxJ && !image[j + i*qrcode.width]);
 									j--; // back up to that last white pixel
 								}
+							    // fix me we make this better next
 								// Clear state to start looking again
 								currentState = 0;
 								stateCount[0] = 0;
@@ -3069,43 +3051,48 @@ function FinderPatternFinder()
 
 function AlignmentPattern(posX, posY,  estimatedModuleSize)
 {
+    // x|0 is floor
+    
 	this.x=posX;
 	this.y=posY;
+	this.X = posX|0
+	this.Y = posY|0
 	this.count = 1;
 	this.estimatedModuleSize = estimatedModuleSize;
-	
-	this.__defineGetter__("EstimatedModuleSize", function()
-	{
-		return this.estimatedModuleSize;
-	}); 
-	this.__defineGetter__("Count", function()
-	{
-		return this.count;
-	});
-	this.__defineGetter__("X", function()
-	{
-		return Math.floor(this.x);
-	});
-	this.__defineGetter__("Y", function()
-	{
-		return Math.floor(this.y);
-	});
-	this.incrementCount = function()
-	{
-		this.count++;
-	}
-	this.aboutEquals=function( moduleSize,  i,  j)
-		{
-			if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
-			{
-				var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
-				return moduleSizeDiff <= 1.0 || moduleSizeDiff / this.estimatedModuleSize <= 1.0;
-			}
-			return false;
-		}
-	
+	this.estimatedModuleSizeX = 1/estimatedModuleSize // for faster div of estimatedModuleSize
 }
-
+AlignmentPattern.prototype= {
+    distance: function (b){
+        var x = this.X - b.X
+        var y = this.Y - b.Y
+        // abs for 32 bit int
+        var m
+        m = x >>31
+        x = (m+x)^m
+        m = y >>31
+        y = (m+y)^m
+        
+        //ultra fast aprox distance
+        return (x<y) ? (x * 1.4142135623730950488016887242097 + y - x):(y * 1.4142135623730950488016887242097 + x - y)
+    },
+    aboutEquals:function( moduleSize,  i,  j){
+        // x = x*(x>>31|1) is abs for a float
+        // fix me dose it cost more to use the input as a var?
+        
+        i = i-this.y
+        i = i*(i>>31|1)
+        j = j - this.x
+        j = j*(j>>31|1)
+		if (i <= moduleSize && j <= moduleSize)
+		{
+			var moduleSizeDiff = moduleSize - this.estimatedModuleSize
+			moduleSizeDiff = moduleSizeDiff*(moduleSizeDiff>>31|1)
+			return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeX <= 1.0;
+		}
+		return false;
+	}
+}
+ 
 function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  moduleSize,  resultPointCallback)
 {
 	this.image = image;
@@ -3115,24 +3102,34 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
 	this.width = width;
 	this.height = height;
 	this.moduleSize = moduleSize;
+	this.maxVariance = moduleSize * 0.5
 	this.crossCheckStateCount = new Array(0,0,0);
 	this.resultPointCallback = resultPointCallback;
 	
 	this.centerFromEnd=function(stateCount,  end)
 		{
-			return  (end - stateCount[2]) - stateCount[1] / 2.0;
+			return  (end - stateCount[2]) - stateCount[1] * 0.5;
 		}
 	this.foundPatternCross = function(stateCount)
 		{
 			var moduleSize = this.moduleSize;
-			var maxVariance = moduleSize / 2.0;
-			for (var i = 0; i < 3; i++)
-			{
-				if (Math.abs(moduleSize - stateCount[i]) >= maxVariance)
-				{
-					return false;
-				}
-			}
+			var maxVariance = this.maxVariance;
+			var moduleSizeDiff
+			moduleSizeDiff = (moduleSize - stateCount[0])
+		    //abs
+		    moduleSizeDiff = moduleSizeDiff*(moduleSizeDiff>>31|1)
+			if (  moduleSizeDiff  >= maxVariance)
+				return false
+		    moduleSizeDiff = (moduleSize - stateCount[1])
+		    //abs
+		    moduleSizeDiff = moduleSizeDiff*(moduleSizeDiff>>31|1)
+			if (  moduleSizeDiff  >= maxVariance)
+				return false
+		    moduleSizeDiff = (moduleSize - stateCount[2])
+		    //abs
+		    moduleSizeDiff = moduleSizeDiff*(moduleSizeDiff>>31|1)
+			if (  moduleSizeDiff  >= maxVariance)
+				return false
 			return true;
 		}
 
@@ -3202,10 +3199,10 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
 		{
 			var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
 			var centerJ = this.centerFromEnd(stateCount, j);
-			var centerI = this.crossCheckVertical(i, Math.floor (centerJ), 2 * stateCount[1], stateCountTotal);
+			var centerI = this.crossCheckVertical(i, centerJ|0, 2 * stateCount[1], stateCountTotal);
 			if (!isNaN(centerI))
 			{
-				var estimatedModuleSize = (stateCount[0] + stateCount[1] + stateCount[2]) / 3.0;
+				var estimatedModuleSize = (stateCount[0] + stateCount[1] + stateCount[2]) * 0.333333333 // div by 3
 				var max = this.possibleCenters.length;
 				for (var index = 0; index < max; index++)
 				{
@@ -3829,13 +3826,16 @@ function gray_from_canvas4(image,w,h)
 {
     // about the same xy to middle box as org code everything else is quite a bit different
     image = new Uint32Array(image.buffer)
-    var numSqrtArea = 4;
+    var numSqrtArea = 8;
 
     var areaWidth = Math.floor(w / numSqrtArea);
     var areaHeight = Math.floor(h / numSqrtArea);
     var grey = new Uint8Array(image.length)
     var r,b,g
     var _min,_max,diff,point,count
+    var max_c
+    var min_c
+    var tmp
     for (var ay = 0; ay < numSqrtArea; ay++)
     {
         for (var ax = 0; ax < numSqrtArea; ax++)
@@ -3852,7 +3852,19 @@ function gray_from_canvas4(image,w,h)
                     r = (target>>>16)&0xff
                     b = (target>>>8)&0xff
                     g = target&0xff
-                    target = ((Math.max(r,g,b)+Math.min(r,b,g))*0.5)|0
+                    ///------------------------
+                    tmp  = r - b
+                    max_c = r - tmp & (tmp >> 31) //----Max for a int of 32 bits or less 
+                    tmp = max_c - g
+                    max_c = max_c - tmp & (tmp >> 31) 
+                    /// max of r g and b ^^^^^^^^^^^^^^^^^^
+                    ///------------------------ 
+                    tmp  = r - b
+                    min_c = b + (tmp & (tmp >> 31))  //----min for a int of 32 bits or less   
+                    tmp = min_c - g
+                    min_c = g + (tmp & (tmp >> 31));  //----min for a int of 32 bits or less 
+                    // min of r g and b ^^^^^^^^^^^^^^^^^^^^^
+                    target = ((max_c+min_c)*0.5)|0
                     grey[point]= target
                     if(target < 10 || target > 245) continue
                     count[target]++
@@ -3895,9 +3907,10 @@ function gray_from_canvas4(image,w,h)
            }while(i<l)
            
            
-        
-           var upper_set = Math.min(upper_val1,upper_val2)
-           var upper_other = (upper_set == upper_val1) ? upper_val1:upper_val1
+           tmp  = upper_val2 - upper_val1
+           var upper_set = upper_val1 + (tmp & (tmp >> 31))  //----min for a int of 32 bits or less  
+
+           var upper_other = (upper_set == upper_val1) ? upper_val1:upper_val2
            var upperX = upper_set/upper_other 
            var lower_set = Math.max(lower_val2,lower_val1)
            var lower_other = (lower_val1 == lower_set)? lower_val1:lower_val2
@@ -4349,21 +4362,26 @@ addEventListener('message', function(e) {
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))
   function post(bits){
       var ret
-      var start = new Date()
+      var start2 = new Date()
       try{
-          //console.log(new Date() - start)
+
           ret = qrcode.process(bits,w,h)
-          console.log(new Date() - start)
+          console.log(new Date() - start + ' 1')
+          console.log(new Date() - start2 + ' 2')
 
           postMessage(ret)
           
           self.close()
         } catch(e){
-            console.log(new Date() - start)
+            console.log(new Date() - start + ' 1')
+            console.log(new Date() - start2 + ' 2')
             return
         }
   }
   var dat
+  //dat = gray_from_canvas4(e.data.buff,w,h)
+  //postMessage(gray_to_canvas_buff(dat))
+  //return
   dat = gray_from_canvas(e.data.buff)
   var g1_1 = stackBlurGray(dat,w,h,2)
   var g1_2 = stackBlurGray(dat,w,h,4)
@@ -4373,6 +4391,8 @@ addEventListener('message', function(e) {
   
   post(_bits)
   dat = gray_from_canvas4(e.data.buff,w,h)
+  postMessage(gray_to_canvas_buff(dat))
+  
   var g1_1 = stackBlurGray(dat,w,h,2)
   var g1_2 = stackBlurGray(dat,w,h,4)
   _bits =grayScaleBitmapVeto2(dat,g1_1,g1_2,w,h)
@@ -4387,7 +4407,7 @@ addEventListener('message', function(e) {
   
   dat = strech_grey(dat)
   dat = dat.g2
-  //postMessage(gray_to_canvas_buff(dat))
+
 
   e = undefined
   var bits = middleBinary(dat,w,h)
