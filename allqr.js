@@ -79,6 +79,8 @@ OTHER DEALINGS IN THE SOFTWARE.
 /-----------------------------------------------------
 */
 
+
+
 ;stackBlurGray=(function (){
 //===============================
 
@@ -125,21 +127,18 @@ var shg_table = new Uint8Array([
 
 function stackBlurGray(buff,width, height, radius )
 {
-	if ( isNaN(radius) || radius < 1 ) return;
-	radius |= 0;
-	
 	var pixels = new Uint8Array(buff)		
 	var x, y, i, p, yp, yi, yw, sum,
 	out_sum,
 	in_sum,
 	pg, bs;
-			
+    var tmp,tmp2
 	var div = radius + radius + 1;
 	var widthMinus1  = width - 1;
 	var heightMinus1 = height - 1;
 	var radiusPlus1  = radius + 1;
 	var sumFactor = radiusPlus1 * ( radiusPlus1 + 1 ) * 0.5;
-	
+
 	var stackStart = new BlurStack();
 	var stack = stackStart;
 	var stackEnd
@@ -151,21 +150,21 @@ function stackBlurGray(buff,width, height, radius )
 	stack.next = stackStart;
 	var stackIn = null;
 	var stackOut = null;
-	
+
 	yw = yi = 0;
-	
+
 	var mul_sum = mul_table[radius];
 	var shg_sum = shg_table[radius];
 	y=0
 	do{
 		in_sum = sum = 0;
-		
-		out_sum = radiusPlus1 * ( pg = pixels[yi] );
-		
-		
+
+		out_sum = (radiusPlus1 * ( pg = pixels[yi] ))|0;
+
+
 		sum += sumFactor * pg;
-		
-		
+
+
 		stack = stackStart;
 		i = 0
 		do{
@@ -175,46 +174,56 @@ function stackBlurGray(buff,width, height, radius )
 		}while(i < radiusPlus1)
 		i = 1
 		do{
+		    
+		    		    tmp = widthMinus1-i
+
+			p = yi + ( i+ (tmp & (tmp >> 31)));
+		    
+		    /*
 			p = yi + ( widthMinus1 < i ? widthMinus1 : i );
-			sum += ( stack.v = ( pg = pixels[p])) * ( bs = radiusPlus1 - i );
-			
+			*/
+			sum += (( stack.v = ( pg = pixels[p])) * ( bs = radiusPlus1 - i ))|0;
+
 			in_sum += pg;
-					
+
 			stack = stack.next;
 			i++
 		}while(i < radiusPlus1)
-		
-		
+
+
 		stackIn = stackStart;
 		stackOut = stackEnd;
 		x=0
-		
+
 		do{
 			pixels[yi]   = (sum * mul_sum) >> shg_sum;
-			
-			
+
+
 			sum -= out_sum;
-			
-			
+
+
 			out_sum -= stackIn.v;
-			
-			
+            p = x + radius + 1
+            tmp = widthMinus1-p
+            p =   yw + (p + (tmp & (tmp >> 31)))          
+            
+            /*
 			p =  ( yw + ( ( p = x + radius + 1 ) < widthMinus1 ? p : widthMinus1 ) );
-			
+            */
 			in_sum += ( stackIn.v = pixels[p]);
-			
-			
+
+
 			sum += in_sum;
-			
-			
+
+
 			stackIn = stackIn.next;
-			
+
 			out_sum += ( pg = stackOut.v );
-			
-			
+
+
 			in_sum -= pg;
-			
-			
+
+
 			stackOut = stackOut.next;
 
 			yi++;
@@ -225,47 +234,47 @@ function stackBlurGray(buff,width, height, radius )
 	}while(y < height)
 
 	x=0
-	
+
 	do{
 		in_sum = sum = 0;
-		
+
 		yi = x;
-		out_sum = radiusPlus1 * ( pg = pixels[yi]);
-		
-		
-		sum += sumFactor * pg;
-		
-		
+		out_sum = (radiusPlus1 * ( pg = pixels[yi]))|0;
+
+
+		sum += (sumFactor * pg)|0;
+
+
 		stack = stackStart;
-		
+
 		for( i = 0; i < radiusPlus1; i++ )
 		{
 			stack.v = pg;
 			stack = stack.next;
 		}
-		
+
 		yp = width;
-		
+
 		i=1
-		
+
 		do{
 			yi = ( yp + x );
-			
-			sum += ( stack.v = ( pg = pixels[yi])) * ( bs = radiusPlus1 - i );
-			
-			
+
+			sum += (( stack.v = ( pg = pixels[yi])) * ( bs = radiusPlus1 - i ))|0;
+
+
 			in_sum += pg;
-			
-			
+
+
 			stack = stack.next;
-		
+
 			if( i < heightMinus1 )
 			{
 				yp += width;
 			}
 		    i++
 		}while(i <= radius)
-		
+
 		yi = x;
 		stackIn = stackStart;
 		stackOut = stackEnd;
@@ -273,29 +282,33 @@ function stackBlurGray(buff,width, height, radius )
 		do{
 			p = yi;
 			pixels[p]   = (sum * mul_sum) >> shg_sum;
-			
-			
+
+
 			sum -= out_sum;
-			
-			
+
+
 			out_sum -= stackIn.v;
+			p = y + radiusPlus1
+			tmp = heightMinus1-p
 			
-			
+            p = ( x + (( p + (tmp & (tmp >> 31)) ) * width ))|0;
+            /*
 			p = ( x + (( ( p = y + radiusPlus1) < heightMinus1 ? p : heightMinus1 ) * width ));
-			
+			*/
+
 			sum += ( in_sum += ( stackIn.v = pixels[p]));
-			
-			
+
+
 			stackIn = stackIn.next;
-			
+
 			out_sum += ( pg = stackOut.v );
-			
-			
+
+
 			in_sum -= pg;
-			
-			
+
+
 			stackOut = stackOut.next;
-			
+
 			yi += width;
 			y++
 		}while(y < height)
@@ -303,7 +316,7 @@ function stackBlurGray(buff,width, height, radius )
 	}while(x < width)
 	return pixels
 
-	
+
 }
 
 function BlurStack()
@@ -315,6 +328,8 @@ return stackBlurGray
 //===============================
 
 })();
+
+
 
 //code below this line did not come from BlurStack
 
@@ -3649,237 +3664,95 @@ function gray_from_canvas(buff){
   return grey
 }
 
-function gray_from_canvas2(buff){
-  buff = new Uint32Array(buff.buffer)
-  var grey = new Uint8Array(buff.length)
-  var count = new Uint32Array(256)
-  var r,b,g,cur,i,l,_min=255,_max=0,_mid
-  i=0
-  l = buff.length
-  do{
-       cur = buff[i]
-       r = (cur>>>16)&0xff
-       b = (cur>>>8)&0xff
-       g = cur&0xff
-       cur = ((Math.max(r,g,b)+Math.min(r,b,g))*0.5)|0
-       if(cur < _min){
-           _min = cur
-       }
-       if(cur > _max){
-           _max = cur
-       }
-       count[cur]++
-       grey[i++]  = cur
-      
-  }while(i<l)
-   _mid = ((_max - _min)*0.5)|0
-   var upper1=0,upper2=0,lower1=0,lower2=0
-   var upper_val1=0,upper_val2=0
-   i = _min
-   do{
-       cur = count[i]
-       if(cur >= upper1){
-           upper_val1 = i
-           upper1 = cur
-       } else if(cur >= upper2){
-           upper_val2 = i
-           upper2 = cur
-       }
-       i++
-   }while(i<_mid)
-   var lower_val1=0,lower_val2=0
-   i = _mid
-   l = _max+1
-   do{
-       cur = count[i]
-       if(cur >= lower1){
-           lower_val1 = i
-           lower1 = cur
-       } else if(cur >= lower2){
-           lower_val2 = i
-           lower2 = cur
-       }
-       i++
-   }while(i<l)
-   
-   i = 0
-   l = grey.length
 
-   
-   var upperX = 2/upper_val2
 
-   var lowerX = 254/lower_val2 
-
-   do{
-       cur = grey[i]
-       if(cur <= upper_val1){
-           cur = 0
-       } else if(cur <= upper_val2){
-           cur = 1
-       } else if(cur <= _mid){
-           cur = (cur * upperX)|0
-       }else if(cur >= lower_val1){
-           cur = 255
-       } else if(cur >= lower_val2){
-           cur = 254
-       } else {
-           cur = (cur * lowerX)|0
-       }
-        grey[i] = cur
-       i++
-   }while(i<l)
-   
- 
-  return grey
-}
-function gray_from_canvas3(buff){
-  buff = new Uint32Array(buff.buffer)
-  var l = buff.length
-  var grey = new Uint8Array(l)
-  var grey2 = new Uint8Array(l)
-  var bits = new Uint8Array(l)
-  var count = new Uint32Array(256)
-  var r,b,g,cur,i,_min=255,_max=0,_mid
-  i=0
-  
-  do{
-       cur = buff[i]
-       r = (cur>>>16)&0xff
-       b = (cur>>>8)&0xff
-       g = cur&0xff
-       cur = ((Math.max(r,g,b)+Math.min(r,b,g))*0.5)|0
-       if(cur < _min){
-           _min = cur
-       }
-       if(cur > _max){
-           _max = cur
-       }
-       count[cur]++
-       grey[i++]  = cur
-      
-  }while(i<l)
-   _mid = ((_max - _min)*0.5)|0
-   var upper1=0,upper2=0,lower1=0,lower2=0
-   var upper_val1=0,upper_val2=0
-   i = _min
-   do{
-       cur = count[i]
-       if(cur >= upper1){
-           upper_val1 = i
-           upper1 = cur
-       } else if(cur >= upper2){
-           upper_val2 = i
-           upper2 = cur
-       }
-       i++
-   }while(i<_mid)
-   var lower_val1=0,lower_val2=0
-   i = _mid
-   l = _max+1
-   do{
-       cur = count[i]
-       if(cur >= lower1){
-           lower_val1 = i
-           lower1 = cur
-       } else if(cur >= lower2){
-           lower_val2 = i
-           lower2 = cur
-       }
-       i++
-   }while(i<l)
-   
-   i = 0
-   l = grey.length
-
-   var upper_set = Math.min(upper_val1,upper_val2)
-   var upper_other = (upper_set == upper_val1) ? upper_val1:upper_val1
-   var upperX = 1/upper_other 
-   var lower_set = Math.max(lower_val2,lower_val1)
-   var lower_other = (lower_val1 == lower_set)? lower_val1:lower_val2
-   var lowerX = 254/lower_other 
-   
-   do{
-       cur = grey[i]
-       
-       if(cur <= upper_other){
-           bits[i] =1
-
-       } 
-      if(cur <= upper_other){
-          cur = 0
-      } else if(cur <= _mid){
-           cur = (cur * upperX)|0
-       }else if(cur >= lower_other ){
-           cur = 255
-       } else{
-           cur = (cur * lowerX)|0
-       }
-        grey2[i] = cur
-       i++
-   }while(i<l)
-   
- 
-  return {bits:bits,g1:grey,g2:grey2}
-}
 
 function gray_from_canvas4(image,w,h)
 {
     // about the same xy to middle box as org code everything else is quite a bit different
     image = new Uint32Array(image.buffer)
-    var numSqrtArea = 8;
-
-    var areaWidth = Math.floor(w / numSqrtArea);
-    var areaHeight = Math.floor(h / numSqrtArea);
+    var numSqrtArea = 6;
+    var numSqrtAreaX = 1/numSqrtArea
+    var areaWidth = (w * numSqrtAreaX)|0;
+    var areaHeight = (h * numSqrtAreaX)|0;
     var grey = new Uint8Array(image.length)
     var r,b,g
-    var _min,_max,diff,point,count
+    var _min,_max,point
     var max_c
     var min_c
-    var tmp
-    for (var ay = 0; ay < numSqrtArea; ay++)
-    {
-        for (var ax = 0; ax < numSqrtArea; ax++)
-        {
+    var tmp,tmp2,tmp3
+    var ax,ay,dx,dy
+    var count = new Uint32Array(256)
+    var _mid
+    var upper1,upper2,lower1,lower2
+    var upper_val1,upper_val2
+    var lower_val1,lower_val2
+    var i,l
+    var cur
+    var upper_set,upper_other,lower_set,lower_other,upperX,lowerX
+    var target
+   var set_upper_set
+   var set_upperX
+   var set_white
+        ax=0
+        ay=0
+
+
+        do{
+            
             _min = 0xFF;
             _max = 0
-            var count = new Uint32Array(256)
-            for (var dy = 0; dy < areaHeight; dy++)
-            {
-                for (var dx = 0; dx < areaWidth; dx++)
-                {
-                    point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
-                    var target = image[point];
-                    r = (target>>>16)&0xff
-                    b = (target>>>8)&0xff
-                    g = target&0xff
-                    ///------------------------
-                    tmp  = r - b
-                    max_c = r - tmp & (tmp >> 31) //----Max for a int of 32 bits or less 
-                    tmp = max_c - g
-                    max_c = max_c - tmp & (tmp >> 31) 
-                    /// max of r g and b ^^^^^^^^^^^^^^^^^^
-                    ///------------------------ 
-                    tmp  = r - b
-                    min_c = b + (tmp & (tmp >> 31))  //----min for a int of 32 bits or less   
-                    tmp = min_c - g
-                    min_c = g + (tmp & (tmp >> 31));  //----min for a int of 32 bits or less 
-                    // min of r g and b ^^^^^^^^^^^^^^^^^^^^^
-                    target = ((max_c+min_c)*0.5)|0
-                    grey[point]= target
-                    if(target < 10 || target > 245) continue
-                    count[target]++
-                    if (target < _min)
-                        _min = target
-                    if (target > _max)
-                         
-                        _max = target
-                }
-            }
-            var _mid = ((_max - _min)*0.5)|0
-            var upper1=0,upper2=0,lower1=0,lower2=0
-            var upper_val1=0,upper_val2=0
-            var i = _min
-            var cur
+            // zero out count with a static empty array
+            // this is faster than making a new  one and faster then zeroing it out in js
+            count.set(gray_from_canvas4.zero_count) 
+           
+            dx =0
+            dy = 0
+            do{
+                point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
+                target = image[point];
+                r = (target>>>16)&0xff
+                b = (target>>>8)&0xff
+                g = target&0xff
+                ///------------------------
+                tmp  = r - b                    //____________________________________
+                tmp = (tmp & (tmp >> 31))
+                max_c = r - tmp                 //----Max for a int of 32 bits or less
+                min_c = b + tmp                 //----min for a int of 32 bits or less
+                tmp = max_c - g                 //____________________________________
+                max_c = max_c - (tmp & (tmp >> 31))             //----Max for a int of 32 bits or less
+                tmp = min_c - g                 
+                min_c = g + (tmp & (tmp >> 31))                //----min for a int of 32 bits or less
+                /// max and min  of r g and b ^^^^^^^^^^^^^^^^^^
+                ///------------------------ 
+               
+                target = ((max_c+min_c)*0.5)|0
+
+                grey[point]= target
+                count[target]++
+                tmp  = _max - target            //____________________________________
+                _max = _max - (tmp & (tmp >> 31)) //----Max for a int of 32 bits or less
+                
+                tmp = _min - target  //____________________________________
+                _min = target + (tmp & (tmp >> 31)) //----min for a int of 32 bits or less
+                
+                /*
+                this code will increment dx and dy to loop x y blocks 
+                */
+                dx++
+                tmp = (dx-areaWidth)>>>31
+                dx *= tmp
+                dy += tmp^1
+                //-----------------
+            }while((dy-areaHeight)>>>31) // (dy < areaHeight)
+            
+            
+            _mid = ((_max - _min)*0.5)|0
+            
+            upper1=upper2=lower1=lower2=0
+            upper_val1=upper_val2=0
+            i = _min
+            /*
             do{
                cur = count[i]
                if(cur >= upper1){
@@ -3891,9 +3764,8 @@ function gray_from_canvas4(image,w,h)
                }
                i++
             }while(i<_mid)
-           var lower_val1=0,lower_val2=0
            i = _mid
-           var l = _max+1
+           l = _max+1
            do{
                cur = count[i]
                if(cur >= lower1){
@@ -3905,26 +3777,88 @@ function gray_from_canvas4(image,w,h)
                }
                i++
            }while(i<l)
+           */
+            
+            do{
+               cur = count[i]
+               tmp = upper1 - cur
+               tmp2 = tmp>>>31
+               upper1 = upper1 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less
+               upper_val1 = (upper_val1 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1=i
+               
+               
+               cur *= tmp2^1 // if the first passed make sure the 2nd fails
+               
+               
+               tmp = upper2 - cur
+               tmp2 = tmp>>>31
+               upper2 = upper2 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less
+               upper_val2 = (upper_val2 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1
+               i++
+           }while((i-_mid)>>>31) // (i<_mid)
            
            
+           i = _mid
+           l = _max+1
+           do{
+               cur = count[i]
+               tmp = lower1 - cur
+               tmp2 = tmp>>>31
+               lower1 = lower1 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less
+               lower_val1 = (lower_val1 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1
+               
+               cur *= tmp2^1 // if the first passed make sure the 2nd fails
+               
+               tmp = lower2  - cur
+               tmp2 = tmp>>>31
+               lower2 = lower2 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less
+               lower_val2 = (lower_val2 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1
+              
+
+               i++
+           }while((i-l)>>>31)
+           
+           
+           
+  
            tmp  = upper_val2 - upper_val1
-           var upper_set = upper_val1 + (tmp & (tmp >> 31))  //----min for a int of 32 bits or less  
+           tmp = (tmp & (tmp >> 31))
+           upper_set = upper_val1 + tmp  //----min for a int of 32 bits or less  
+           upper_other = upper_val2 - tmp
 
-           var upper_other = (upper_set == upper_val1) ? upper_val1:upper_val2
-           var upperX = upper_set/upper_other 
-           var lower_set = Math.max(lower_val2,lower_val1)
-           var lower_other = (lower_val1 == lower_set)? lower_val1:lower_val2
-           var lowerX = 254/lower_other 
+           tmp = lower_val1-lower_val2
+           lower_other = lower_val2 + (tmp & (tmp >> 31))
 
-            for (var dy = 0; dy < areaHeight; dy++)
-            {
-                for (var dx = 0; dx < areaWidth; dx++)
-                {
+           upperX = upper_set/upper_other
+           lowerX = 254/lower_other 
+
+           dx=0
+           dy=0
+
+           do{
                     point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
                     cur = grey[point]
-       
-                   
-                  if(cur >= upper_set && cur <= upper_other){
+                  /*                
+                  set_upper_set= (((upper_other-cur)>>>31)^1) & ((upper_set-cur)>>>31)
+
+                  set_upperX = (((_mid-cur)>>>31)^1) & (set_upper_set^1)
+                  set_white = (lower_other-cur)>>>31
+                  grey[point] = (upper_set*set_upper_set)|((cur * upperX)*set_upperX)|(255*set_white)|((cur * lowerX)*((set_white|set_upperX|set_upper_set)^1))
+                  */
+                  
+                  if((cur-upper_other)>>>31 & (upper_set-cur)>>>31){
+                      cur = upper_set
+                  } else if((cur-_mid)>>>31){
+                       cur = (cur * upperX)|0
+                   }else if((lower_other-cur)>>>31){
+                       cur = 255
+                   } else{
+                       cur = (cur * lowerX)|0
+                   }
+                    grey[point] = cur
+                    
+              /* 
+              if(cur >= upper_set && cur <= upper_other){
                       cur = upper_set
                   } else if(cur <= _mid){
                        cur = (cur * upperX)|0
@@ -3934,17 +3868,33 @@ function gray_from_canvas4(image,w,h)
                        cur = (cur * lowerX)|0
                    }
                     grey[point] = cur
-                    
-                }
-            }
-
+                */
+                /*
+                this code will increment dx and dy to loop x y blocks 
+                */
+                dx++
+                tmp = (dx-areaWidth)>>>31
+                dx *= tmp
+                dy += tmp^1
+                //-----------------
+           }while((dy-areaHeight)>>>31) // (dy < areaHeight)
             
-        }
-    }
+            
+            /*
+            this code will incremate ax and ay to loop x y blocks 
+            */
+            ax++
+            tmp = (ax-numSqrtArea)>>>31
+            ax *= tmp
+            ay += tmp^1
+            //-----------------
+        }while((ay-numSqrtArea)>>>31) // (ay < numSqrtArea) way faster
+
     
     
     return grey
 }
+gray_from_canvas4.zero_count = new Uint32Array(256)
 function strech_grey(grey){
 
   var l = grey.length
@@ -4339,25 +4289,12 @@ function blur_enhanced_binary(g1,g2,bits){
 
 
 addEventListener('message', function(e) {
-  var start = new Date();
+
   var w = e.data.w
   var h = e.data.h
-  //e = undefined
   qrcode.width = w
   qrcode.height = h
-  //var _middle = getMiddleBrightnessPerArea(grayScale,w,h);
-  //var bits = new Uint8Array(buff.length)
-  //bits = qrcode.grayScaleToBitmap(buff)
-  //bits = normlized_gray_diff(stackBlurGray(buff,w,h,3),stackBlurGray(buff,w,h,10),2)
-  //bits = normlized_gray_diff(stackBlurGray(buff,w,h,2),stackBlurGray(buff,w,h,4),5)
-  //grayScaleBitmapVeto(buff,bits,w,h)
-  //buff = undefined
-  //var bits = grayScaleBitmapVeto2(gray_from_canvas2(e.data.buff),w,h) 
-  //var bits = grayScaleBitmapVeto2(buff,w,h) 
-
   
-  
-  //var bits = bw1(e.data.buff)
   
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))
   function post(bits){
@@ -4379,9 +4316,18 @@ addEventListener('message', function(e) {
         }
   }
   var dat
-  //dat = gray_from_canvas4(e.data.buff,w,h)
-  //postMessage(gray_to_canvas_buff(dat))
-  //return
+  
+    
+  dat = gray_from_canvas4(e.data.buff,w,h)
+
+  var start = new Date();
+  dat = stackBlurGray(dat,w,h,2)
+    dat = stackBlurGray(dat,w,h,2)
+      dat = stackBlurGray(dat,w,h,2)
+        dat = stackBlurGray(dat,w,h,2)
+  console.log(new Date() - start + ' 1')
+  postMessage(gray_to_canvas_buff(dat))
+  return
   dat = gray_from_canvas(e.data.buff)
   var g1_1 = stackBlurGray(dat,w,h,2)
   var g1_2 = stackBlurGray(dat,w,h,4)
