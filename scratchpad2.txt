@@ -1,0 +1,236 @@
+go = (function (){
+var it = new Uint16Array([0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4])
+function tester(){
+    var end
+    var start
+    var i
+    var l
+    var i2
+    var foo,goo
+    start = new Date
+    i2=0
+    do{
+    i =0
+    l = it.length
+    do{
+        foo = it[i]
+        goo = it[i+1]
+        i+=2
+    }while(i<l)
+    i2++
+    }while(i2<10000000)
+    end = new Date
+    console.log(end-start)
+}
+return tester
+})()
+go = (function (){
+var it = new Uint32Array([0, 1, 1, 2, 1, 2, 2, 3])
+function tester(){
+    var end
+    var start
+    var i
+    var l
+    var i2
+    var foo,goo
+    var 
+    start = new Date
+    i2=0
+    do{
+    i =0
+    l = it.length
+    do{
+        foo = goo = it[i++]
+        foo = foo&0xff
+        goo = goo >>> 8
+    }while(i<l)
+    i2++
+    }while(i2<10000000)
+    end = new Date
+    console.log(end-start)
+}
+return tester
+})()
+
+
+var  go1 = (function (){
+function tester(){
+    var end
+    var start
+    var i2
+    var foo
+    var goo
+    start = new Date
+    i2=0
+    do{
+        foo = Math.abs(523)
+        goo = Math.abs(-10045)
+    
+    i2++
+    }while(i2<10000000)
+    end = new Date
+    console.log(end-start)
+}
+return tester
+})()
+
+//method 1
+go = (function (){
+function tester(){
+    var end
+    var start
+    var i2
+    var foo
+    var goo
+    var m
+    start = new Date
+    i2=0
+    do{
+        foo = 523
+        goo = -10045
+        m= foo >>31
+        foo = (m+foo)^m
+        m= goo >>31
+        goo = (m+goo)^m
+    
+    i2++
+    }while(i2<10000000)
+    end = new Date
+    console.log(end-start)
+}
+return tester
+})()
+
+//method 2 ((n ^ mask) - mask)
+go = (function (){
+function tester(){
+    var end
+    var start
+    var i2
+    var foo
+    var goo
+    var m
+    start = new Date
+    i2=0
+    do{
+        foo = 523
+        goo = -10045
+        m= foo >>31
+        foo = (foo^m)-m
+        m= goo >>31
+        goo = (goo^m)-m
+    
+    i2++
+    }while(i2<10000000)
+    end = new Date
+    console.log(end-start)
+}
+return tester
+})()
+
+//method 3 ((n ^ mask) - mask)
+go = (function (){
+function tester(){
+    var end
+    var start
+    var i2
+    var foo
+    var goo
+
+    start = new Date
+    i2=0
+    do{
+        foo = 523.4256
+        goo = -10045.8910
+        
+        foo = foo*(foo>>31)|1)
+
+        goo = goo*(goo>>>31|1)
+    
+    i2++
+    }while(i2<10000000)
+    end = new Date
+    console.log(end-start)
+}
+return tester
+})()
+
+//method 4 ((n ^ mask) - mask)
+go = (function (){
+function tester(){
+    var end
+    var start
+    var i2
+    var foo
+    var goo
+
+    start = new Date
+    i2=0
+    do{
+        foo = 523.4256
+        goo = -10045.8910
+        
+        foo = (foo<0)? -foo:foo
+
+        goo = (goo<0)? -goo:goo
+    
+    i2++
+    }while(i2<10000000)
+    end = new Date
+    console.log(end-start)
+}
+return tester
+})()
+
+function ErrorCorrectionLevel(ordinal,  bits)
+{
+	this.ordinal_Renamed_Field = ordinal;
+	this.bits = bits;
+	this.__defineGetter__("Bits", function()
+	{
+		return this.bits;
+	});
+	this.ordinal=function()
+	{
+		return this.ordinal_Renamed_Field;
+	}
+}
+
+ErrorCorrectionLevel.forBits=function( bits)
+{
+    var ret = ErrorCorrectionLevel.lvls[bits]
+    if(!ret){
+        throw "ArgumentException"
+    }
+    return ret
+}
+ErrorCorrectionLevel.lvls = [
+new ErrorCorrectionLevel(0, 0x01),
+new ErrorCorrectionLevel(1, 0x00),
+new ErrorCorrectionLevel(2, 0x03),
+new ErrorCorrectionLevel(3, 0x02)
+]
+
+
+ErrorCorrectionLevel.forBits=function( bits)
+{
+	if (bits < 0 || bits >= FOR_BITS.length)
+	{
+		throw "ArgumentException";
+	}
+	return FOR_BITS[bits];
+}
+
+
+var L = new ErrorCorrectionLevel(0, 0x01, "L");
+var M = new ErrorCorrectionLevel(1, 0x00, "M");
+var Q = new ErrorCorrectionLevel(2, 0x03, "Q");
+var H = new ErrorCorrectionLevel(3, 0x02, "H");
+var FOR_BITS = new Array( M, L, H, Q);
+
+function _abs(x){
+    m= x >>31
+    return (m+x)^m
+}
+m= foo >>31
+        foo = (m+foo)^m

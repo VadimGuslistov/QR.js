@@ -1,0 +1,125 @@
+
+
+function distance_lookup (x1,y1,x2,y2){
+    x = Math.abs(x1-x2)*1000
+    y = Math.abs(y1-y2)*1000
+    
+          var d
+
+
+      //var _min = (x < y) ? x:y
+      //d = _min * 1.4142135623730950488016887242097;
+      //d += (x - _min) + (y - _min);
+        
+        if (x < y) {
+            d = x * 1.4142135623730950488016887242097 + y - x
+        } else {
+            d = y * 1.4142135623730950488016887242097 + x - y;
+        }
+        //z = sqrt(y*y + x*x)
+        //console.log([d,z])
+        //d = sqrt(y*y + x*x)
+        //d = sqrt(y*y + x*x)
+        return d/1000
+    }
+function distance(x,y){
+       
+        
+        //ultra fast aprox distance
+        return (x<y) ? (x * 1.4142135623730950488016887242097 + y - x):(y * 1.4142135623730950488016887242097 + x - y)
+    }
+    
+
+function distance2( x1,y1,x2,y2){
+    var xDiff = x1 - x2
+    var yDiff = y1 - y2
+    return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff))
+}
+
+function d(x1,y1,x2,y2){
+    console.log(distance2(x1,y1,x2,y2))
+    
+    console.log(distance2( (x1-x1) ,(y1-x1),(x2-x1),(y2-x1)))
+    console.log(distance2(0,0,y1-) )
+}
+function _d(x1,y1,x2,y2){
+    console.log(distance2(x1,y1,x2,y2))
+    var d1 = distance(x1,y1)
+    var d2 = distance(x2,y2)
+    console.log(d1)
+    console.log(d2)
+    console.log(Math.abs(d1-d2))
+    console.log(distance(Math.abs(x1-x2),Math.abs(y1-y2)))
+} 
+
+function approx_distance(x1,y1,x2,y2)
+{
+       var x = x1 - x2
+       var y = y1 - y2
+       
+
+       var min, max, approx
+    
+       if ( x < 0 ) x = -x
+       if ( y < 0 ) y = -y
+       var _x2 = (x*x+y*y) * 0.5;
+       if ( x < y )
+       {
+          min = x;
+          max = y;
+       } else {
+          min = y;
+          max = x;
+       }
+        var approx2 = distance_lookup(x1,y1,x2,y2)
+       approx = ( max * 1007 ) + ( min * 441 );
+       if ( max < ( min << 4 ))
+          approx -= ( max * 40);
+       approx = (( approx + 512 ) /1024 );
+       
+       
+       console.log(approx + ' 1')
+       console.log(approx2 + ' 2')
+       console.log(distance2(x1,y1,x2,y2) + ' real')
+       var target1 = (Math.min(approx,approx2) + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
+       var target2 = (Math.min(approx,approx2) - (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))) 
+       var target3 = Math.min(target1,target2) - Math.abs(target1-target2) 
+       var target4 = Math.max(target1,target2) - Math.abs(target1-target2) 
+       var target5 =  (target1+target2+target3+target4)*0.25
+       var target6 = ( (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))<1 )? target3:target1
+       
+        var number = 1/target6 //invert
+        number  = number * ( 1.5 - ( _x2 * number * number ) );   // 1st Newton
+        number  = number * ( 1.5 - ( _x2 * number * number ) );   // 2nd Newton
+        number = 1/number //uninvert
+        var number2 = 1/(approx+approx2*0.5)
+        number2  = number2 * ( 1.5 - ( _x2 * number2 * number2 ) );   // 1st Newton
+        number2  = number2 * ( 1.5 - ( _x2 * number2 * number2 ) );   // 2nd Newton
+        number2 = 1/number2 //uninvert
+        
+              console.log(target6 + ' thats it')
+              console.log(number + ' Newton')
+              console.log(number2 + ' Newton 2')
+              console.log(target1  + ' target')
+               console.log(target2 + ' target 2')
+               console.log(target3 + ' target 3')
+               console.log(target4 + ' target 4')
+               console.log(target5 + ' target 5')
+       
+       console.log(approx + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
+       console.log(Math.min(approx,approx2) + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
+       console.log(Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))
+       console.log(Math.min(approx,approx2) - (Math.abs(approx+approx2)*0.5))
+
+        
+   // add 512 for proper rounding
+   // 74.69848480983501 - (3.6984848098350085)*1.47
+   
+} 
+approx_distance(10,15,22,44)
+approx_distance(24,22,88,90)
+
+tmp = 1 - 2
+min = 2 + (tmp & (tmp >> 31))
+max = 1 - (tmp & (tmp >> 31))
+r = x - ((x - y) & ((x - y) >> (sizeof(int) * CHAR_BIT - 1))); // max(x, y
