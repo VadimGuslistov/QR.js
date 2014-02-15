@@ -51,7 +51,17 @@ function _d(x1,y1,x2,y2){
     console.log(Math.abs(d1-d2))
     console.log(distance(Math.abs(x1-x2),Math.abs(y1-y2)))
 } 
-
+function tester(){
+    do{
+    var i = 1
+    i = 2
+    break foo
+    console.log('no')
+    foo:
+    console.log('hay')
+    return
+    }while(true)
+}
 function approx_distance(x1,y1,x2,y2)
 {
        var x = x1 - x2
@@ -76,11 +86,115 @@ function approx_distance(x1,y1,x2,y2)
        if ( max < ( min << 4 ))
           approx -= ( max * 40);
        approx = (( approx + 512 ) /1024 );
-       
-       
+       var number1 = 1/approx
+       number1  = number1 * ( 1.5 - ( _x2 * number1 * number1 ) );
+       var number2 = 1/approx2 
+       number2  = number2 * ( 1.5 - ( _x2 * number2 * number2 ) );
+       var number = (number1+number2)*0.5
+       number  = number * ( 1.5 - ( _x2 * number * number ) );
+       number = 1/number
        console.log(approx + ' 1')
        console.log(approx2 + ' 2')
        console.log(distance2(x1,y1,x2,y2) + ' real')
+       console.log(number + ' Newton')
+       var target1 = (Math.min(approx,approx2) + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
+       var target2 = (Math.min(approx,approx2) - (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))) 
+       var target3 = Math.min(target1,target2) - Math.abs(target1-target2) 
+       var target4 = Math.max(target1,target2) - Math.abs(target1-target2) 
+       var target5 =  (target1+target2+target3+target4)*0.25
+       var target6 = ( (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))<1 )? target3:target1
+       var target7 = (((min+max)*0.5) * approx2 + approx * max)/((min+max)*0.5+max)
+        var number = 1/target6 //invert
+        number  = number * ( 1.5 - ( _x2 * number * number ) );   // 1st Newton
+        number  = number * ( 1.5 - ( _x2 * number * number ) );   // 2nd Newton
+        number = 1/number //uninvert
+        var number2 = 1/(approx+approx2*0.5)
+        number2  = number2 * ( 1.5 - ( _x2 * number2 * number2 ) );   // 1st Newton
+        number2  = number2 * ( 1.5 - ( _x2 * number2 * number2 ) );   // 2nd Newton
+        number2 = 1/number2 //uninvert
+        
+              console.log(target6 + ' thats it')
+              console.log(number + ' Newton')
+              console.log(number2 + ' Newton 2')
+              console.log(target1  + ' target')
+               console.log(target2 + ' target 2')
+               console.log(target3 + ' target 3')
+               console.log(target4 + ' target 4')
+               console.log(target5 + ' target 5')
+               console.log(target7 + ' target 7')
+       
+       console.log(approx + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
+       console.log(Math.min(approx,approx2) + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
+       console.log(Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))
+       console.log(Math.min(approx,approx2) - (Math.abs(approx+approx2)*0.5))
+
+        
+   // add 512 for proper rounding
+   // 74.69848480983501 - (3.6984848098350085)*1.47
+   
+} 
+
+
+
+function approx_distance(x1,y1,x2,y2)
+{
+       var tmp,tmp2,min, max, approx,approx2,approx_min,approx_max,approx_ave
+       var x = x1 - x2
+       var y = y1 - y2
+       
+       x = x*(x>>31) // abs  
+       y = y*(y>>31) // abs
+       
+       // (a^2 + b^2)/2 for the Newton step later on
+       var _x2 = (x*x+y*y) * 0.5;
+       //------------
+       
+       //min and max of x and y
+       tmp = (x-y) >>>31
+       tmp2 = tmp^1
+       min = x*tmp + y*tmp2
+       max = x*tmp2 + y*tmp
+       //-----------------
+       
+       var approx2 =  (min * 1.4142135623730950488016887242097 + max - min)
+       
+
+       approx = (( max * 1007 ) + ( min * 441 ) - (((max - (min<<4))>>>31) * max * 40) + 512)/1024;
+       
+       //min and max of approx and approx2
+       tmp = (approx-approx2) >>>31
+       tmp2 = tmp^1
+       approx_min = approx*tmp2 + approx2*tmp
+       approx_max = approx*tmp + approx2*tmp2
+
+       //-----------------
+       var approx_sum  = approx_min+approx_max
+       approx_ave = approx_sum*0.5
+       var number
+       var target1
+       var target2
+       var approx_max_minus_
+       if(approx_max-approx_ave < 1){
+            target1 =  approx_min +  (approx_max - approx_ave)
+            target2 = approx_min - (approx_max - approx_ave)
+            number = target2 -(target1-target2)
+            //console.log(approx_min + ' ' + (Math.min(target2,target1) - Math.abs(target1-target2)))
+          //console.log(approx_ave + ' ave')
+
+
+       } else {
+            number = approx_sum - approx_ave
+       }
+       console.log(number + ' number')
+        number = 1/number //invert
+        number  = number * ( 1.5 - ( _x2 * number * number ) );   // 1st Newton
+        number  = number * ( 1.5 - ( _x2 * number * number ) );   // 2nd Newton
+        number = 1/number //uninvert
+        console.log(distance2(x1,y1,x2,y2) + ' real')
+       console.log(number + ' Newton')
+       console.log(approx + ' 1')
+       console.log(approx2 + ' 2')
+       
        var target1 = (Math.min(approx,approx2) + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
        var target2 = (Math.min(approx,approx2) - (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))) 
        var target3 = Math.min(target1,target2) - Math.abs(target1-target2) 
@@ -99,26 +213,161 @@ function approx_distance(x1,y1,x2,y2)
         
               console.log(target6 + ' thats it')
               console.log(number + ' Newton')
-              console.log(number2 + ' Newton 2')
-              console.log(target1  + ' target')
-               console.log(target2 + ' target 2')
-               console.log(target3 + ' target 3')
-               console.log(target4 + ' target 4')
-               console.log(target5 + ' target 5')
+              //console.log(number2 + ' Newton 2')
+              //console.log(target1  + ' target')
+               //console.log(target2 + ' target 2')
+               //console.log(target3 + ' target 3')
+               //console.log(target4 + ' target 4')
+               //console.log(target5 + ' target 5')
        
-       console.log(approx + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
-       console.log(Math.min(approx,approx2) + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
-       console.log(Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))
-       console.log(Math.min(approx,approx2) - (Math.abs(approx+approx2)*0.5))
+       //console.log(approx + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
+       //console.log(Math.min(approx,approx2) + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
+       //console.log(Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))
+       //console.log(Math.min(approx,approx2) - (Math.abs(approx+approx2)*0.5))
 
         
    // add 512 for proper rounding
    // 74.69848480983501 - (3.6984848098350085)*1.47
    
 } 
+
+
+
+function approx_distance(x1,y1,x2,y2)
+{
+       var tmp,tmp2,min, max, approx,approx2,approx3,approx4,number,_x2,approx_min,approx_max
+       var x = x1 - x2
+       var y = y1 - y2
+       
+       x = x*(x>>31) // abs  
+       y = y*(y>>31) // abs
+       
+       // (a^2 + b^2)/2 for the Newton step later on
+       _x2 = (x*x+y*y) * 0.5;
+       //------------
+       
+       //min and max of x and y
+       tmp = (x-y) >>>31
+       tmp2 = tmp^1
+       min = x*tmp + y*tmp2
+       max = x*tmp2 + y*tmp
+       //-----------------
+       
+       approx2 =  (min * 1.4142135623730950488016887242097 + max - min)
+ 
+
+       approx = ((( max * 1007 ) + ( min * 441 ) - (((max - (min<<4))>>>31) * max * 40) + 512)/1024)
+       //min and max of approx and approx2
+       tmp = (approx-approx2) >>>31
+       tmp2 = tmp^1
+       var approx_min = approx*tmp2 + approx2*tmp
+       var approx_max = approx*tmp + approx2*tmp2
+
+       //-----------------
+       var approx_sum  = approx_min+approx_max
+       var approx_ave = approx_sum*0.5
+       var number
+       var target1
+       var target2
+       var approx_max_minus_ave = (approx_max - approx_ave)
+       var target1 = (Math.min(approx,approx2) + (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5)))
+       var target2 = (Math.min(approx,approx2) - (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))) 
+       var target3 = Math.min(target1,target2) - Math.abs(target1-target2) 
+       var target4 = Math.max(target1,target2) - Math.abs(target1-target2) 
+       var target5 =  (target1+target2+target3+target4)*0.25
+       number = 1/(( (Math.max(approx,approx2) - (Math.abs(approx+approx2)*0.5))<1 )? target3:target1)
+
+       number *=  ( 1.5 - ( _x2 * number * number ) );
+       number *=  ( 1.5 - ( _x2 * number * number ) );
+       number *=  ( 1.5 - ( _x2 * number * number ) );
+       number *=  ( 1.5 - ( _x2 * number * number ) );
+       number = 1/number
+       console.log(number + ' number')
+       console.log(distance2(x1,y1,x2,y2) + ' real')
+     
+   
+}
+
+
+
+function approx_distance(x1,y1,x2,y2)
+{
+       var tmp,tmp2,min, max, approx,approx2,number,_x2
+       var x = x1 - x2
+       var y = y1 - y2
+       
+       x = x*(x>>31|1) // abs  
+       y = y*(y>>31|1) // abs
+       
+       // (a^2 + b^2)/2 for the Newton step later on
+       _x2 = (x*x+y*y) * 0.5;
+       //------------
+       
+       //min and max of x and y
+       tmp = (x-y) >>>31
+       tmp2 = tmp^1
+       min = x*tmp + y*tmp2
+       max = x*tmp2 + y*tmp
+       //-----------------
+
+       
+       approx2 =  1/(min * 1.4142135623730950488016887242097 + max - min)
+ 
+
+       approx = 1/( (( max * 1007 ) + ( min * 441 )  + 512) /1024)
+
+       approx2 *=  ( 1.5 - ( _x2 * approx2 * approx2 ) );
+       approx  *=  ( 1.5 - ( _x2 * approx * approx ) );
+       number = (approx2 +approx2 )*0.5
+       number  = number * ( 1.5 - ( _x2 * number * number ) );
+       number  = number * ( 1.5 - ( _x2 * number * number ) );
+              
+                    
+       return 1/number
+       
+       
+} 
+
+function approx_distance(x1,y1,x2,y2)
+{
+       var tmp,tmp2,min, max, approx,approx2,number,_x2
+       var x = x1 - x2
+       var y = y1 - y2
+       
+       x = x*(x>>31|1) // abs  
+       y = y*(y>>31|1) // abs
+       
+       // (a^2 + b^2)/2 for the Newton step later on
+       _x2 = (x*x+y*y) * 0.5;
+       //------------
+       
+       //min and max of x and y
+       tmp = (x-y) >>>31
+       tmp2 = tmp^1
+       min = x*tmp + y*tmp2
+       max = x*tmp2 + y*tmp
+       //-----------------
+
+       
+       approx2 =  1/(min * 1.4142135623730950488016887242097 + max - min)
+ 
+
+       approx = 1/( (( max * 1007 ) + ( min * 441 )  + 512) /1024)
+
+       approx2 *=  ( 1.5 - ( _x2 * approx2 * approx2 ) );
+       approx  *=  ( 1.5 - ( _x2 * approx * approx ) );
+       number = (approx2 +approx2 )*0.5
+       number  = number * ( 1.5 - ( _x2 * number * number ) );
+       number  = number * ( 1.5 - ( _x2 * number * number ) );
+              
+                    
+       return 1/number
+       
+       
+} 
 approx_distance(10,15,22,44)
 approx_distance(24,22,88,90)
-
+approx_distance(10,15,699,780)
 tmp = 1 - 2
 min = 2 + (tmp & (tmp >> 31))
 max = 1 - (tmp & (tmp >> 31))

@@ -456,18 +456,15 @@ GridSampler.sampleGrid3=function( image,  dimension,  transform){
 			// Quick check to see if points transformed to something inside the image;
 			// sufficient to check the endpoints
 			GridSampler.checkAndNudgePoints(image, points);
-			try
+
+			for (var x = 0; x < max; x += 2)
 			{
-				for (var x = 0; x < max; x += 2)
-				{
-					var xpoint = ((points[x]|0) << 2) + ((points[x + 1]|0) * qrcode.width << 2);
-                    var bit = image[Math.floor( points[x])+ qrcode.width* Math.floor( points[x + 1])];
-					
-					//bits[x >> 1][ y]=bit;
-					if(bit)
-						bits.set_Renamed(x >> 1, y);
-				}
+				
+				//bits[x >> 1][ y]=bit;
+				if(image[Math.floor( points[x])+ qrcode.width* Math.floor( points[x + 1])])
+					bits.set_Renamed(x >> 1, y);
 			}
+			/* removed catch as it will prevent this function from being optimized just to throw something that nothing seems to catch 
 			catch ( aioobe)
 			{
 				// This feels wrong, but, sometimes if the finder patterns are misidentified, the resulting
@@ -478,7 +475,7 @@ GridSampler.sampleGrid3=function( image,  dimension,  transform){
 				// that. We could check each point's coordinates but that feels duplicative. We settle for
 				// catching and wrapping ArrayIndexOutOfBoundsException.
 				throw "Error.checkAndNudgePoints";
-			}
+			}*/
 		}
 		return bits;
 }
@@ -500,27 +497,21 @@ function ECB(count,  dataCodewords)
 function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
 {
 	this.ecCodewordsPerBlock = ecCodewordsPerBlock;
-	if(ecBlocks2)
-		this.ecBlocks = new Array(ecBlocks1, ecBlocks2);
-	else
-		this.ecBlocks = new Array(ecBlocks1);
-
-	this.__defineGetter__("TotalECCodewords", function()
-	{
-		return  this.ecCodewordsPerBlock * this.NumBlocks;
-	});
-	
-	this.__defineGetter__("NumBlocks", function()
-	{
-		var total = 0;
-		for (var i = 0; i < this.ecBlocks.length; i++)
-		{
-			total += this.ecBlocks[i].length;
-		}
-		return total;
-	});
-	
-	
+	var l
+	var t
+	if(ecBlocks2){
+		this.ecBlocks = new Array(ecBlocks1, ecBlocks2)
+		l = ecBlocks1.length + ecBlocks2.length
+		t = ecBlocks1.count + ecBlocks2.count
+	}
+	else{
+		this.ecBlocks = new Array(ecBlocks1)
+		l = ecBlocks1.length
+		t = ecBlocks1.count
+	}
+    this.totalCount = t
+    this.NumBlocks = l
+    	
 }
 
 function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks2,  ecBlocks3,  ecBlocks4)
@@ -556,6 +547,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
 			
 			// Alignment patterns
 			var max = this.alignmentPatternCenters.length;
+			// fix me will avoiding a nested loop be better than avoiding a hit on a arr
 			for (var x = 0; x < max; x++)
 			{
 				var i = this.alignmentPatternCenters[x] - 2;
@@ -610,14 +602,13 @@ Version.getProvisionalVersionForDimension=function(dimension)
 	{
 		throw "Error getProvisionalVersionForDimension";
 	}
-	try
-	{
-		return Version.getVersionForNumber((dimension - 17) >> 2);
-	}
+
+	return Version.getVersionForNumber((dimension - 17) >> 2);
+	/* nothing catches this throw and the try prevents the function from being optimised
 	catch ( iae)
 	{
 		throw "Error getVersionForNumber";
-	}
+	}*/
 }
 
 Version.decodeVersionInformation=function( versionBits)
@@ -712,16 +703,11 @@ Decoder.correctErrors=function( codewordBytes,  numDataCodewords)
 		codewordsInts[i] = codewordBytes[i] & 0xFF;
 	}
 	var numECCodewords = codewordBytes.length - numDataCodewords;
-	try
-	{
-		Decoder.rsDecoder.decode(codewordsInts, numECCodewords);
-		//var corrector = new ReedSolomon(codewordsInts, numECCodewords);
-		//corrector.correct();
-	}
-	catch ( rse)
-	{
-		throw rse;
-	}
+
+	Decoder.rsDecoder.decode(codewordsInts, numECCodewords);
+	//var corrector = new ReedSolomon(codewordsInts, numECCodewords);
+	//corrector.correct();
+
 	// Copy back into array of bytes -- only need to worry about the bytes that were data
 	// We don't care about errors in the error-correction codewords
 	for (var i = 0; i < numDataCodewords; i++)
@@ -734,7 +720,7 @@ Decoder.decode=function(bits)
 {
 	var parser = new BitMatrixParser(bits);
 	var version = parser.readVersion();
-	var ecLevel = parser.readFormatInformation().ErrorCorrectionLevel;
+	var ecLevel = parser.readFormatInformation().errorCorrectionLevel;
 	
 	// Read codewords
 	var codewords = parser.readCodewords();
@@ -781,18 +767,7 @@ function FormatInformation(formatInfo)
 	this.errorCorrectionLevel = ErrorCorrectionLevel.forBits((formatInfo >> 3) & 0x03);
 	this.dataMask =  (formatInfo & 0x07);
 
-	this.__defineGetter__("ErrorCorrectionLevel", function()
-	{
-		return this.errorCorrectionLevel;
-	});
-	this.__defineGetter__("DataMask", function()
-	{
-		return this.dataMask;
-	});
-	this.GetHashCode=function()
-	{
-		return (this.errorCorrectionLevel.ordinal << 3) |  dataMask;
-	}
+
 	this.Equals=function( o)
 	{
 		var other =  o;
@@ -865,9 +840,9 @@ ErrorCorrectionLevel.forBits=function( bits)
     return ret
 }
 ErrorCorrectionLevel.lvls = [
-new ErrorCorrectionLevel(1, 0x00), //M
-new ErrorCorrectionLevel(0, 0x01), //L
-new ErrorCorrectionLevel(3, 0x02), //H 
+new ErrorCorrectionLevel(1, 0x00), //M 
+new ErrorCorrectionLevel(0, 0x01), //L 
+new ErrorCorrectionLevel(3, 0x02), //H  
 new ErrorCorrectionLevel(2, 0x03),
 
 ]
@@ -901,15 +876,14 @@ function BitMatrix( width,  height)
         this.loaded_point = point
     }
 
-
-	this.__defineGetter__("Dimension", function()
-	{
+    this.getDimension = function (){
 		if (this.width != this.height)
 		{
 			throw "Can't call getDimension() on a non-square matrix";
 		}
 		return this.width;
-	});
+	}
+    
 	
 	this.get_Renamed=function( x,  y)
 		{
@@ -991,7 +965,7 @@ function DataBlock(numDataCodewords,  codewords)
 	
 DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 {
-	
+	// fix me var mess
 	if (rawCodewords.length != version.totalCodewords)
 	{
 		throw "ArgumentException";
@@ -1002,17 +976,14 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 	var ecBlocks = version.getECBlocksForLevel(ecLevel);
 	
 	// First count the total number of data blocks
-	var totalBlocks = 0;
+	var totalBlocks = ecBlocks.totalCount;
 	var ecBlockArray = ecBlocks.ecBlocks;
-	for (var i = 0; i < ecBlockArray.length; i++)
-	{
-		totalBlocks += ecBlockArray[i].count;
-	}
+    var l = ecBlockArray.length
 	
 	// Now establish DataBlocks of the appropriate size and number of data codewords
 	var result = new Array(totalBlocks);
 	var numResultBlocks = 0;
-	for (var j = 0; j < ecBlockArray.length; j++)
+	for (var j = 0; j < l; j++)
 	{
 		var ecBlock = ecBlockArray[j];
 		for (var i = 0; i < ecBlock.count; i++)
@@ -1042,28 +1013,39 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 	// The last elements of result may be 1 element longer;
 	// first fill out as many elements as all of them have
 	var rawCodewordsOffset = 0;
-	for (var i = 0; i < shorterBlocksNumDataCodewords; i++)
-	{
-		for (var j = 0; j < numResultBlocks; j++)
-		{
-			result[j].codewords[i] = rawCodewords[rawCodewordsOffset++];
-		}
-	}
+	var tmp
+	var i = 0
+	var j = 0
+    
+    // fix me will avoiding a hit to arr be better than avoiding a nested loop
+	do{
+		result[j].codewords[i] = rawCodewords[rawCodewordsOffset++];
+	    j++
+	    tmp = (j-numResultBlocks) >>>31
+	    j *= tmp
+	    i += tmp^1
+	} while(i < shorterBlocksNumDataCodewords)
 	// Fill out the last data block in the longer ones
-	for (var j = longerBlocksStartAt; j < numResultBlocks; j++)
+	// fix me will avoiding a hit to arr be better than avoiding a nested loop
+	for (j = longerBlocksStartAt; j < numResultBlocks; j++)
 	{
 		result[j].codewords[shorterBlocksNumDataCodewords] = rawCodewords[rawCodewordsOffset++];
 	}
 	// Now add in error correction blocks
 	var max = result[0].codewords.length;
-	for (var i = shorterBlocksNumDataCodewords; i < max; i++)
-	{
-		for (var j = 0; j < numResultBlocks; j++)
-		{
-			var iOffset = j < longerBlocksStartAt?i:i + 1;
-			result[j].codewords[iOffset] = rawCodewords[rawCodewordsOffset++];
-		}
-	}
+	var iOffset  
+	i=shorterBlocksNumDataCodewords
+	j=0
+	// fix me will avoiding a hit to arr be better than avoiding a nested loop
+	do{
+        iOffset = j < longerBlocksStartAt?i:i + 1;
+		result[j].codewords[iOffset] = rawCodewords[rawCodewordsOffset++]
+	    j++
+	    tmp = (j-numResultBlocks)>>>31
+	    j *= tmp
+	    i += tmp^1
+	    
+	}while(i<max)
 	return result;
 }
 
@@ -1071,7 +1053,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 
 function BitMatrixParser(bitMatrix)
 {
-	var dimension = bitMatrix.Dimension;
+	var dimension = bitMatrix.getDimension();
 	if (dimension < 21 || (dimension & 0x03) != 1)
 	{
 		throw "Error BitMatrixParser";
@@ -1115,7 +1097,7 @@ function BitMatrixParser(bitMatrix)
 			}
 			
 			// Hmm, failed. Try the top-right/bottom-left pattern
-			var dimension = this.bitMatrix.Dimension;
+			var dimension = this.bitMatrix.getDimension();
 			formatInfoBits = 0;
 			var iMin = dimension - 8;
 			for (var i = dimension - 1; i >= iMin; i--)
@@ -1142,7 +1124,7 @@ function BitMatrixParser(bitMatrix)
 				return this.parsedVersion;
 			}
 			
-			var dimension = this.bitMatrix.Dimension;
+			var dimension = this.bitMatrix.getDimension();
 			
 			var provisionalVersion = (dimension - 17) >> 2;
 			if (provisionalVersion <= 6)
@@ -1192,13 +1174,13 @@ function BitMatrixParser(bitMatrix)
 			
 			// Get the data mask for the format used in this QR Code. This will exclude
 			// some bits from reading as we wind through the bit matrix.
-			var dataMask = DataMask.forReference( formatInfo.DataMask);
-			var dimension = this.bitMatrix.Dimension;
+			var dataMask = DataMask.forReference( formatInfo.dataMask);
+			var dimension = this.bitMatrix.getDimension();
 			dataMask.unmaskBitMatrix(this.bitMatrix, dimension);
 			
 			var functionPattern = version.buildFunctionPattern();
 			
-			var readingUp = true;
+			var readingUp = 1;
 			var result = new Array(version.totalCodewords);
 			var resultOffset = 0;
 			var currentByte = 0;
@@ -1238,7 +1220,7 @@ function BitMatrixParser(bitMatrix)
 						}
 					}
 				}
-				readingUp ^= true; // readingUp = !readingUp; // switch directions
+				readingUp ^= 1; // readingUp = !readingUp; // switch directions
 			}
 			if (resultOffset != version.totalCodewords)
 			{
@@ -1440,16 +1422,16 @@ function ReedSolomonDecoder(field)
 	this.decode=function(received,  twoS)
 	{
 			var poly = new GF256Poly(this.field, received);
-			var syndromeCoefficients = new Array(twoS);
-			for(var i=0;i<syndromeCoefficients.length;i++)syndromeCoefficients[i]=0;
+			var syndromeCoefficients = new Uint8Array(twoS);
+
 			var dataMatrix = false;//this.field.Equals(GF256.DATA_MATRIX_FIELD);
 			var noError = true;
 			for (var i = 0; i < twoS; i++)
 			{
 				// Thanks to sanfordsquires for this fix:
-				var eval = poly.evaluateAt(this.field.exp(dataMatrix?i + 1:i));
-				syndromeCoefficients[syndromeCoefficients.length - 1 - i] = eval;
-				if (eval != 0)
+				var _eval = poly.evaluateAt(this.field.exp(dataMatrix?i + 1:i));
+				syndromeCoefficients[syndromeCoefficients.length - 1 - i] = _eval;
+				if (_eval != 0)
 				{
 					noError = false;
 				}
@@ -1471,14 +1453,14 @@ function ReedSolomonDecoder(field)
 				{
 					throw "ReedSolomonException Bad error location";
 				}
-				received[position] = GF256.addOrSubtract(received[position], errorMagnitudes[i]);
+				received[position] = received[position] ^ errorMagnitudes[i]
 			}
 	}
 	
 	this.runEuclideanAlgorithm=function( a,  b,  R)
 		{
 			// Assume a's degree is >= b's
-			if (a.Degree < b.Degree)
+			if (a.degree < b.degree)
 			{
 				var temp = a;
 				a = b;
@@ -1493,7 +1475,8 @@ function ReedSolomonDecoder(field)
 			var t = this.field.One;
 			
 			// Run Euclidean algorithm until r's degree is less than R/2
-			while (r.Degree >= Math.floor(R / 2))
+			var R_div_2 = (R*0.5)|0 // Math.floor(R / 2)
+			while (r.degree >= R_div_2)
 			{
 				var rLastLast = rLast;
 				var sLastLast = sLast;
@@ -1503,19 +1486,19 @@ function ReedSolomonDecoder(field)
 				tLast = t;
 				
 				// Divide rLastLast by rLast, with quotient in q and remainder in r
-				if (rLast.Zero)
+				if (rLast.isZero())
 				{
 					// Oops, Euclidean algorithm already terminated?
 					throw "r_{i-1} was zero";
 				}
 				r = rLastLast;
 				var q = this.field.Zero;
-				var denominatorLeadingTerm = rLast.getCoefficient(rLast.Degree);
+				var denominatorLeadingTerm = rLast.getCoefficient(rLast.degree);
 				var dltInverse = this.field.inverse(denominatorLeadingTerm);
-				while (r.Degree >= rLast.Degree && !r.Zero)
+				while (r.degree >= rLast.degree && !r.isZero())
 				{
-					var degreeDiff = r.Degree - rLast.Degree;
-					var scale = this.field.multiply(r.getCoefficient(r.Degree), dltInverse);
+					var degreeDiff = r.degree - rLast.degree;
+					var scale = this.field.multiply(r.getCoefficient(r.degree), dltInverse);
 					q = q.addOrSubtract(this.field.buildMonomial(degreeDiff, scale));
 					r = r.addOrSubtract(rLast.multiplyByMonomial(degreeDiff, scale));
 					//r.EXE();
@@ -1534,12 +1517,12 @@ function ReedSolomonDecoder(field)
 			var inverse = this.field.inverse(sigmaTildeAtZero);
 			var sigma = t.multiply2(inverse);
 			var omega = r.multiply2(inverse);
-			return new Array(sigma, omega);
+			return [sigma, omega];
 		}
 	this.findErrorLocations=function( errorLocator)
 		{
 			// This is a direct application of Chien's search
-			var numErrors = errorLocator.Degree;
+			var numErrors = errorLocator.degree;
 			if (numErrors == 1)
 			{
 				// shortcut
@@ -1574,7 +1557,7 @@ function ReedSolomonDecoder(field)
 				{
 					if (i != j)
 					{
-						denominator = this.field.multiply(denominator, GF256.addOrSubtract(1, this.field.multiply(errorLocations[j], xiInverse)));
+						denominator = this.field.multiply(denominator, 1 ^ this.field.multiply(errorLocations[j], xiInverse));
 					}
 				}
 				result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
@@ -1597,28 +1580,20 @@ function GF256( primitive)
 	for (var i = 0; i < 256; i++)
 	{
 		this.expTable[i] = x;
+		this.logTable[x] = i
 		x <<= 1; // x = x * 2; we're assuming the generator alpha is 2
 		if (x >= 0x100)
 		{
 			x ^= primitive;
 		}
 	}
-	for (var i = 0; i < 255; i++)
-	{
-		this.logTable[this.expTable[i]] = i;
-	}
 
 	this.zero = new GF256Poly(this, new Uint8Array([0]));
 	this.one = new GF256Poly(this, new Uint8Array([1]));
+	// fix me down stream code looks for this
+	this.Zero = this.zero
+	this.One = this.one
 	
-	this.__defineGetter__("Zero", function()
-	{
-		return this.zero;
-	});
-	this.__defineGetter__("One", function()
-	{
-		return this.one;
-	});
 	this.buildMonomial=function( degree,  coefficient)
 		{
 			if (degree < 0)
@@ -1627,10 +1602,9 @@ function GF256( primitive)
 			}
 			if (coefficient == 0)
 			{
-				return zero;
+				return this.zero;
 			}
-			var coefficients = new Array(degree + 1);
-			for(var i=0;i<coefficients.length;i++)coefficients[i]=0;
+			var coefficients = new Uint8Array(degree + 1);
 			coefficients[0] = coefficient;
 			return new GF256Poly(this, coefficients);
 		}
@@ -1675,10 +1649,7 @@ function GF256( primitive)
 GF256.QR_CODE_FIELD = new GF256(0x011D);
 GF256.DATA_MATRIX_FIELD = new GF256(0x012D);
 
-GF256.addOrSubtract=function( a,  b)
-{
-	return a ^ b;
-}
+
 
 
 function GF256Poly(field,  coefficients)
@@ -1713,23 +1684,15 @@ function GF256Poly(field,  coefficients)
 	{
 		this.coefficients = coefficients;
 	}
-	
-	this.__defineGetter__("Zero", function()
-	{
-		return this.coefficients[0] == 0;
-	});
-	this.__defineGetter__("Degree", function()
-	{
-		return this.coefficients.length - 1;
-	});
-	this.__defineGetter__("Coefficients", function()
-	{
-		return this.coefficients;
-	});
+	this.isZero=function (){
+	    return this.coefficients[0] == 0;
+	}
+    this.degree = this.coefficients.length - 1;
+
 	
 	this.getCoefficient=function( degree)
 	{
-		return this.coefficients[this.coefficients.length - 1 - degree];
+		return this.coefficients[this.degree - degree];
 	}
 	
 	this.evaluateAt=function( a)
@@ -1746,14 +1709,14 @@ function GF256Poly(field,  coefficients)
 			var result = 0;
 			for (var i = 0; i < size; i++)
 			{
-				result = GF256.addOrSubtract(result, this.coefficients[i]);
+				result = result ^ this.coefficients[i]
 			}
 			return result;
 		}
 		var result2 = this.coefficients[0];
 		for (var i = 1; i < size; i++)
 		{
-			result2 = GF256.addOrSubtract(this.field.multiply(a, result2), this.coefficients[i]);
+			result2 = this.field.multiply(a, result2) ^ this.coefficients[i]
 		}
 		return result2;
 	}
@@ -1764,32 +1727,40 @@ function GF256Poly(field,  coefficients)
 			{
 				throw "GF256Polys do not have same GF256 field";
 			}
-			if (this.Zero)
+			if (this.isZero())
 			{
 				return other;
 			}
-			if (other.Zero)
+			if (other.isZero())
 			{
 				return this;
 			}
 			
 			var smallerCoefficients = this.coefficients;
 			var largerCoefficients = other.coefficients;
-			if (smallerCoefficients.length > largerCoefficients.length)
+			var large_l = largerCoefficients.length
+			var small_l = smallerCoefficients.length
+			if (small_l > large_l)
 			{
 				var temp = smallerCoefficients;
 				smallerCoefficients = largerCoefficients;
 				largerCoefficients = temp;
+				large_l = largerCoefficients.length
+			    small_l = smallerCoefficients.length
+			    //swap -- fix me is this faster than calling length a 2nd time
+			    large_l ^= small_l
+			    small_l ^= large_l
+			    large_l ^= small_l
+			    //--------
 			}
-			var sumDiff = new Array(largerCoefficients.length);
-			var lengthDiff = largerCoefficients.length - smallerCoefficients.length;
-			// Copy high-order terms only found in higher-degree polynomial's coefficients
-			//Array.Copy(largerCoefficients, 0, sumDiff, 0, lengthDiff);
+			var sumDiff = new Uint8Array(large_l);
+			var lengthDiff = large_l - small_l;
+			
 			for(var ci=0;ci<lengthDiff;ci++)sumDiff[ci]=largerCoefficients[ci];
 			
-			for (var i = lengthDiff; i < largerCoefficients.length; i++)
+			for (var i = lengthDiff; i < large_l; i++)
 			{
-				sumDiff[i] = GF256.addOrSubtract(smallerCoefficients[i - lengthDiff], largerCoefficients[i]);
+				sumDiff[i] = smallerCoefficients[i - lengthDiff] ^ largerCoefficients[i]
 			}
 			
 			return new GF256Poly(field, sumDiff);
@@ -1800,7 +1771,7 @@ function GF256Poly(field,  coefficients)
 			{
 				throw "GF256Polys do not have same GF256 field";
 			}
-			if (this.Zero || other.Zero)
+			if (this.isZero() || other.isZero())
 			{
 				return this.field.Zero;
 			}
@@ -1808,13 +1779,13 @@ function GF256Poly(field,  coefficients)
 			var aLength = aCoefficients.length;
 			var bCoefficients = other.coefficients;
 			var bLength = bCoefficients.length;
-			var product = new Array(aLength + bLength - 1);
+			var product = new Uint8Array(aLength + bLength - 1);
 			for (var i = 0; i < aLength; i++)
 			{
 				var aCoeff = aCoefficients[i];
 				for (var j = 0; j < bLength; j++)
 				{
-					product[i + j] = GF256.addOrSubtract(product[i + j], this.field.multiply(aCoeff, bCoefficients[j]));
+					product[i + j] = product[i + j] ^ this.field.multiply(aCoeff, bCoefficients[j])
 				}
 			}
 			return new GF256Poly(this.field, product);
@@ -1830,7 +1801,7 @@ function GF256Poly(field,  coefficients)
 				return this;
 			}
 			var size = this.coefficients.length;
-			var product = new Array(size);
+			var product = new Uint8Array(size);
 			for (var i = 0; i < size; i++)
 			{
 				product[i] = this.field.multiply(this.coefficients[i], scalar);
@@ -1848,8 +1819,8 @@ function GF256Poly(field,  coefficients)
 				return this.field.Zero;
 			}
 			var size = this.coefficients.length;
-			var product = new Array(size + degree);
-			for(var i=0;i<product.length;i++)product[i]=0;
+			var product = new Uint8Array(size + degree);
+
 			for (var i = 0; i < size; i++)
 			{
 				product[i] = this.field.multiply(this.coefficients[i], coefficient);
@@ -1862,7 +1833,7 @@ function GF256Poly(field,  coefficients)
 			{
 				throw "GF256Polys do not have same GF256 field";
 			}
-			if (other.Zero)
+			if (other.isZero())
 			{
 				throw "Divide by 0";
 			}
@@ -1870,13 +1841,13 @@ function GF256Poly(field,  coefficients)
 			var quotient = this.field.Zero;
 			var remainder = this;
 			
-			var denominatorLeadingTerm = other.getCoefficient(other.Degree);
+			var denominatorLeadingTerm = other.getCoefficient(other.degree);
 			var inverseDenominatorLeadingTerm = this.field.inverse(denominatorLeadingTerm);
 			
-			while (remainder.Degree >= other.Degree && !remainder.Zero)
+			while (remainder.degree >= other.degree && !remainder.isZero())
 			{
-				var degreeDifference = remainder.Degree - other.Degree;
-				var scale = this.field.multiply(remainder.getCoefficient(remainder.Degree), inverseDenominatorLeadingTerm);
+				var degreeDifference = remainder.degree - other.degree;
+				var scale = this.field.multiply(remainder.getCoefficient(remainder.degree), inverseDenominatorLeadingTerm);
 				var term = other.multiplyByMonomial(degreeDifference, scale);
 				var iterationQuotient = this.field.buildMonomial(degreeDifference, scale);
 				quotient = quotient.addOrSubtract(iterationQuotient);
@@ -1901,16 +1872,11 @@ Decoder.correctErrors=function( codewordBytes,  numDataCodewords)
 		codewordsInts[i] = codewordBytes[i] & 0xFF;
 	}
 	var numECCodewords = codewordBytes.length - numDataCodewords;
-	try
-	{
-		Decoder.rsDecoder.decode(codewordsInts, numECCodewords);
-		//var corrector = new ReedSolomon(codewordsInts, numECCodewords);
-		//corrector.correct();
-	}
-	catch ( rse)
-	{
-		throw rse;
-	}
+	
+	Decoder.rsDecoder.decode(codewordsInts, numECCodewords);
+	//var corrector = new ReedSolomon(codewordsInts, numECCodewords);
+	//corrector.correct();
+	
 	// Copy back into array of bytes -- only need to worry about the bytes that were data
 	// We don't care about errors in the error-correction codewords
 	for (var i = 0; i < numDataCodewords; i++)
@@ -1923,7 +1889,7 @@ Decoder.decode=function(bits)
 {
 	var parser = new BitMatrixParser(bits);
 	var version = parser.readVersion();
-	var ecLevel = parser.readFormatInformation().ErrorCorrectionLevel;
+	var ecLevel = parser.readFormatInformation().errorCorrectionLevel;
 	
 	// Read codewords
 	var codewords = parser.readCodewords();
@@ -2060,280 +2026,267 @@ function DetectorResult(bits,  points)
 
 
 function Detector(image,w,h)
-{
+{ // do loop to so labels can be used
+    
 	this.image=image;
 	this.resultPointCallback = null;
 	this.width = w
 	this.height = h
-	this.sizeOfBlackWhiteBlackRun=function( fromX,  fromY,  toX,  toY)
-		{
-			// Mild variant of Bresenham's algorithm;
-			// see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
-			var steep = Math.abs(toY - fromY) > Math.abs(toX - fromX);
-			if (steep)
-			{
-				var temp = fromX;
-				fromX = fromY;
-				fromY = temp;
-				temp = toX;
-				toX = toY;
-				toY = temp;
-			}
-			
-			var dx = Math.abs(toX - fromX);
-			var dy = Math.abs(toY - fromY);
-			var error = - dx >> 1;
-			var ystep = fromY < toY?1:- 1;
-			var xstep = fromX < toX?1:- 1;
-			var state = 0; // In black pixels, looking for white, first or second time
-			for (var x = fromX, y = fromY; x != toX; x += xstep)
-			{
-				
-				var realX = steep?y:x;
-				var realY = steep?x:y;
-				if (state == 1)
-				{
-					// In white pixels, looking for black
-					if (this.image[realX + realY*this.width])
-					{
-						state++;
-					}
-				}
-				else
-				{
-					if (!this.image[realX + realY*this.width])
-					{
-						state++;
-					}
-				}
-				
-				if (state == 3)
-				{
-					// Found black, white, black, and stumbled back onto white; done
-					var diffX = x - fromX;
-					var diffY = y - fromY;
-					return  Math.sqrt( (diffX * diffX + diffY * diffY));
-				}
-				error += dy;
-				if (error > 0)
-				{
-					if (y == toY)
-					{
-						break;
-					}
-					y += ystep;
-					error -= dx;
-				}
-			}
-			var diffX2 = toX - fromX;
-			var diffY2 = toY - fromY;
-			return  Math.sqrt( (diffX2 * diffX2 + diffY2 * diffY2));
-		}
-
 	
-	this.sizeOfBlackWhiteBlackRunBothWays=function( fromX,  fromY,  toX,  toY)
+}
+
+Detector.prototype = {
+	sizeOfBlackWhiteBlackRun:function( fromX,  fromY,  toX,  toY) {
+	    var x,y
+
+    		// Mild variant of Bresenham's algorithm;
+    		// see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
+    		var image = this.image
+    		var w = this.width
+    		var diffX,diffY
+    		var steep = Math.abs(toY - fromY) > Math.abs(toX - fromX);
+    		if (steep){
+    			var temp = fromX;
+    			fromX = fromY;
+    			fromY = temp;
+    			temp = toX;
+    			toX = toY;
+    			toY = temp;
+    		}
+    		
+    		var dx = Math.abs(toX - fromX);
+    		var dy = Math.abs(toY - fromY);
+    		var error = - dx >> 1;
+    		var ystep = fromY < toY?1:- 1;
+    		var xstep = fromX < toX?1:- 1;
+    		var state = 0; // In black pixels, looking for white, first or second time
+    		for (var x = fromX, y = fromY; x != toX; x += xstep){
+    			var realX = steep?y:x;
+    			var realY = steep?x:y;
+    			if (state == 1)
+    			{
+    				// In white pixels, looking for black
+    				if (image[realX + realY*w])
+    				{
+    					state++;
+    				}
+    			} else if (image[realX + realY*w]^1) {
+        			state++;
+    			}
+    			if (state == 3){
+    				// Found black, white, black, and stumbled back onto white; done
+    				x = x - fromX;
+    				y = y - fromY;
+    				return  Math.sqrt( (x * x + y * y));
+    				
+    			}
+    			error += dy;
+    			if (error > 0){
+    				if (y == toY){
+    					break;
+    				}
+    				y += ystep;
+    				error -= dx;
+    			}
+    		}
+    		x = toX - fromX;
+    		y = toY - fromY;
+    		return  Math.sqrt(x * x + y * y);
+
+	},
+    
+	
+	sizeOfBlackWhiteBlackRunBothWays:function( fromX,  fromY,  toX,  toY){
+
+        var result,otherToX,otherToY
+        var scale = 1.0;
+        var w = this.width
+        var h = this.height
+		result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
+
+
+		// Now count other way -- don't run off image though of course
+		
+		otherToX = fromX - (toX - fromX);
+		if (otherToX < 0){
+			scale =  fromX /  (fromX - otherToX);
+			otherToX = 0;
+		}else if (otherToX >= w)
 		{
-			
-			var result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
-			
-			// Now count other way -- don't run off image though of course
-			var scale = 1.0;
-			var otherToX = fromX - (toX - fromX);
-			if (otherToX < 0)
-			{
-				scale =  fromX /  (fromX - otherToX);
-				otherToX = 0;
-			}
-			else if (otherToX >= this.width)
-			{
-				scale =  (this.width - 1 - fromX) /  (otherToX - fromX);
-				otherToX = this.width - 1;
-			}
-			var otherToY = Math.floor (fromY - (toY - fromY) * scale);
-			
-			scale = 1.0;
-			if (otherToY < 0)
-			{
-				scale =  fromY /  (fromY - otherToY);
-				otherToY = 0;
-			}
-			else if (otherToY >= this.height)
-			{
-				scale =  (this.height - 1 - fromY) /  (otherToY - fromY);
-				otherToY = this.height - 1;
-			}
-			otherToX = Math.floor (fromX + (otherToX - fromX) * scale);
-			
-			result += this.sizeOfBlackWhiteBlackRun(fromX, fromY, otherToX, otherToY);
-			return result - 1.0; // -1 because we counted the middle pixel twice
+			scale =  (w - 1 - fromX) /  (otherToX - fromX);
+			otherToX = w - 1;
 		}
+		otherToY = (fromY - (toY - fromY) * scale)|0
+		
+		scale = 1.0;
+		if (otherToY < 0)
+		{
+			scale =  fromY /  (fromY - otherToY);
+			otherToY = 0;
+		}
+		else if (otherToY >= h)
+		{
+			scale =  (h- 1 - fromY) /  (otherToY - fromY);
+			otherToY = h - 1;
+		}
+		otherToX =(fromX + (otherToX - fromX) * scale)|0
+		
+		result += this.sizeOfBlackWhiteBlackRun(fromX, fromY, otherToX, otherToY);
+		return result - 1.0; // -1 because we counted the middle pixel twice
+	},
 		
 
 	
-	this.calculateModuleSizeOneWay=function( pattern,  otherPattern)
+	calculateModuleSizeOneWay:function( pattern,  otherPattern){
+		var moduleSizeEst1 = this.sizeOfBlackWhiteBlackRunBothWays(Math.floor( pattern.X), Math.floor( pattern.Y), Math.floor( otherPattern.X), Math.floor(otherPattern.Y));
+		var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(Math.floor(otherPattern.X), Math.floor(otherPattern.Y), Math.floor( pattern.X), Math.floor(pattern.Y));
+		if (isNaN(moduleSizeEst1))
 		{
-			var moduleSizeEst1 = this.sizeOfBlackWhiteBlackRunBothWays(Math.floor( pattern.X), Math.floor( pattern.Y), Math.floor( otherPattern.X), Math.floor(otherPattern.Y));
-			var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(Math.floor(otherPattern.X), Math.floor(otherPattern.Y), Math.floor( pattern.X), Math.floor(pattern.Y));
-			if (isNaN(moduleSizeEst1))
-			{
-				return moduleSizeEst2 / 7.0;
-			}
-			if (isNaN(moduleSizeEst2))
-			{
-				return moduleSizeEst1 / 7.0;
-			}
-			// Average them, and divide by 7 since we've counted the width of 3 black modules,
-			// and 1 white and 1 black module on either side. Ergo, divide sum by 14.
-			return (moduleSizeEst1 + moduleSizeEst2) / 14.0;
+			return moduleSizeEst2 *0.142857143 // div by 7 
 		}
-
-	
-	this.calculateModuleSize=function( topLeft,  topRight,  bottomLeft)
+		if (isNaN(moduleSizeEst2))
 		{
-			// Take the average
-			return (this.calculateModuleSizeOneWay(topLeft, topRight) + this.calculateModuleSizeOneWay(topLeft, bottomLeft)) / 2.0;
+			return moduleSizeEst1 *0.142857143 // div by 7 
 		}
+		// Average them, and divide by 7 since we've counted the width of 3 black modules,
+		// and 1 white and 1 black module on either side. Ergo, divide sum by 14.
+		return (moduleSizeEst1 + moduleSizeEst2) * 0.071428571; // div by 14 
+	},
 
+	calculateModuleSize:function( topLeft,  topRight,  bottomLeft){
+		// Take the average
+		return (this.calculateModuleSizeOneWay(topLeft, topRight) + this.calculateModuleSizeOneWay(topLeft, bottomLeft)) / 2.0;
+	},
+    computeDimension:function( topLeft,  topRight,  bottomLeft,  moduleSize){
+		moduleSize = 1/moduleSize
+		var tltrCentersDimension = Math.round(topLeft.distance(topRight) * moduleSize);
+		var tlblCentersDimension = Math.round(topLeft.distance(bottomLeft) * moduleSize);
+		var dimension = ((tltrCentersDimension + tlblCentersDimension) >> 1) + 7;
+		var _dimension = dimension & 0x03
+		if(_dimension >2) throw "Dimension Error"
+		dimension= (!_dimension) ? dimension++:(_dimension==2) ? dimension--:dimension
+		
+		return dimension;
+	},
 
-	this.computeDimension=function( topLeft,  topRight,  bottomLeft,  moduleSize)
+	findAlignmentInRegion:function( overallEstModuleSize,  estAlignmentX,  estAlignmentY,  allowanceFactor){
+		// Look for an alignment pattern (3 modules in size) around where it
+		// should be
+		var allowance = Math.floor (allowanceFactor * overallEstModuleSize);
+		var alignmentAreaLeftX = Math.max(0, estAlignmentX - allowance);
+		var alignmentAreaRightX = Math.min(this.width - 1, estAlignmentX + allowance);
+		if (alignmentAreaRightX - alignmentAreaLeftX < overallEstModuleSize * 3)
 		{
-			moduleSize = 1/moduleSize
-			var tltrCentersDimension = Math.round(topLeft.distance(topRight) * moduleSize);
-			var tlblCentersDimension = Math.round(topLeft.distance(bottomLeft) * moduleSize);
-			var dimension = ((tltrCentersDimension + tlblCentersDimension) >> 1) + 7;
-			var _dimension = dimension & 0x03
-			if(_dimension >2) throw "Dimension Error"
-			dimension= (!_dimension) ? dimension++:(_dimension==2) ? dimension--:dimension
-			
-			return dimension;
-		}
-
-	this.findAlignmentInRegion=function( overallEstModuleSize,  estAlignmentX,  estAlignmentY,  allowanceFactor)
-		{
-			// Look for an alignment pattern (3 modules in size) around where it
-			// should be
-			var allowance = Math.floor (allowanceFactor * overallEstModuleSize);
-			var alignmentAreaLeftX = Math.max(0, estAlignmentX - allowance);
-			var alignmentAreaRightX = Math.min(this.width - 1, estAlignmentX + allowance);
-			if (alignmentAreaRightX - alignmentAreaLeftX < overallEstModuleSize * 3)
-			{
-				throw "Error";
-			}
-			
-			var alignmentAreaTopY = Math.max(0, estAlignmentY - allowance);
-			var alignmentAreaBottomY = Math.min(this.height - 1, estAlignmentY + allowance);
-			
-			var alignmentFinder = new AlignmentPatternFinder(this.image, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize, this.resultPointCallback);
-			return alignmentFinder.find();
+			throw "Error";
 		}
 		
-	this.createTransform=function( topLeft,  topRight,  bottomLeft, alignmentPattern, dimension)
+		var alignmentAreaTopY = Math.max(0, estAlignmentY - allowance);
+		var alignmentAreaBottomY = Math.min(this.height - 1, estAlignmentY + allowance);
+		
+		var alignmentFinder = new AlignmentPatternFinder(this.image, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize, this.resultPointCallback);
+		return alignmentFinder.find();
+	},
+		
+	createTransform:function( topLeft,  topRight,  bottomLeft, alignmentPattern, dimension){
+		var dimMinusThree =  dimension - 3.5;
+		var bottomRightX;
+		var bottomRightY;
+		var sourceBottomRightX;
+		var sourceBottomRightY;
+		if (alignmentPattern != null)
 		{
-			var dimMinusThree =  dimension - 3.5;
-			var bottomRightX;
-			var bottomRightY;
-			var sourceBottomRightX;
-			var sourceBottomRightY;
-			if (alignmentPattern != null)
-			{
-				bottomRightX = alignmentPattern.X;
-				bottomRightY = alignmentPattern.Y;
-				sourceBottomRightX = sourceBottomRightY = dimMinusThree - 3.0;
-			}
-			else
-			{
-				// Don't have an alignment pattern, just make up the bottom-right point
-				bottomRightX = (topRight.X - topLeft.X) + bottomLeft.X;
-				bottomRightY = (topRight.Y - topLeft.Y) + bottomLeft.Y;
-				sourceBottomRightX = sourceBottomRightY = dimMinusThree;
-			}
-			
-			var transform = PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, topLeft.X, topLeft.Y, topRight.X, topRight.Y, bottomRightX, bottomRightY, bottomLeft.X, bottomLeft.Y);
-			
-			return transform;
-		}		
-	
-	this.sampleGrid=function( image,  transform,  dimension)
-		{
-			
-			var sampler = GridSampler;
-			return sampler.sampleGrid3(image, dimension, transform);
+			bottomRightX = alignmentPattern.X;
+			bottomRightY = alignmentPattern.Y;
+			sourceBottomRightX = sourceBottomRightY = dimMinusThree - 3.0;
 		}
-	
-	this.processFinderPatternInfo = function( info)
+		else
 		{
-			
-			var topLeft = info.TopLeft;
-			var topRight = info.TopRight;
-			var bottomLeft = info.BottomLeft;
-			
-			var moduleSize = this.calculateModuleSize(topLeft, topRight, bottomLeft);
-			if (moduleSize < 1.0)
-			{
-				throw "Error";
-			}
-			var dimension = this.computeDimension(topLeft, topRight, bottomLeft, moduleSize);
-			var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
-			var modulesBetweenFPCenters = provisionalVersion.DimensionForVersion - 7;
-			
-			var alignmentPattern = null;
-			// Anything above version 1 has an alignment pattern
-			if (provisionalVersion.alignmentPatternCenters.length > 0)
-			{
-				
-				// Guess where a "bottom right" finder pattern would have been
-				var bottomRightX = topRight.X - topLeft.X + bottomLeft.X;
-				var bottomRightY = topRight.Y - topLeft.Y + bottomLeft.Y;
-				
-				// Estimate that alignment pattern is closer by 3 modules
-				// from "bottom right" to known top left location
-				var correctionToTopLeft = 1.0 - 3.0 /  modulesBetweenFPCenters;
-				var estAlignmentX = Math.floor (topLeft.X + correctionToTopLeft * (bottomRightX - topLeft.X));
-				var estAlignmentY = Math.floor (topLeft.Y + correctionToTopLeft * (bottomRightY - topLeft.Y));
-				
-				// Kind of arbitrary -- expand search radius before giving up
-				for (var i = 4; i <= 16; i <<= 1)
-				{
-					//try
-					//{
-						alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
-						break;
-					//}
-					//catch (re)
-					//{
-						// try next round
-					//}
-				}
-				// If we didn't find alignment pattern... well try anyway without it
-			}
-			
-			var transform = this.createTransform(topLeft, topRight, bottomLeft, alignmentPattern, dimension);
-			
-			var bits = this.sampleGrid(this.image, transform, dimension);
-			
-			var points;
-			if (alignmentPattern == null)
-			{
-				points = new Array(bottomLeft, topLeft, topRight);
-			}
-			else
-			{
-				points = new Array(bottomLeft, topLeft, topRight, alignmentPattern);
-			}
-			return new DetectorResult(bits, points);
+			// Don't have an alignment pattern, just make up the bottom-right point
+			bottomRightX = (topRight.X - topLeft.X) + bottomLeft.X;
+			bottomRightY = (topRight.Y - topLeft.Y) + bottomLeft.Y;
+			sourceBottomRightX = sourceBottomRightY = dimMinusThree;
 		}
 		
-
+		var transform = PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, topLeft.X, topLeft.Y, topRight.X, topRight.Y, bottomRightX, bottomRightY, bottomLeft.X, bottomLeft.Y);
+		
+		return transform;
+	},	
+	sampleGrid:function( image,  transform,  dimension){
+			
+		var sampler = GridSampler;
+		return sampler.sampleGrid3(image, dimension, transform);
+	},
 	
-	this.detect=function()
-	{
+	processFinderPatternInfo:function( info){
+			
+		var topLeft = info.topLeft;
+		var topRight = info.topRight;
+		var bottomLeft = info.bottomLeft;
+		
+		var moduleSize = this.calculateModuleSize(topLeft, topRight, bottomLeft);
+		if (moduleSize < 1.0)
+		{
+			throw "Error";
+		}
+		var dimension = this.computeDimension(topLeft, topRight, bottomLeft, moduleSize);
+		var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
+		var modulesBetweenFPCenters = provisionalVersion.DimensionForVersion - 7;
+		
+		var alignmentPattern = null;
+		// Anything above version 1 has an alignment pattern
+		if (provisionalVersion.alignmentPatternCenters.length > 0)
+		{
+			
+			// Guess where a "bottom right" finder pattern would have been
+			var bottomRightX = topRight.X - topLeft.X + bottomLeft.X;
+			var bottomRightY = topRight.Y - topLeft.Y + bottomLeft.Y;
+			
+			// Estimate that alignment pattern is closer by 3 modules
+			// from "bottom right" to known top left location
+			var correctionToTopLeft = 1.0 - 3.0 /  modulesBetweenFPCenters;
+			var estAlignmentX = Math.floor (topLeft.X + correctionToTopLeft * (bottomRightX - topLeft.X));
+			var estAlignmentY = Math.floor (topLeft.Y + correctionToTopLeft * (bottomRightY - topLeft.Y));
+			
+			alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  4);
+			
+			// this loop dose nothing fix me investigate
+			// Kind of arbitrary -- expand search radius before giving up
+			/*for (var i = 4; i <= 16; i <<= 1)
+			{
+				//try
+				//{
+					alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+					break;
+				//}
+				//catch (re)
+				//{
+					// try next round
+				//}
+			}*/
+			// If we didn't find alignment pattern... well try anyway without it
+		}
+		
+		var transform = this.createTransform(topLeft, topRight, bottomLeft, alignmentPattern, dimension);
+		
+		var bits = this.sampleGrid(this.image, transform, dimension);
+		
+		var points;
+		if (alignmentPattern == null)
+		{
+			points = new Array(bottomLeft, topLeft, topRight);
+		}
+		else
+		{
+			points = new Array(bottomLeft, topLeft, topRight, alignmentPattern);
+		}
+		return new DetectorResult(bits, points);
+	},
+	detect:function(){
 		var info =  new FinderPatternFinder().findFinderPattern(this.image);
 			
 		return this.processFinderPatternInfo(info); 
 	}
 }
-
-
 qrcode = {};
 
 qrcode.width = 0;
@@ -2400,7 +2353,7 @@ qrcode.process = function(image,w,h){
        
         
         var reader = Decoder.decode(qRCodeMatrix.bits);
-        var data = reader.DataByte;
+        var data = reader.dataByte();
         var str="";
         for(var i=0;i<data.length;i++)
         {
@@ -2428,7 +2381,7 @@ function URShift( number,  bits)
         return (number >> bits) + (2 << ~bits);
 }
 
-// fix me OMG WHYYYYY
+// fix me OMG WHYYYYY 
 Array.prototype.remove = function(from, to) {
   var rest = this.slice((to || from) + 1 || this.length);
   this.length = from < 0 ? this.length + from : from;
@@ -2530,42 +2483,8 @@ FinderPattern.prototype = {
 	},
 	distance:function (b){
 	   var x = this.x - b.x
-	    var y = this.y - b.y
-
-
-       var min, max, approx;
-    
-       if ( x < 0 ) x = -x;
-       if ( y < 0 ) y = -y;
-    
-       if ( x < y )
-       {
-          min = x;
-          max = y;
-       } else {
-          min = y;
-          max = x;
-       }
-
-       approx = ( max * 1007 ) + ( min * 441 );
-       if ( max < ( min << 4 ))
-          approx -= ( max * 40 );
-
-   // add 512 for proper rounding
-   return (( approx + 512 ) >> 10 );
-        
-        var x = this.x - b.x
-	    var y = this.y - b.y
-	   
-		//return  Math.sqrt( (x * x + y * y));
-
-	    // abs for float faster to way faster than Math.abs
-	    // faster than (x<0)? -x:x too
-        x = x*(x>>31|1)
-        y = y*(y>>31|1)
-        
-        return (x<y) ? (x * 1.4142135623730950488016887242097 + y - x):(y * 1.4142135623730950488016887242097 + x - y)
-        
+	   var y = this.y - b.y
+	   return  Math.sqrt( (x * x + y * y))        
 	}
 }
 
@@ -2574,18 +2493,8 @@ function FinderPatternInfo(patternCenters)
 	this.bottomLeft = patternCenters[0];
 	this.topLeft = patternCenters[1];
 	this.topRight = patternCenters[2];
-	this.__defineGetter__("BottomLeft", function()
-	{
-		return this.bottomLeft;
-	}); 
-	this.__defineGetter__("TopLeft", function()
-	{
-		return this.topLeft;
-	}); 
-	this.__defineGetter__("TopRight", function()
-	{
-		return this.topRight;
-	}); 
+
+
 }
 
 function FinderPatternFinder()
@@ -2595,8 +2504,7 @@ function FinderPatternFinder()
 	this.hasSkipped = false;
 	this.crossCheckStateCount = new Array(0,0,0,0,0);
 	this.resultPointCallback = null;
-	
-	this.__defineGetter__("CrossCheckStateCount", function()
+	this.CrossCheckStateCount = function()
 	{
 		this.crossCheckStateCount[0] = 0;
 		this.crossCheckStateCount[1] = 0;
@@ -2604,7 +2512,8 @@ function FinderPatternFinder()
 		this.crossCheckStateCount[3] = 0;
 		this.crossCheckStateCount[4] = 0;
 		return this.crossCheckStateCount;
-	}); 
+	}
+	
 	
 	this.foundPatternCross=function( stateCount)
 		{
@@ -2636,7 +2545,7 @@ function FinderPatternFinder()
 			var image = this.image;
 			
 			var maxI = qrcode.height;
-			var stateCount = this.CrossCheckStateCount;
+			var stateCount = this.CrossCheckStateCount();
 			
 			// Start counting up from center
 			var i = startI;
@@ -2714,7 +2623,7 @@ function FinderPatternFinder()
 			var image = this.image;
 			
 			var maxJ = qrcode.width;
-			var stateCount = this.CrossCheckStateCount;
+			var stateCount = this.CrossCheckStateCount();
 			
 			var j = startJ;
 			while (j >= 0 && image[j+ centerI*qrcode.width])
@@ -3107,38 +3016,8 @@ AlignmentPattern.prototype= {
         var x = this.X - b.X
         var y = this.Y - b.Y
 
+       return  Math.sqrt(x * x + y * y)
 
-       var min, max, approx;
-    
-       if ( x < 0 ) x = -x;
-       if ( y < 0 ) y = -y;
-    
-       if ( x < y )
-       {
-          min = x;
-          max = y;
-       } else {
-          min = y;
-          max = x;
-       }
-
-       approx = ( max * 1007 ) + ( min * 441 );
-       if ( max < ( min << 4 ))
-          approx -= ( max * 40 );
-
-   // add 512 for proper rounding
-   return (( approx + 512 ) >> 10 );
-        //return  Math.sqrt( (x * x + y * y));
-        // abs for 32 bit int
-        /*var m
-        m = x >>31
-        x = (m+x)^m
-        m = y >>31
-        y = (m+y)^m
-        
-        //ultra fast aprox distance
-        return (x<y) ? (x * 1.4142135623730950488016887242097 + y - x):(y * 1.4142135623730950488016887242097 + x - y)
-        */
     },
     aboutEquals:function( moduleSize,  i,  j){
         // x = x*(x>>31|1) is abs for a float
@@ -3400,283 +3279,272 @@ function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
 	else if (version >= 27 && version <= 40)
 		this.dataLengthMode = 2;
 		
-	this.getNextBits = function( numBits)
-		{			
-			var bits = 0;
-			if (numBits < this.bitPointer + 1)
+}
+
+QRCodeDataBlockReader.prototype = {
+    getNextBits:function( numBits){		
+		var bits = 0;
+		if (numBits < this.bitPointer + 1)
+		{
+			// next word fits into current data block
+			var mask = 0;
+			for (var i = 0; i < numBits; i++)
 			{
-				// next word fits into current data block
-				var mask = 0;
-				for (var i = 0; i < numBits; i++)
-				{
-					mask += (1 << i);
-				}
-				mask <<= (this.bitPointer - numBits + 1);
-				
-				bits = (this.blocks[this.blockPointer] & mask) >> (this.bitPointer - numBits + 1);
-				this.bitPointer -= numBits;
-				return bits;
+				mask += (1 << i);
 			}
-			else if (numBits < this.bitPointer + 1 + 8)
-			{
-				// next word crosses 2 data blocks
-				var mask1 = 0;
-				for (var i = 0; i < this.bitPointer + 1; i++)
-				{
-					mask1 += (1 << i);
-				}
-				bits = (this.blocks[this.blockPointer] & mask1) << (numBits - (this.bitPointer + 1));
-                this.blockPointer++;
-				bits += ((this.blocks[this.blockPointer]) >> (8 - (numBits - (this.bitPointer + 1))));
-				
-				this.bitPointer = this.bitPointer - numBits % 8;
-				if (this.bitPointer < 0)
-				{
-					this.bitPointer = 8 + this.bitPointer;
-				}
-				return bits;
-			}
-			else if (numBits < this.bitPointer + 1 + 16)
-			{
-				// next word crosses 3 data blocks
-				var mask1 = 0; // mask of first block
-				var mask3 = 0; // mask of 3rd block
-				//bitPointer + 1 : number of bits of the 1st block
-				//8 : number of the 2nd block (note that use already 8bits because next word uses 3 data blocks)
-				//numBits - (bitPointer + 1 + 8) : number of bits of the 3rd block 
-				for (var i = 0; i < this.bitPointer + 1; i++)
-				{
-					mask1 += (1 << i);
-				}
-				var bitsFirstBlock = (this.blocks[this.blockPointer] & mask1) << (numBits - (this.bitPointer + 1));
-				this.blockPointer++;
-				
-				var bitsSecondBlock = this.blocks[this.blockPointer] << (numBits - (this.bitPointer + 1 + 8));
-				this.blockPointer++;
-				
-				for (var i = 0; i < numBits - (this.bitPointer + 1 + 8); i++)
-				{
-					mask3 += (1 << i);
-				}
-				mask3 <<= 8 - (numBits - (this.bitPointer + 1 + 8));
-				var bitsThirdBlock = (this.blocks[this.blockPointer] & mask3) >> (8 - (numBits - (this.bitPointer + 1 + 8)));
-				
-				bits = bitsFirstBlock + bitsSecondBlock + bitsThirdBlock;
-				this.bitPointer = this.bitPointer - (numBits - 8) % 8;
-				if (this.bitPointer < 0)
-				{
-					this.bitPointer = 8 + this.bitPointer;
-				}
-				return bits;
-			}
-			else
-			{
-				return 0;
-			}
+			mask <<= (this.bitPointer - numBits + 1);
+			
+			bits = (this.blocks[this.blockPointer] & mask) >> (this.bitPointer - numBits + 1);
+			this.bitPointer -= numBits;
+			return bits;
 		}
-	this.NextMode=function()
-	{
+		else if (numBits < this.bitPointer + 1 + 8)
+		{
+			// next word crosses 2 data blocks
+			var mask1 = 0;
+			for (var i = 0; i < this.bitPointer + 1; i++)
+			{
+				mask1 += (1 << i);
+			}
+			bits = (this.blocks[this.blockPointer] & mask1) << (numBits - (this.bitPointer + 1));
+            this.blockPointer++;
+			bits += ((this.blocks[this.blockPointer]) >> (8 - (numBits - (this.bitPointer + 1))));
+			
+			this.bitPointer = this.bitPointer - numBits % 8;
+			if (this.bitPointer < 0)
+			{
+				this.bitPointer = 8 + this.bitPointer;
+			}
+			return bits;
+		}
+		else if (numBits < this.bitPointer + 1 + 16)
+		{
+			// next word crosses 3 data blocks
+			var mask1 = 0; // mask of first block
+			var mask3 = 0; // mask of 3rd block
+			//bitPointer + 1 : number of bits of the 1st block
+			//8 : number of the 2nd block (note that use already 8bits because next word uses 3 data blocks)
+			//numBits - (bitPointer + 1 + 8) : number of bits of the 3rd block 
+			for (var i = 0; i < this.bitPointer + 1; i++)
+			{
+				mask1 += (1 << i);
+			}
+			var bitsFirstBlock = (this.blocks[this.blockPointer] & mask1) << (numBits - (this.bitPointer + 1));
+			this.blockPointer++;
+			
+			var bitsSecondBlock = this.blocks[this.blockPointer] << (numBits - (this.bitPointer + 1 + 8));
+			this.blockPointer++;
+			
+			for (var i = 0; i < numBits - (this.bitPointer + 1 + 8); i++)
+			{
+				mask3 += (1 << i);
+			}
+			mask3 <<= 8 - (numBits - (this.bitPointer + 1 + 8));
+			var bitsThirdBlock = (this.blocks[this.blockPointer] & mask3) >> (8 - (numBits - (this.bitPointer + 1 + 8)));
+			
+			bits = bitsFirstBlock + bitsSecondBlock + bitsThirdBlock;
+			this.bitPointer = this.bitPointer - (numBits - 8) % 8;
+			if (this.bitPointer < 0)
+			{
+				this.bitPointer = 8 + this.bitPointer;
+			}
+			return bits;
+		}
+		else
+		{
+			return 0;
+		}
+	},
+	NextMode:function(){
 		if ((this.blockPointer > this.blocks.length - this.numErrorCorrectionCode - 2))
 			return 0;
 		else
 			return this.getNextBits(4);
-	}
-	this.getDataLength=function( modeIndicator)
+	},
+	getDataLength:function( modeIndicator){
+		var index = 0;
+		while (true)
 		{
-			var index = 0;
-			while (true)
-			{
-				if ((modeIndicator >> index) == 1)
-					break;
-				index++;
-			}
-			
-			return this.getNextBits(qrcode.sizeOfDataLengthInfo[this.dataLengthMode][index]);
+			if ((modeIndicator >> index) == 1)
+				break;
+			index++;
 		}
-	this.getRomanAndFigureString=function( dataLength)
-		{
-			var length = dataLength;
-			var intData = 0;
-			var strData = "";
+		
+		return this.getNextBits(qrcode.sizeOfDataLengthInfo[this.dataLengthMode][index]);
+	},
+	getRomanAndFigureString:function( dataLength){
+		var length = dataLength;
+		var intData = 0;
+		var strData = "";
 
-			do 
+		do{
+			if (length > 1)
 			{
-				if (length > 1)
-				{
-					intData = this.getNextBits(11);
-					var firstLetter = Math.floor(intData / 45);
-					var secondLetter = intData % 45;
-					strData += tableRomanAndFigure[firstLetter];
-					strData += tableRomanAndFigure[secondLetter];
-					length -= 2;
-				}
-				else if (length == 1)
-				{
-					intData = this.getNextBits(6);
-					strData += tableRomanAndFigure[intData];
-					length -= 1;
-				}
+				intData = this.getNextBits(11);
+				var firstLetter = Math.floor(intData / 45);
+				var secondLetter = intData % 45;
+				strData += tableRomanAndFigure[firstLetter];
+				strData += tableRomanAndFigure[secondLetter];
+				length -= 2;
 			}
-			while (length > 0);
-			
-			return strData;
-		}
-	this.getFigureString=function( dataLength)
-		{
-			var length = dataLength;
-			var intData = 0;
-			var strData = "";
-			do 
+			else if (length == 1)
 			{
-				if (length >= 3)
-				{
-					intData = this.getNextBits(10);
-					if (intData < 100)
-						strData += "0";
-					if (intData < 10)
-						strData += "0";
-					length -= 3;
-				}
-				else if (length == 2)
-				{
-					intData = this.getNextBits(7);
-					if (intData < 10)
-						strData += "0";
-					length -= 2;
-				}
-				else if (length == 1)
-				{
-					intData = this.getNextBits(4);
-					length -= 1;
-				}
-				strData += intData;
+				intData = this.getNextBits(6);
+				strData += tableRomanAndFigure[intData];
+				length -= 1;
 			}
-			while (length > 0);
-			
-			return strData;
-		}
-	this.get8bitByteArray=function( dataLength)
-		{
-			var i=0;
-			var output = new Uint8Array(dataLength);
-			
-			do{output[i++] = this.getNextBits(8)}while (i<dataLength);
-			return output;
-		}
-    this.getKanjiString=function( dataLength)
-		{
-			var length = dataLength;
-			var intData = 0;
-			var unicodeString = "";
-			do 
+		}while (length > 0);
+		
+		return strData;
+	},
+	getFigureString:function( dataLength){
+		var length = dataLength;
+		var intData = 0;
+		var strData = "";
+		do{
+			if (length >= 3)
 			{
-				intData = getNextBits(13);
-				var lowerByte = intData % 0xC0;
-				var higherByte = intData / 0xC0;
-				
-				var tempWord = (higherByte << 8) + lowerByte;
-				var shiftjisWord = 0;
-				if (tempWord + 0x8140 <= 0x9FFC)
-				{
-					// between 8140 - 9FFC on Shift_JIS character set
-					shiftjisWord = tempWord + 0x8140;
-				}
-				else
-				{
-					// between E040 - EBBF on Shift_JIS character set
-					shiftjisWord = tempWord + 0xC140;
-				}
-				
-				//var tempByte = new Array(0,0);
-				//tempByte[0] = (sbyte) (shiftjisWord >> 8);
-				//tempByte[1] = (sbyte) (shiftjisWord & 0xFF);
-				//unicodeString += new String(SystemUtils.ToCharArray(SystemUtils.ToByteArray(tempByte)));
-                unicodeString += String.fromCharCode(shiftjisWord);
-				length--;
+				intData = this.getNextBits(10);
+				if (intData < 100)
+					strData += "0";
+				if (intData < 10)
+					strData += "0";
+				length -= 3;
 			}
-			while (length > 0);
-			
-			
-			return unicodeString;
+			else if (length == 2)
+			{
+				intData = this.getNextBits(7);
+				if (intData < 10)
+					strData += "0";
+				length -= 2;
+			}
+			else if (length == 1)
+			{
+				intData = this.getNextBits(4);
+				length -= 1;
+			}
+			strData += intData;
 		}
-
-	this.__defineGetter__("DataByte", function()
-	{
+		while (length > 0);
+		
+		return strData;
+	},
+	get8bitByteArray:function( dataLength){
+		var i=0;
+		var output = new Uint8Array(dataLength);
+		
+		do{output[i++] = this.getNextBits(8)}while (i<dataLength);
+		return output;
+	},
+    getKanjiString:function( dataLength){
+		var length = dataLength;
+		var intData = 0;
+		var unicodeString = "";
+		do 
+		{
+			intData = getNextBits(13);
+			var lowerByte = intData % 0xC0;
+			var higherByte = intData / 0xC0;
+			
+			var tempWord = (higherByte << 8) + lowerByte;
+			var shiftjisWord = 0;
+			if (tempWord + 0x8140 <= 0x9FFC)
+			{
+				// between 8140 - 9FFC on Shift_JIS character set
+				shiftjisWord = tempWord + 0x8140;
+			}
+			else
+			{
+				// between E040 - EBBF on Shift_JIS character set
+				shiftjisWord = tempWord + 0xC140;
+			}
+			
+			//var tempByte = new Array(0,0);
+			//tempByte[0] = (sbyte) (shiftjisWord >> 8);
+			//tempByte[1] = (sbyte) (shiftjisWord & 0xFF);
+			//unicodeString += new String(SystemUtils.ToCharArray(SystemUtils.ToByteArray(tempByte)));
+            unicodeString += String.fromCharCode(shiftjisWord);
+			length--;
+		}
+		while (length > 0);
+		
+		
+		return unicodeString;
+	},
+    dataByte:function(){
 		var output = new Array();
 		var MODE_NUMBER = 1;
 	    var MODE_ROMAN_AND_NUMBER = 2;
 	    var MODE_8BIT_BYTE = 4;
 	    var MODE_KANJI = 8;
-		do 
-					{
-						var mode = this.NextMode();
-						//canvas.println("mode: " + mode);
-						if (mode == 0)
-						{
-							if (output.length > 0)
-								break;
-							else
-								throw "Empty data block";
-						}
-						//if (mode != 1 && mode != 2 && mode != 4 && mode != 8)
-						//	break;
-						//}
-						if (mode != MODE_NUMBER && mode != MODE_ROMAN_AND_NUMBER && mode != MODE_8BIT_BYTE && mode != MODE_KANJI)
-						{
-							/*					canvas.println("Invalid mode: " + mode);
-							mode = guessMode(mode);
-							canvas.println("Guessed mode: " + mode); */
-							throw "Invalid mode: " + mode + " in (block:" + this.blockPointer + " bit:" + this.bitPointer + ")";
-						}
-						dataLength = this.getDataLength(mode);
-						if (dataLength < 1)
-							throw "Invalid data length: " + dataLength;
-						//canvas.println("length: " + dataLength);
-						switch (mode)
-						{
-							
-							case MODE_NUMBER: 
-								var temp_str = this.getFigureString(dataLength);
-								var ta = new Array(temp_str.length);
-								for(var j=0;j<temp_str.length;j++)
-									ta[j]=temp_str.charCodeAt(j);
-								output.push(ta);
-								break;
-							
-							case MODE_ROMAN_AND_NUMBER: 
-								//canvas.println("Mode: Roman&Figure");
-								var temp_str = this.getRomanAndFigureString(dataLength);
-								var ta = new Array(temp_str.length);
-								for(var j=0;j<temp_str.length;j++)
-									ta[j]=temp_str.charCodeAt(j);
-								output.push(ta );
-								//output.Write(SystemUtils.ToByteArray(temp_sbyteArray2), 0, temp_sbyteArray2.Length);
-								break;
-							
-							case MODE_8BIT_BYTE: 
-								//canvas.println("Mode: 8bit Byte");
-								//sbyte[] temp_sbyteArray3;
-								var temp_sbyteArray3 = this.get8bitByteArray(dataLength);
-								output.push(temp_sbyteArray3);
-								//output.Write(SystemUtils.ToByteArray(temp_sbyteArray3), 0, temp_sbyteArray3.Length);
-								break;
-							
-							case MODE_KANJI: 
-								//canvas.println("Mode: Kanji");
-								//sbyte[] temp_sbyteArray4;
-								//temp_sbyteArray4 = SystemUtils.ToSByteArray(SystemUtils.ToByteArray(getKanjiString(dataLength)));
-								//output.Write(SystemUtils.ToByteArray(temp_sbyteArray4), 0, temp_sbyteArray4.Length);
-                                var temp_str = this.getKanjiString(dataLength);
-								output.push(temp_str);
-								break;
-							}
-						//			
-						//canvas.println("DataLength: " + dataLength);
-						//Console.out.println(dataString);
-					}
-					while (true);
+		do {
+			var mode = this.NextMode();
+			//canvas.println("mode: " + mode);
+			if (mode == 0)
+			{
+				if (output.length > 0)
+					break;
+				else
+					throw "Empty data block";
+			}
+			//if (mode != 1 && mode != 2 && mode != 4 && mode != 8)
+			//	break;
+			//}
+			if (mode != MODE_NUMBER && mode != MODE_ROMAN_AND_NUMBER && mode != MODE_8BIT_BYTE && mode != MODE_KANJI)
+			{
+				/*					canvas.println("Invalid mode: " + mode);
+				mode = guessMode(mode);
+				canvas.println("Guessed mode: " + mode); */
+				throw "Invalid mode: " + mode + " in (block:" + this.blockPointer + " bit:" + this.bitPointer + ")";
+			}
+			dataLength = this.getDataLength(mode);
+			if (dataLength < 1)
+				throw "Invalid data length: " + dataLength;
+			//canvas.println("length: " + dataLength);
+			switch (mode)
+			{
+				
+				case MODE_NUMBER: 
+					var temp_str = this.getFigureString(dataLength);
+					var ta = new Array(temp_str.length);
+					for(var j=0;j<temp_str.length;j++)
+						ta[j]=temp_str.charCodeAt(j);
+					output.push(ta);
+					break;
+				
+				case MODE_ROMAN_AND_NUMBER: 
+					//canvas.println("Mode: Roman&Figure");
+					var temp_str = this.getRomanAndFigureString(dataLength);
+					var ta = new Array(temp_str.length);
+					for(var j=0;j<temp_str.length;j++)
+						ta[j]=temp_str.charCodeAt(j);
+					output.push(ta );
+					//output.Write(SystemUtils.ToByteArray(temp_sbyteArray2), 0, temp_sbyteArray2.Length);
+					break;
+				
+				case MODE_8BIT_BYTE: 
+					//canvas.println("Mode: 8bit Byte");
+					//sbyte[] temp_sbyteArray3;
+					var temp_sbyteArray3 = this.get8bitByteArray(dataLength);
+					output.push(temp_sbyteArray3);
+					//output.Write(SystemUtils.ToByteArray(temp_sbyteArray3), 0, temp_sbyteArray3.Length);
+					break;
+				
+				case MODE_KANJI: 
+					//canvas.println("Mode: Kanji");
+					//sbyte[] temp_sbyteArray4;
+					//temp_sbyteArray4 = SystemUtils.ToSByteArray(SystemUtils.ToByteArray(getKanjiString(dataLength)));
+					//output.Write(SystemUtils.ToByteArray(temp_sbyteArray4), 0, temp_sbyteArray4.Length);
+                    var temp_str = this.getKanjiString(dataLength);
+					output.push(temp_str);
+					break;
+				}
+			//			
+			//canvas.println("DataLength: " + dataLength);
+			//Console.out.println(dataString);
+		}while (true);
 		return output;
-	});
+	}
 }
 
 /*
@@ -4440,7 +4308,7 @@ addEventListener('message', function(e) {
           
           self.close()
         } catch(e){
-            //console.log(new Date() - start2 + ' 2')
+            console.log(new Date() - start2 + ' 2')
             return
         }
   }
@@ -4452,6 +4320,7 @@ addEventListener('message', function(e) {
   var bits = dat.m2.blur_guided_binary(dat.g2,b1)
   postMessage(bits_to_canvas_buff(bits))
   post(bits)
+
   return
 
   
