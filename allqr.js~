@@ -671,6 +671,7 @@ Version.decodeVersionInformation=function( versionBits)
 		// Otherwise see if this is the closest to a real version info bit string
 		// we have seen so far
 		var bitsDifference = FormatInformation.numBitsDiffering(versionBits, targetVersion);
+		//var bitsDifference = numBitsDiffering(versionBits, targetVersion);
 		if (bitsDifference < bestDifference)
 		{
 			bestVersion = i + 7;
@@ -912,6 +913,7 @@ FormatInformation.doDecodeFormatInformation=function( maskedFormatInfo)
 			return new FormatInformation(decodeInfo[1]);
 		}
 		var bitsDifference = this.numBitsDiffering(maskedFormatInfo, targetInfo);
+	    //var bitsDifference = numBitsDiffering(maskedFormatInfo, targetInfo);
 		if (bitsDifference < bestDifference)
 		{
 			bestFormatInfo = decodeInfo[1];
@@ -4111,16 +4113,34 @@ function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
 Code below this line is by Kenneth Lichtenberger with no credit due unless noted
 */
 
+/*
 function numBitsDiffering(a,b){
     a ^= b; // a now has a 1 bit exactly where its bit differs with b's
     // Count bits with ultra fast method
-	// see http://graphics.stanford.edu/~seander/bithacks.html
+    // see http://graphics.stanford.edu/~seander/bithacks.html
     a = a - ((a >> 1) & 0x55555555);                    // reuse input as temporary
     a = (a & 0x33333333) + ((a >> 2) & 0x33333333);     // temp
     
     return ((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24;
-}
+}*/
 
+function numBitsDiffering(a,b){
+
+    // Count bits with ultra fast method
+    // see http://graphics.stanford.edu/~seander/bithacks.html
+    // this needs to be done in half’s as JavaScript will jam unsigned data into singed data making life hard
+    var _a,c
+    _a = (a>>>16) ^ (b>>>16) // now first half has 1 bit exactly where its bit differs with b's
+    _a = _a - ((_a >> 1) & 0x55555555); 
+    _a = (_a & 0x33333333) + ((_a >> 2) & 0x33333333); 
+    c = ((_a + (_a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
+    
+    _a = (a&0xFFFF) ^ (b&0xFFFF) // now 2nd half has 1 bit exactly where its bit differs with b's
+    _a = _a - ((_a >> 1) & 0x55555555); 
+    _a = (_a & 0x33333333) + ((_a >> 2) & 0x33333333); 
+    return c+ (((_a + (_a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24)
+    
+}
 
 function gray_from_canvas(buff){
   buff = new Uint32Array(buff.buffer)
@@ -4869,7 +4889,7 @@ addEventListener('message', function(e) {
           
           self.close()
         } catch(e){
-            //console.log(new Date() - start2 + ' 2')
+            console.log(new Date() - start2 + ' 2')
             return
         }
   }
