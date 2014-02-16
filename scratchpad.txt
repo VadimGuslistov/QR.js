@@ -331,32 +331,29 @@ function approx_distance(x1,y1,x2,y2)
 function approx_distance(x1,y1,x2,y2)
 {
        var tmp,tmp2,min, max, approx,approx2,number,_x2
-       var x = x1 - x2
-       var y = y1 - y2
+       var x = Math.abs(x1 - x2)
+       var y = Math.abs(y1 - y2)
        
-       x = x*(x>>31|1) // abs  
-       y = y*(y>>31|1) // abs
+     
        
        // (a^2 + b^2)/2 for the Newton step later on
        _x2 = (x*x+y*y) * 0.5;
        //------------
        
-       //min and max of x and y
-       tmp = (x-y) >>>31
-       tmp2 = tmp^1
-       min = x*tmp + y*tmp2
-       max = x*tmp2 + y*tmp
-       //-----------------
 
-       
-       approx2 =  1/(min * 1.4142135623730950488016887242097 + max - min)
- 
+       if(x<y){
+           approx2 =  1/(x * 1.4142135623730950488016887242097 + y - x)
+     
 
-       approx = 1/( (( max * 1007 ) + ( min * 441 )  + 512) /1024)
+           approx = 1/( (( y * 1007 ) + ( x * 441 )  + 512) /1024)
+       } else {
+           approx2 =  1/(y * 1.4142135623730950488016887242097 + x - y)
+     
 
-       approx2 *=  ( 1.5 - ( _x2 * approx2 * approx2 ) );
-       approx  *=  ( 1.5 - ( _x2 * approx * approx ) );
-       number = (approx2 +approx2 )*0.5
+           approx = 1/( (( x * 1007 ) + ( y * 441 )  + 512) /1024)
+       }
+
+       number  = approx2 * ( 1.5 - ( _x2 * approx2 * approx ) );
        number  = number * ( 1.5 - ( _x2 * number * number ) );
        number  = number * ( 1.5 - ( _x2 * number * number ) );
               
