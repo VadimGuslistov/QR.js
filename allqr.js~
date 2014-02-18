@@ -1031,13 +1031,13 @@ function BitMatrix( width,  height)
 
 function GF256( primitive)
 {
-    this.expTable = new Uint8Array(256);
-    this.logTable = new Uint8Array(256);
+    var expTable = new Uint8Array(256);
+    var logTable = new Uint8Array(256);
     var x = 1
     var i = 0
     do{
-        this.expTable[i] = x;
-        this.logTable[x] = i;
+        expTable[i] = x;
+        logTable[x] = i;
         i++
         x <<= 1; // x = x * 2; we're assuming the generator alpha is 2
         //tmp = (x - 0x100)>>>31                      // <<-------------------------------------------------------------------
@@ -1048,7 +1048,8 @@ function GF256( primitive)
         }
     
     }while(i<256)
-    
+    this.expTable = expTable
+    this.logTable = logTable
 
 
 
@@ -1058,8 +1059,6 @@ function GF256( primitive)
     this.Zero = this.zero
     this.One = this.one
     /////
-
-    
        
 }
 GF256.prototype ={
@@ -1072,8 +1071,7 @@ GF256.prototype ={
         {
             return zero;
         }
-        var coefficients = new Array(degree + 1);
-        for(var i=0;i<coefficients.length;i++)coefficients[i]=0;
+        var coefficients = new Uint8Array(degree + 1);
         coefficients[0] = coefficient;
         return new GF256Poly(this, coefficients);
     },

@@ -1071,10 +1071,9 @@ GF256.prototype ={
         {
             return zero;
         }
-        var coefficients = new Array(degree + 1);
-        for(var i=0;i<coefficients.length;i++)coefficients[i]=0;
-        coefficients[0] = coefficient;
-        return new GF256Poly(this, coefficients);
+        var coefficients = new Uint8Array(degree + 1)
+        coefficients[0] = coefficient
+        return new GF256Poly(this, coefficients)
     },
     exp:function(a){
         return this.expTable[a];
