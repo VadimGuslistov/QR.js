@@ -1105,7 +1105,7 @@ GF256.prototype ={
         {
             return a;
         }
-        return this.expTable[(this.logTable[a] + this.logTable[b]) % 255];
+        return this.expTable[(this.logTable[a] + this.logTable[b]) % 255]
     }    
 }
 GF256.zeroArr = new Uint8Array([0])

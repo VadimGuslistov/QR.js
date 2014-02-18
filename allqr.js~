@@ -1071,9 +1071,9 @@ GF256.prototype ={
         {
             return zero;
         }
-        var coefficients = new Uint8Array(degree + 1);
-        coefficients[0] = coefficient;
-        return new GF256Poly(this, coefficients);
+        var coefficients = new Uint8Array(degree + 1)
+        coefficients[0] = coefficient
+        return new GF256Poly(this, coefficients)
     },
     exp:function(a){
         return this.expTable[a];
@@ -1105,7 +1105,8 @@ GF256.prototype ={
         {
             return a;
         }
-        return this.expTable[(this.logTable[a] + this.logTable[b]) % 255];
+        return this.expTable[(this.logTable[a] + this.logTable[b]) % 255]
+        // x % 255
     }    
 }
 GF256.zeroArr = new Uint8Array([0])
