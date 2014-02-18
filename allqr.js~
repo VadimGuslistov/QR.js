@@ -1129,19 +1129,17 @@ function DataBlock(numDataCodewords,  numBlockCodewords){
     this.codewords = new Uint8Array(numBlockCodewords)
     this.numECCodewords = numBlockCodewords - numDataCodewords
     this.numBlockCodewordsMinusOne = numBlockCodewords-1
-    
 }
 
 DataBlock.prototype = {
     check:function(){
         var poly = new GF256Poly(this.field, this.codewords);
         var twoS = this.numECCodewords
-        var dataMatrix = false;//this.field.Equals(GF256.DATA_MATRIX_FIELD);
         for (var i = 0; i < twoS; i++)
         {
             
             // Thanks to sanfordsquires for this fix:
-            var eval = poly.evaluateAt(this.field.exp(dataMatrix?i + 1:i));
+            var eval = poly.evaluateAt(this.field.exp(i));
 
             if (eval != 0)
             {
@@ -1154,34 +1152,35 @@ DataBlock.prototype = {
     correct:function(){
             var poly = new GF256Poly(this.field, this.codewords);
             var twoS = this.numECCodewords
-            var syndromeCoefficients = new Array(twoS);
-            for(var i=0;i<syndromeCoefficients.length;i++)syndromeCoefficients[i]=0;
-            var dataMatrix = false;//this.field.Equals(GF256.DATA_MATRIX_FIELD);
+            var towSMinusOne = twoS-1
+            var syndromeCoefficients = new Uint8Array(twoS);
+            var numBlockCodewordsMinusOne = this.numBlockCodewordsMinusOne
+
             var noError = true;
-            for (var i = 0; i < twoS; i++)
-            {
+            var _eval
+            var i = 0
+            do{
                 // Thanks to sanfordsquires for this fix:
-                var eval = poly.evaluateAt(this.field.exp(dataMatrix?i + 1:i));
-                syndromeCoefficients[syndromeCoefficients.length - 1 - i] = eval;
-                if (eval != 0)
+                _eval = poly.evaluateAt(this.field.exp(i));
+                
+                if (_eval != 0)
                 {
+                    syndromeCoefficients[towSMinusOne - i] = _eval;
                     noError = false;
                 }
-            }
-            if (noError)
-            {
-                return ;
-            }
+                i++
+            }while(i < twoS)
+            if (noError) return // no errors found noting to do
+            // correct errors if found
             var syndrome = new GF256Poly(this.field, syndromeCoefficients);
             var sigmaOmega = this.runEuclideanAlgorithm(this.field.buildMonomial(twoS, 1), syndrome, twoS);
-            var sigma = sigmaOmega[0];
-            var omega = sigmaOmega[1];
-            var errorLocations = this.findErrorLocations(sigma);
-            var errorMagnitudes = this.findErrorMagnitudes(omega, errorLocations, dataMatrix);
+  
+            var errorLocations = this.findErrorLocations(sigmaOmega[0]);
+            var errorMagnitudes = this.findErrorMagnitudes(sigmaOmega[1], errorLocations);
 
             for (var i = 0; i < errorLocations.length; i++)
             {
-                var position = this.numBlockCodewordsMinusOne - this.field.log(errorLocations[i]);
+                var position = numBlockCodewordsMinusOne - this.field.log(errorLocations[i]);
                 if (position < 0)
                 {
                     // fix me can this happen -- investigate
@@ -1277,7 +1276,7 @@ DataBlock.prototype = {
         }
         return result;
     },
-    findErrorMagnitudes:function( errorEvaluator,  errorLocations,  dataMatrix){
+    findErrorMagnitudes:function( errorEvaluator,  errorLocations){
             // This is directly applying Forney's Formula
             var s = errorLocations.length;
             var result = new Array(s);
@@ -1294,10 +1293,7 @@ DataBlock.prototype = {
                 }
                 result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
                 // Thanks to sanfordsquires for this fix:
-                if (dataMatrix)
-                {
-                    result[i] = this.field.multiply(result[i], xiInverse);
-                }
+              
             }
             return result;
         }
@@ -2199,7 +2195,7 @@ function GF256Poly(field,  coefficients)
         var result2 = this.coefficients[0];
         for (var i = 1; i < size; i++)
         {
-            result2 = GF256.addOrSubtract(this.field.multiply(a, result2), this.coefficients[i]);
+            result2 = this.field.multiply(a, result2) ^ this.coefficients[i]
         }
         return result2;
     }
