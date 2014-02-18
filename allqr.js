@@ -1180,9 +1180,10 @@ DataBlock.prototype = {
 
     runEuclideanAlgorithm:function( a,  b,  R){
         // Assume a's degree is >= b's
+        var temp
         if (a.Degree < b.Degree)
         {
-            var temp = a;
+            temp = a;
             a = b;
             b = temp;
         }
@@ -1193,9 +1194,9 @@ DataBlock.prototype = {
         var s = this.field.Zero;
         var tLast = this.field.Zero;
         var t = this.field.One;
-
+        var rDiv2 = R*0.5|0
         // Run Euclidean algorithm until r's degree is less than R/2
-        while (r.Degree >= Math.floor(R / 2))
+        while (r.Degree >=rDiv2)
         {
             var rLastLast = rLast;
             var sLastLast = sLast;
@@ -1220,7 +1221,6 @@ DataBlock.prototype = {
                 var scale = this.field.multiply(r.getCoefficient(r.Degree), dltInverse);
                 q = q.addOrSubtract(this.field.buildMonomial(degreeDiff, scale));
                 r = r.addOrSubtract(rLast.multiplyByMonomial(degreeDiff, scale));
-                //r.EXE();
             }
 
             s = q.multiply1(sLast).addOrSubtract(sLastLast);
@@ -1234,9 +1234,8 @@ DataBlock.prototype = {
         }
 
         var inverse = this.field.inverse(sigmaTildeAtZero);
-        var sigma = t.multiply2(inverse);
-        var omega = r.multiply2(inverse);
-        return [sigma, omega]
+
+        return [t.multiply2(inverse), r.multiply2(inverse)] // sigma  omega
     },
     findErrorLocations:function( errorLocator){
         // This is a direct application of Chien's search
@@ -1246,7 +1245,7 @@ DataBlock.prototype = {
             // shortcut
             return new Array(errorLocator.getCoefficient(1));
         }
-        var result = new Array(numErrors);
+        var result = new Int32Array(numErrors);
         var e = 0;
         for (var i = 1; i < 256 && e < numErrors; i++)
         {
@@ -1265,7 +1264,7 @@ DataBlock.prototype = {
     findErrorMagnitudes:function( errorEvaluator,  errorLocations){
             // This is directly applying Forney's Formula
             var s = errorLocations.length;
-            var result = new Array(s);
+            var result = new Int32Array(s);
             for (var i = 0; i < s; i++)
             {
                 var xiInverse = this.field.inverse(errorLocations[i]);
@@ -1278,7 +1277,7 @@ DataBlock.prototype = {
                     }
                 }
                 result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
-                // Thanks to sanfordsquires for this fix:
+
               
             }
             return result;
