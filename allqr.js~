@@ -1031,36 +1031,34 @@ function BitMatrix( width,  height)
 
 function GF256( primitive)
 {
-    this.expTable = new Array(256);
-    this.logTable = new Array(256);
-    var x = 1;
+    this.expTable = new Uint8Array(256);
+    this.logTable = new Uint8Array(256);
+    var x = 1
+    var tmp
     for (var i = 0; i < 256; i++)
     {
         this.expTable[i] = x;
+        this.logTable[x] = i;
         x <<= 1; // x = x * 2; we're assuming the generator alpha is 2
-        if (x >= 0x100)
-        {
-            x ^= primitive;
+        //tmp = (x - 0x100)>>>31                      // <<-------------------------------------------------------------------
+        //x = (x * tmp) | ((x ^ primitive) * (tmp^1)) // avoids a branch but is it faster than the branch - fix me Investigate
+        if (x >= 256) {
+            x = (x^primitive) &255 // this is how it is in the mainline zxing code but different than js port - fix me Investigate
+
         }
     }
-    for (var i = 0; i < 255; i++)
-    {
-        this.logTable[this.expTable[i]] = i;
-    }
-    // logTable[0] == 0 but this should never be used
-    var at0=new Array(1);at0[0]=0;
-    this.zero = new GF256Poly(this, new Array(at0));
-    var at1=new Array(1);at1[0]=1;
-    this.one = new GF256Poly(this, new Array(at1));
+    
 
-    this.__defineGetter__("Zero", function()
-    {
-        return this.zero;
-    });
-    this.__defineGetter__("One", function()
-    {
-        return this.one;
-    });
+
+
+    this.zero = new GF256Poly(this, GF256.zeroArr);
+    this.one = new GF256Poly(this, GF256.oneArr);
+    // fix me downstream code is looking data with this name
+    this.Zero = this.zero
+    this.One = this.one
+    /////
+
+    
     this.buildMonomial=function( degree,  coefficient)
         {
             if (degree < 0)
@@ -1113,6 +1111,9 @@ function GF256( primitive)
             return this.expTable[(this.logTable[a] + this.logTable[b]) % 255];
         }        
 }
+GF256.zeroArr = new Uint8Array([0])
+GF256.oneArr = new Uint8Array([1])
+
 
 GF256.QR_CODE_FIELD = new GF256(0x011D);
 GF256.DATA_MATRIX_FIELD = new GF256(0x012D);
@@ -1167,14 +1168,19 @@ DataBlock.prototype = {
             var errorMagnitudes = this.findErrorMagnitudes(sigmaOmega[1], errorLocations);
             var l = errorLocations.length
             i = 0
+            var org,_new
+            var hamming = 0
             do{
                 var position = numBlockCodewordsMinusOne - this.field.log(errorLocations[i]);
                 if (position < 0) throw "ReedSolomonException Bad error location"
-
-                this.codewords[position] = this.codewords[position] ^ errorMagnitudes[i]
+                org = this.codewords[position]
+                _new = org ^ errorMagnitudes[i]
+                hamming+= numBitsDiffering(_new,org)
+                 this.codewords[position] = _new
                 i++
                 
             }while(i<l)
+            console.log(hamming +  'bits different')
             this.check()
     },
 
@@ -1277,7 +1283,7 @@ DataBlock.prototype = {
                     }
                 }
                 result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
-                // Thanks to sanfordsquires for this fix:
+
               
             }
             return result;
