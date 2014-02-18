@@ -1137,16 +1137,14 @@ DataBlock.prototype = {
         var twoS = this.numECCodewords
         var i = 0
         do{if(poly.evaluateAt(this.field.exp(i++)) != 0) throw "Bad Scan Uncorrectable block" }while(i<twoS)
-       
     },
     correct:function(){
-            var poly = new GF256Poly(this.field, this.codewords);
+            var poly = new GF256Poly(this.field, this.codewords)
             var twoS = this.numECCodewords
             var towSMinusOne = twoS-1
-            var syndromeCoefficients = new Uint8Array(twoS);
+            var syndromeCoefficients = new Uint8Array(twoS)
             var numBlockCodewordsMinusOne = this.numBlockCodewordsMinusOne
-
-            var noError = true;
+            var noError = true
             var _eval
             var i = 0
             do{
@@ -1156,29 +1154,27 @@ DataBlock.prototype = {
                 if (_eval != 0)
                 {
                     syndromeCoefficients[towSMinusOne - i] = _eval;
-                    noError = false;
+                    noError = false
                 }
                 i++
             }while(i < twoS)
             if (noError) return // no errors found noting to do
             // correct errors if found
-            var syndrome = new GF256Poly(this.field, syndromeCoefficients);
-            var sigmaOmega = this.runEuclideanAlgorithm(this.field.buildMonomial(twoS, 1), syndrome, twoS);
+            var syndrome = new GF256Poly(this.field, syndromeCoefficients)
+            var sigmaOmega = this.runEuclideanAlgorithm(this.field.buildMonomial(twoS, 1), syndrome, twoS)
   
             var errorLocations = this.findErrorLocations(sigmaOmega[0]);
             var errorMagnitudes = this.findErrorMagnitudes(sigmaOmega[1], errorLocations);
-
-            for (var i = 0; i < errorLocations.length; i++)
-            {
+            var l = errorLocations.length
+            i = 0
+            do{
                 var position = numBlockCodewordsMinusOne - this.field.log(errorLocations[i]);
-                if (position < 0)
-                {
-                    // fix me can this happen -- investigate
-                    throw "ReedSolomonException Bad error location";
-                }
+                if (position < 0) throw "ReedSolomonException Bad error location"
+
                 this.codewords[position] = this.codewords[position] ^ errorMagnitudes[i]
+                i++
                 
-            }
+            }while(i<l)
             this.check()
     },
 
