@@ -2113,37 +2113,41 @@ function ReedSolomonDecoder(field)
 
 function GF256Poly(field,  coefficients)
 {
+    /*
+    this dose not happen in the QR code so it is a useless branch
     if (coefficients == null || coefficients.length == 0)
     {
         throw "System.ArgumentException";
-    }
-    this.field = field;
+    }*/
+    
     var coefficientsLength = coefficients.length;
-    if (coefficientsLength > 1 && coefficients[0] == 0)
-    {
+    var _coefficients
+    var firstNonZero
+    var l
+    var i
+    if (coefficientsLength > 1 && coefficients[0] == 0){
         // Leading term must be non-zero for anything except the constant polynomial "0"
-        var firstNonZero = 1;
-        while (firstNonZero < coefficientsLength && coefficients[firstNonZero] == 0)
-        {
+        firstNonZero = 1;
+        while (firstNonZero < coefficientsLength && coefficients[firstNonZero] == 0){
             firstNonZero++;
         }
-        if (firstNonZero == coefficientsLength)
-        {
-            this.coefficients = field.Zero.coefficients;
+        
+        if (firstNonZero == coefficientsLength){
+            _coefficients = field.Zero.coefficients;
         }
-        else
-        {
-            this.coefficients = new Array(coefficientsLength - firstNonZero);
-            for(var i=0;i<this.coefficients.length;i++)this.coefficients[i]=0;
-            //Array.Copy(coefficients, firstNonZero, this.coefficients, 0, this.coefficients.length);
-            for(var ci=0;ci<this.coefficients.length;ci++)this.coefficients[ci]=coefficients[firstNonZero+ci];
+        else{
+            l = coefficientsLength - firstNonZero
+            i=0
+            _coefficients = new Uint8Array(l);
+            do{_coefficients[i++] = coefficients[firstNonZero++]}while(i<l)
         }
     }
     else
     {
-        this.coefficients = coefficients;
+        _coefficients = coefficients;
     }
-
+    this.field = field;
+    this.coefficients = _coefficients
     this.__defineGetter__("Zero", function()
     {
         return this.coefficients[0] == 0;
