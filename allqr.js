@@ -1029,11 +1029,281 @@ function BitMatrix( width,  height)
 */
 
 
-function DataBlock(numDataCodewords,  numBlockCodewords){
-    this.numDataCodewords = numDataCodewords;
-    this.codewords = new Uint8Array(numBlockCodewords)
+function GF256( primitive)
+{
+    this.expTable = new Array(256);
+    this.logTable = new Array(256);
+    var x = 1;
+    for (var i = 0; i < 256; i++)
+    {
+        this.expTable[i] = x;
+        x <<= 1; // x = x * 2; we're assuming the generator alpha is 2
+        if (x >= 0x100)
+        {
+            x ^= primitive;
+        }
+    }
+    for (var i = 0; i < 255; i++)
+    {
+        this.logTable[this.expTable[i]] = i;
+    }
+    // logTable[0] == 0 but this should never be used
+    var at0=new Array(1);at0[0]=0;
+    this.zero = new GF256Poly(this, new Array(at0));
+    var at1=new Array(1);at1[0]=1;
+    this.one = new GF256Poly(this, new Array(at1));
 
+    this.__defineGetter__("Zero", function()
+    {
+        return this.zero;
+    });
+    this.__defineGetter__("One", function()
+    {
+        return this.one;
+    });
+    this.buildMonomial=function( degree,  coefficient)
+        {
+            if (degree < 0)
+            {
+                throw "System.ArgumentException";
+            }
+            if (coefficient == 0)
+            {
+                return zero;
+            }
+            var coefficients = new Array(degree + 1);
+            for(var i=0;i<coefficients.length;i++)coefficients[i]=0;
+            coefficients[0] = coefficient;
+            return new GF256Poly(this, coefficients);
+        }
+    this.exp=function( a)
+        {
+            return this.expTable[a];
+        }
+    this.log=function( a)
+        {
+            if (a == 0)
+            {
+                throw "System.ArgumentException";
+            }
+            return this.logTable[a];
+        }
+    this.inverse=function( a)
+        {
+            if (a == 0)
+            {
+                throw "System.ArithmeticException";
+            }
+            return this.expTable[255 - this.logTable[a]];
+        }
+    this.multiply=function( a,  b)
+        {
+            if (a == 0 || b == 0)
+            {
+                return 0;
+            }
+            if (a == 1)
+            {
+                return b;
+            }
+            if (b == 1)
+            {
+                return a;
+            }
+            return this.expTable[(this.logTable[a] + this.logTable[b]) % 255];
+        }        
 }
+
+GF256.QR_CODE_FIELD = new GF256(0x011D);
+GF256.DATA_MATRIX_FIELD = new GF256(0x012D);
+
+GF256.addOrSubtract=function( a,  b)
+{
+    return a ^ b;
+}
+
+function DataBlock(numDataCodewords,  numBlockCodewords){
+
+    this.field = GF256.QR_CODE_FIELD 
+    this.numDataCodewords = numDataCodewords
+    this.codewords = new Uint8Array(numBlockCodewords)
+    this.numECCodewords = numBlockCodewords - numDataCodewords
+    this.numBlockCodewordsMinusOne = numBlockCodewords-1
+    
+}
+
+DataBlock.prototype = {
+    check:function(){
+        var poly = new GF256Poly(this.field, this.codewords);
+        var twoS = this.numECCodewords
+        var dataMatrix = false;//this.field.Equals(GF256.DATA_MATRIX_FIELD);
+        for (var i = 0; i < twoS; i++)
+        {
+            
+            // Thanks to sanfordsquires for this fix:
+            var eval = poly.evaluateAt(this.field.exp(dataMatrix?i + 1:i));
+
+            if (eval != 0)
+            {
+                throw "Bad Scan Uncorrectable block"
+            }
+        }
+   
+
+    },
+    correct:function(){
+            var poly = new GF256Poly(this.field, this.codewords);
+            var twoS = this.numECCodewords
+            var syndromeCoefficients = new Array(twoS);
+            for(var i=0;i<syndromeCoefficients.length;i++)syndromeCoefficients[i]=0;
+            var dataMatrix = false;//this.field.Equals(GF256.DATA_MATRIX_FIELD);
+            var noError = true;
+            for (var i = 0; i < twoS; i++)
+            {
+                // Thanks to sanfordsquires for this fix:
+                var eval = poly.evaluateAt(this.field.exp(dataMatrix?i + 1:i));
+                syndromeCoefficients[syndromeCoefficients.length - 1 - i] = eval;
+                if (eval != 0)
+                {
+                    noError = false;
+                }
+            }
+            if (noError)
+            {
+                return ;
+            }
+            var syndrome = new GF256Poly(this.field, syndromeCoefficients);
+            var sigmaOmega = this.runEuclideanAlgorithm(this.field.buildMonomial(twoS, 1), syndrome, twoS);
+            var sigma = sigmaOmega[0];
+            var omega = sigmaOmega[1];
+            var errorLocations = this.findErrorLocations(sigma);
+            var errorMagnitudes = this.findErrorMagnitudes(omega, errorLocations, dataMatrix);
+
+            for (var i = 0; i < errorLocations.length; i++)
+            {
+                var position = this.numBlockCodewordsMinusOne - this.field.log(errorLocations[i]);
+                if (position < 0)
+                {
+                    // fix me can this happen -- investigate
+                    throw "ReedSolomonException Bad error location";
+                }
+                this.codewords[position] = GF256.addOrSubtract(this.codewords[position],errorMagnitudes[i])
+                
+            }
+            this.check()
+    },
+
+    runEuclideanAlgorithm:function( a,  b,  R){
+        // Assume a's degree is >= b's
+        if (a.Degree < b.Degree)
+        {
+            var temp = a;
+            a = b;
+            b = temp;
+        }
+
+        var rLast = a;
+        var r = b;
+        var sLast = this.field.One;
+        var s = this.field.Zero;
+        var tLast = this.field.Zero;
+        var t = this.field.One;
+
+        // Run Euclidean algorithm until r's degree is less than R/2
+        while (r.Degree >= Math.floor(R / 2))
+        {
+            var rLastLast = rLast;
+            var sLastLast = sLast;
+            var tLastLast = tLast;
+            rLast = r;
+            sLast = s;
+            tLast = t;
+
+            // Divide rLastLast by rLast, with quotient in q and remainder in r
+            if (rLast.Zero)
+            {
+                // Oops, Euclidean algorithm already terminated?
+                throw "r_{i-1} was zero";
+            }
+            r = rLastLast;
+            var q = this.field.Zero;
+            var denominatorLeadingTerm = rLast.getCoefficient(rLast.Degree);
+            var dltInverse = this.field.inverse(denominatorLeadingTerm);
+            while (r.Degree >= rLast.Degree && !r.Zero)
+            {
+                var degreeDiff = r.Degree - rLast.Degree;
+                var scale = this.field.multiply(r.getCoefficient(r.Degree), dltInverse);
+                q = q.addOrSubtract(this.field.buildMonomial(degreeDiff, scale));
+                r = r.addOrSubtract(rLast.multiplyByMonomial(degreeDiff, scale));
+                //r.EXE();
+            }
+
+            s = q.multiply1(sLast).addOrSubtract(sLastLast);
+            t = q.multiply1(tLast).addOrSubtract(tLastLast);
+        }
+
+        var sigmaTildeAtZero = t.getCoefficient(0);
+        if (sigmaTildeAtZero == 0)
+        {
+            throw "ReedSolomonException sigmaTilde(0) was zero";
+        }
+
+        var inverse = this.field.inverse(sigmaTildeAtZero);
+        var sigma = t.multiply2(inverse);
+        var omega = r.multiply2(inverse);
+        return [sigma, omega]
+    },
+    findErrorLocations:function( errorLocator){
+        // This is a direct application of Chien's search
+        var numErrors = errorLocator.Degree;
+        if (numErrors == 1)
+        {
+            // shortcut
+            return new Array(errorLocator.getCoefficient(1));
+        }
+        var result = new Array(numErrors);
+        var e = 0;
+        for (var i = 1; i < 256 && e < numErrors; i++)
+        {
+            if (errorLocator.evaluateAt(i) == 0)
+            {
+                result[e] = this.field.inverse(i);
+                e++;
+            }
+        }
+        if (e != numErrors)
+        {
+            throw "Error locator degree does not match number of roots";
+        }
+        return result;
+    },
+    findErrorMagnitudes:function( errorEvaluator,  errorLocations,  dataMatrix){
+            // This is directly applying Forney's Formula
+            var s = errorLocations.length;
+            var result = new Array(s);
+            for (var i = 0; i < s; i++)
+            {
+                var xiInverse = this.field.inverse(errorLocations[i]);
+                var denominator = 1;
+                for (var j = 0; j < s; j++)
+                {
+                    if (i != j)
+                    {
+                        denominator = this.field.multiply(denominator, GF256.addOrSubtract(1, this.field.multiply(errorLocations[j], xiInverse)));
+                    }
+                }
+                result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
+                // Thanks to sanfordsquires for this fix:
+                if (dataMatrix)
+                {
+                    result[i] = this.field.multiply(result[i], xiInverse);
+                }
+            }
+            return result;
+        }
+    
+}
+
 /*
 function DataBlocks(rawCodewords,  version,  ecLevel){
     if (rawCodewords.length != version.TotalCodewords)
@@ -1832,99 +2102,6 @@ function ReedSolomonDecoder(field)
 */
 
 
-function GF256( primitive)
-{
-    this.expTable = new Array(256);
-    this.logTable = new Array(256);
-    var x = 1;
-    for (var i = 0; i < 256; i++)
-    {
-        this.expTable[i] = x;
-        x <<= 1; // x = x * 2; we're assuming the generator alpha is 2
-        if (x >= 0x100)
-        {
-            x ^= primitive;
-        }
-    }
-    for (var i = 0; i < 255; i++)
-    {
-        this.logTable[this.expTable[i]] = i;
-    }
-    // logTable[0] == 0 but this should never be used
-    var at0=new Array(1);at0[0]=0;
-    this.zero = new GF256Poly(this, new Array(at0));
-    var at1=new Array(1);at1[0]=1;
-    this.one = new GF256Poly(this, new Array(at1));
-
-    this.__defineGetter__("Zero", function()
-    {
-        return this.zero;
-    });
-    this.__defineGetter__("One", function()
-    {
-        return this.one;
-    });
-    this.buildMonomial=function( degree,  coefficient)
-        {
-            if (degree < 0)
-            {
-                throw "System.ArgumentException";
-            }
-            if (coefficient == 0)
-            {
-                return zero;
-            }
-            var coefficients = new Array(degree + 1);
-            for(var i=0;i<coefficients.length;i++)coefficients[i]=0;
-            coefficients[0] = coefficient;
-            return new GF256Poly(this, coefficients);
-        }
-    this.exp=function( a)
-        {
-            return this.expTable[a];
-        }
-    this.log=function( a)
-        {
-            if (a == 0)
-            {
-                throw "System.ArgumentException";
-            }
-            return this.logTable[a];
-        }
-    this.inverse=function( a)
-        {
-            if (a == 0)
-            {
-                throw "System.ArithmeticException";
-            }
-            return this.expTable[255 - this.logTable[a]];
-        }
-    this.multiply=function( a,  b)
-        {
-            if (a == 0 || b == 0)
-            {
-                return 0;
-            }
-            if (a == 1)
-            {
-                return b;
-            }
-            if (b == 1)
-            {
-                return a;
-            }
-            return this.expTable[(this.logTable[a] + this.logTable[b]) % 255];
-        }        
-}
-
-GF256.QR_CODE_FIELD = new GF256(0x011D);
-GF256.DATA_MATRIX_FIELD = new GF256(0x012D);
-
-GF256.addOrSubtract=function( a,  b)
-{
-    return a ^ b;
-}
-
 /*
   Ported to JavaScript by Lazar Laszlo 2011 
   
@@ -2193,8 +2370,11 @@ function Decoder(bits){
     var totalBytes = 0;
     var i = 0
     var l =dataBlocks.length
+    var cur
     do{
-        totalBytes += dataBlocks[i++].numDataCodewords;
+        cur = dataBlocks[i++]
+        cur.correct()
+        totalBytes += cur.numDataCodewords;
     }while(i<l)
     this.hammred = 0
     this.changed = 0
@@ -2222,7 +2402,7 @@ Decoder.prototype = {
             dataBlock = this.dataBlocks[i++]
             codewordBytes = dataBlock.codewords
             numDataCodewords = dataBlock.numDataCodewords
-            this.correctErrors(codewordBytes, numDataCodewords)
+            //this.correctErrors(codewordBytes, numDataCodewords)
             i2=0
             do{this.resultBytes[resultOffset++] = codewordBytes[i2++]}while(i2<numDataCodewords)
         }while(i<l)
@@ -4618,6 +4798,7 @@ addEventListener('message', function(e) {
         } catch(e){
             console.log(new Date() - start2 + ' 2')
              console.log(e)
+             console.log(e.stack)
             return
         }
   }
