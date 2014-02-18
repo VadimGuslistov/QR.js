@@ -1187,7 +1187,7 @@ DataBlock.prototype = {
                     // fix me can this happen -- investigate
                     throw "ReedSolomonException Bad error location";
                 }
-                this.codewords[position] = GF256.addOrSubtract(this.codewords[position],errorMagnitudes[i])
+                this.codewords[position] = this.codewords[position] ^ errorMagnitudes[i]
                 
             }
             this.check()
@@ -1289,7 +1289,7 @@ DataBlock.prototype = {
                 {
                     if (i != j)
                     {
-                        denominator = this.field.multiply(denominator, GF256.addOrSubtract(1, this.field.multiply(errorLocations[j], xiInverse)));
+                        denominator = this.field.multiply(denominator, 1 ^ this.field.multiply(errorLocations[j], xiInverse));
                     }
                 }
                 result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
@@ -1952,7 +1952,7 @@ function ReedSolomonDecoder(field)
                     throw "ReedSolomonException Bad error location";
                 }
                 org = received[position]
-                _new = GF256.addOrSubtract(org,errorMagnitudes[i])
+                _new = org ^ errorMagnitudes[i]
                 diff = numBitsDiffering(org,_new)
                 if(diff >0){
                     this.changed++ 
@@ -2063,7 +2063,7 @@ function ReedSolomonDecoder(field)
                 {
                     if (i != j)
                     {
-                        denominator = this.field.multiply(denominator, GF256.addOrSubtract(1, this.field.multiply(errorLocations[j], xiInverse)));
+                        denominator = this.field.multiply(denominator, 1 ^ this.field.multiply(errorLocations[j], xiInverse));
                     }
                 }
                 result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
@@ -2192,14 +2192,14 @@ function GF256Poly(field,  coefficients)
             var result = 0;
             for (var i = 0; i < size; i++)
             {
-                result = GF256.addOrSubtract(result, this.coefficients[i]);
+                result = result ^ this.coefficients[i]
             }
             return result;
         }
         var result2 = this.coefficients[0];
         for (var i = 1; i < size; i++)
         {
-            result2 = GF256.addOrSubtract(this.field.multiply(a, result2), this.coefficients[i]);
+            result2 = this.field.multiply(a, result2) ^ this.coefficients[i]
         }
         return result2;
     }
@@ -2235,7 +2235,7 @@ function GF256Poly(field,  coefficients)
 
             for (var i = lengthDiff; i < largerCoefficients.length; i++)
             {
-                sumDiff[i] = GF256.addOrSubtract(smallerCoefficients[i - lengthDiff], largerCoefficients[i]);
+                sumDiff[i] = smallerCoefficients[i - lengthDiff] ^ largerCoefficients[i];
             }
 
             return new GF256Poly(field, sumDiff);
@@ -2260,7 +2260,7 @@ function GF256Poly(field,  coefficients)
                 var aCoeff = aCoefficients[i];
                 for (var j = 0; j < bLength; j++)
                 {
-                    product[i + j] = GF256.addOrSubtract(product[i + j], this.field.multiply(aCoeff, bCoefficients[j]));
+                    product[i + j] = product[i + j] ^ this.field.multiply(aCoeff, bCoefficients[j])
                 }
             }
             return new GF256Poly(this.field, product);
