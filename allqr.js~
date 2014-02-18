@@ -1029,43 +1029,36 @@ function BitMatrix( width,  height)
 */
 
 
-function DataBlock(numDataCodewords,  codewords)
-{
+function DataBlock(numDataCodewords,  numBlockCodewords){
 	this.numDataCodewords = numDataCodewords;
-	this.codewords = codewords;
+	this.codewords = new Uint8Array(numBlockCodewords)
 
-	this.__defineGetter__("NumDataCodewords", function()
+}
+/*
+function DataBlocks(rawCodewords,  version,  ecLevel){
+    if (rawCodewords.length != version.TotalCodewords)
 	{
-		return this.numDataCodewords;
-	});
-	this.__defineGetter__("Codewords", function()
-	{
-		return this.codewords;
-	});
-}	
-
-DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
-{
-
-	if (rawCodewords.length != version.TotalCodewords)
-	{
-		throw "ArgumentException";
+		throw "ArgumentException"; // fix me can this happen -- investigate 
 	}
-
-	// Figure out the number and size of data blocks used by this version and
-	// error correction level
-	var ecBlocks = version.getECBlocksForLevel(ecLevel);
+    var ecBlocks = version.getECBlocksForLevel(ecLevel);
 
 	// First count the total number of data blocks
 	var totalBlocks = 0;
+	var result = new Array();
 	var ecBlockArray = ecBlocks.getECBlocks();
+	var l = ecBlockArray.length
+	var i = 0
+	do{
+	    
+	}while(i<l)
 	for (var i = 0; i < ecBlockArray.length; i++)
 	{
 		totalBlocks += ecBlockArray[i].Count;
 	}
 
 	// Now establish DataBlocks of the appropriate size and number of data codewords
-	var result = new Array(totalBlocks);
+	var result = new Array();
+	
 	var numResultBlocks = 0;
 	for (var j = 0; j < ecBlockArray.length; j++)
 	{
@@ -1104,6 +1097,95 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 			result[j].codewords[i] = rawCodewords[rawCodewordsOffset++];
 		}
 	}
+	// Fill out the last data block in the longer ones
+	for (var j = longerBlocksStartAt; j < numResultBlocks; j++)
+	{
+		result[j].codewords[shorterBlocksNumDataCodewords] = rawCodewords[rawCodewordsOffset++];
+	}
+	// Now add in error correction blocks
+	var max = result[0].codewords.length;
+	for (var i = shorterBlocksNumDataCodewords; i < max; i++)
+	{
+		for (var j = 0; j < numResultBlocks; j++)
+		{
+			var iOffset = j < longerBlocksStartAt?i:i + 1;
+			result[j].codewords[iOffset] = rawCodewords[rawCodewordsOffset++];
+		}
+	}
+	return result;
+
+}
+*/
+
+DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
+{
+
+	if (rawCodewords.length != version.TotalCodewords)
+	{
+		throw "ArgumentException"; // fix me can this happen -- investigate 
+	}
+
+	// Figure out the number and size of data blocks used by this version and
+	// error correction level
+	var ecBlocks = version.getECBlocksForLevel(ecLevel)
+
+	// First count the total number of data blocks
+
+	var ecBlockArray = ecBlocks.getECBlocks()
+
+
+	// Now establish DataBlocks of the appropriate size and number of data codewords
+	var result = new Array()
+	var numResultBlocks=0;
+	var count,ecBlock,numDataCodewords,numBlockCodewords
+	var l = ecBlockArray.length
+	var i
+	var j = 0
+	var tmp
+	do{
+		ecBlock = ecBlockArray[j++];
+		count = ecBlock.count
+		numResultBlocks+= count
+		i=0
+		do{
+		    i++
+			numDataCodewords = ecBlock.DataCodewords;
+			numBlockCodewords = ecBlocks.ECCodewordsPerBlock + numDataCodewords;
+			result.push(new DataBlock(numDataCodewords,numBlockCodewords))
+		}while(i<count)
+	}while(j<l)
+
+	// All blocks have the same amount of data, except that the last n
+	// (where n may be 0) have 1 more byte. Figure out where these start.
+	var shorterBlocksTotalCodewords = result[0].codewords.length;
+	var longerBlocksStartAt = numResultBlocks - 1;
+	while (longerBlocksStartAt >= 0)
+	{
+		numBlockCodewords = result[longerBlocksStartAt].codewords.length;
+		if (numBlockCodewords == shorterBlocksTotalCodewords)
+		{
+			break;
+		}
+		longerBlocksStartAt--;
+	}
+	longerBlocksStartAt++;
+
+	var shorterBlocksNumDataCodewords = shorterBlocksTotalCodewords - ecBlocks.ECCodewordsPerBlock;
+	// The last elements of result may be 1 element longer;
+	// first fill out as many elements as all of them have
+	var rawCodewordsOffset = 0
+	i=0
+	j=0
+	do{
+
+			result[j].codewords[i] = rawCodewords[rawCodewordsOffset++];
+			j++
+	    j++
+	    tmp = (j-numResultBlocks)>>>31
+	    j *= tmp
+	    i+= tmp^1
+
+	}while( i < shorterBlocksNumDataCodewords)
 	// Fill out the last data block in the longer ones
 	for (var j = longerBlocksStartAt; j < numResultBlocks; j++)
 	{
@@ -2111,7 +2193,7 @@ function Decoder(bits){
 	var i = 0
 	var l =dataBlocks.length
 	do{
-	    totalBytes += dataBlocks[i++].NumDataCodewords;
+	    totalBytes += dataBlocks[i++].numDataCodewords;
 	}while(i<l)
 	this.hammred = 0
 	this.changed = 0
@@ -2137,8 +2219,8 @@ Decoder.prototype = {
         i=0
         do{
             dataBlock = this.dataBlocks[i++]
-            codewordBytes = dataBlock.Codewords
-		    numDataCodewords = dataBlock.NumDataCodewords
+            codewordBytes = dataBlock.codewords
+		    numDataCodewords = dataBlock.numDataCodewords
             this.correctErrors(codewordBytes, numDataCodewords)
             i2=0
             do{this.resultBytes[resultOffset++] = codewordBytes[i2++]}while(i2<numDataCodewords)
@@ -2171,7 +2253,7 @@ Decoder.prototype = {
         rsDecoder =  new ReedSolomonDecoder(GF256.QR_CODE_FIELD)
         rsDecoder.decode(codewordsInts, numECCodewords)
         console.log('bytes changed ' + rsDecoder.changed + ' ' + rsDecoder.changed/(codewordBytes.length*0.01) + '% out of ' + codewordBytes.length  )
-                
+        // Fail if corrected data has errors when decoded a 2nd time  
         if(rsDecoder.changed >0){
             throw "scan uncorrectable "
         }
