@@ -1056,8 +1056,8 @@ function GF256( primitive)
     this.zero = new GF256Poly(this, GF256.zeroArr);
     this.one = new GF256Poly(this, GF256.oneArr);
     // fix me downstream code is looking data with this name
-    this.Zero = this.zero
-    this.One = this.one
+
+
     /////
        
 }
@@ -1193,11 +1193,11 @@ DataBlock.prototype = {
 
         var rLast = a;
         var r = b;
-        var sLast = this.field.One;
-        var s = this.field.Zero;
-        var tLast = this.field.Zero;
-        var t = this.field.One;
-        var rDiv2 = R*0.5|0
+        var sLast = this.field.one;
+        var s = this.field.zero;
+        var tLast = this.field.zero;
+        var t = this.field.one;
+        var rDiv2 = R*0.5|0 // Math.floor(R/2)
         // Run Euclidean algorithm until r's degree is less than R/2
         while (r.Degree >=rDiv2)
         {
@@ -1209,16 +1209,16 @@ DataBlock.prototype = {
             tLast = t;
 
             // Divide rLastLast by rLast, with quotient in q and remainder in r
-            if (rLast.Zero)
+            if (rLast.isZero())
             {
                 // Oops, Euclidean algorithm already terminated?
                 throw "r_{i-1} was zero";
             }
             r = rLastLast;
-            var q = this.field.Zero;
+            var q = this.field.zero;
             var denominatorLeadingTerm = rLast.getCoefficient(rLast.Degree);
             var dltInverse = this.field.inverse(denominatorLeadingTerm);
-            while (r.Degree >= rLast.Degree && !r.Zero)
+            while (r.Degree >= rLast.Degree && !r.isZero())
             {
                 var degreeDiff = r.Degree - rLast.Degree;
                 var scale = this.field.multiply(r.getCoefficient(r.Degree), dltInverse);
@@ -1960,10 +1960,10 @@ function ReedSolomonDecoder(field)
 
             var rLast = a;
             var r = b;
-            var sLast = this.field.One;
-            var s = this.field.Zero;
-            var tLast = this.field.Zero;
-            var t = this.field.One;
+            var sLast = this.field.one;
+            var s = this.field.zero;
+            var tLast = this.field.zero;
+            var t = this.field.one;
 
             // Run Euclidean algorithm until r's degree is less than R/2
             while (r.Degree >= Math.floor(R / 2))
@@ -1976,16 +1976,16 @@ function ReedSolomonDecoder(field)
                 tLast = t;
 
                 // Divide rLastLast by rLast, with quotient in q and remainder in r
-                if (rLast.Zero)
+                if (rLast.isZero())
                 {
                     // Oops, Euclidean algorithm already terminated?
                     throw "r_{i-1} was zero";
                 }
                 r = rLastLast;
-                var q = this.field.Zero;
+                var q = this.field.zero;
                 var denominatorLeadingTerm = rLast.getCoefficient(rLast.Degree);
                 var dltInverse = this.field.inverse(denominatorLeadingTerm);
-                while (r.Degree >= rLast.Degree && !r.Zero)
+                while (r.Degree >= rLast.Degree && !r.isZero())
                 {
                     var degreeDiff = r.Degree - rLast.Degree;
                     var scale = this.field.multiply(r.getCoefficient(r.Degree), dltInverse);
@@ -2133,7 +2133,7 @@ function GF256Poly(field,  coefficients)
         }
         
         if (firstNonZero == coefficientsLength){
-            _coefficients = field.Zero.coefficients;
+            _coefficients = field.zero.coefficients;
         }
         else{
             l = coefficientsLength - firstNonZero
@@ -2148,10 +2148,10 @@ function GF256Poly(field,  coefficients)
     this.coefficients = _coefficients
     this.Degree = _coefficients.length - 1
     this.Coefficients = _coefficients // fix me downstream code looks for this
-    this.__defineGetter__("Zero", function()
-    {
-        return this.coefficients[0] == 0;
-    });
+    this.isZero = function (){
+        return this.coefficients[0] == 0
+    }
+
     
 
 
@@ -2190,14 +2190,12 @@ function GF256Poly(field,  coefficients)
         {
             if (this.field != other.field)
             {
-                throw "GF256Polys do not have same GF256 field";
+                throw "GF256Polys do not have same GF256 field"; // fix me can this happen in this code
             }
-            if (this.Zero)
-            {
+            if (this.isZero()){
                 return other;
             }
-            if (other.Zero)
-            {
+            if (other.isZero()){
                 return this;
             }
 
@@ -2228,9 +2226,9 @@ function GF256Poly(field,  coefficients)
             {
                 throw "GF256Polys do not have same GF256 field";
             }
-            if (this.Zero || other.Zero)
+            if (this.isZero() || other.isZero())
             {
-                return this.field.Zero;
+                return this.field.zero;
             }
             var aCoefficients = this.coefficients;
             var aLength = aCoefficients.length;
@@ -2251,7 +2249,7 @@ function GF256Poly(field,  coefficients)
         {
             if (scalar == 0)
             {
-                return this.field.Zero;
+                return this.field.zero;
             }
             if (scalar == 1)
             {
@@ -2273,7 +2271,7 @@ function GF256Poly(field,  coefficients)
             }
             if (coefficient == 0)
             {
-                return this.field.Zero;
+                return this.field.zero;
             }
             var size = this.coefficients.length;
             var product = new Array(size + degree);
@@ -2290,18 +2288,18 @@ function GF256Poly(field,  coefficients)
             {
                 throw "GF256Polys do not have same GF256 field";
             }
-            if (other.Zero)
+            if (other.isZero())
             {
                 throw "Divide by 0";
             }
 
-            var quotient = this.field.Zero;
+            var quotient = this.field.zero;
             var remainder = this;
 
             var denominatorLeadingTerm = other.getCoefficient(other.Degree);
             var inverseDenominatorLeadingTerm = this.field.inverse(denominatorLeadingTerm);
 
-            while (remainder.Degree >= other.Degree && !remainder.Zero)
+            while (remainder.Degree >= other.Degree && !remainder.isZero())
             {
                 var degreeDifference = remainder.Degree - other.Degree;
                 var scale = this.field.multiply(remainder.getCoefficient(remainder.Degree), inverseDenominatorLeadingTerm);
