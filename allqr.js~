@@ -2156,8 +2156,7 @@ function GF256Poly(field,  coefficients)
         return this.coefficients[this.Degree - degree];
     }
 
-    this.evaluateAt=function( a)
-    {
+    this.evaluateAt=function( a){
         var i,result,size
         if (a == 0)
         {
@@ -2179,39 +2178,42 @@ function GF256Poly(field,  coefficients)
         return result;
     }
 
-    this.addOrSubtract=function( other)
+    this.addOrSubtract=function( other){
+        if (this.field != other.field)
         {
-            if (this.field != other.field)
-            {
-                throw "GF256Polys do not have same GF256 field"; // fix me can this happen in this code
-            }
-            if (this.isZero()){
-                return other;
-            }
-            if (other.isZero()){
-                return this;
-            }
+            throw "GF256Polys do not have same GF256 field"; // fix me can this happen in this code
+        }
+        if (this.isZero()){
+            return other;
+        }
+        if (other.isZero()){
+            return this;
+        }
+        var i,temp,sumDiff,lengthDiff
+        var smallerCoefficients = this.coefficients;
+        var largerCoefficients = other.coefficients;
+        var smallerCoefficients_l = smallerCoefficients.length
+        var largerCoefficients_l = largerCoefficients.length
+        if (smallerCoefficients_l > largerCoefficients_l)
+        {
+            var temp = smallerCoefficients;
+            smallerCoefficients = largerCoefficients;
+            largerCoefficients = temp;
+            smallerCoefficients_l ^= largerCoefficients_l
+            largerCoefficients_l ^= smallerCoefficients_l
+            smallerCoefficients_l ^= largerCoefficients_l
+        }
+        sumDiff = new Uint8Array(largerCoefficients_l);
+        lengthDiff = largerCoefficients_l - smallerCoefficients_l;
+        // Copy high-order terms only found in higher-degree polynomial's coefficients
 
-            var smallerCoefficients = this.coefficients;
-            var largerCoefficients = other.coefficients;
-            if (smallerCoefficients.length > largerCoefficients.length)
-            {
-                var temp = smallerCoefficients;
-                smallerCoefficients = largerCoefficients;
-                largerCoefficients = temp;
-            }
-            var sumDiff = new Array(largerCoefficients.length);
-            var lengthDiff = largerCoefficients.length - smallerCoefficients.length;
-            // Copy high-order terms only found in higher-degree polynomial's coefficients
-            //Array.Copy(largerCoefficients, 0, sumDiff, 0, lengthDiff);
-            for(var ci=0;ci<lengthDiff;ci++)sumDiff[ci]=largerCoefficients[ci];
+        i=0
+        do{sumDiff[i]=largerCoefficients[i];i++}while(i<lengthDiff)
+        i = lengthDiff
+        do{sumDiff[i] = smallerCoefficients[i - lengthDiff] ^ largerCoefficients[i];i++}while(i < largerCoefficients_l)
+        
 
-            for (var i = lengthDiff; i < largerCoefficients.length; i++)
-            {
-                sumDiff[i] = smallerCoefficients[i - lengthDiff] ^ largerCoefficients[i];
-            }
-
-            return new GF256Poly(field, sumDiff);
+        return new GF256Poly(field, sumDiff);
     }
     this.multiply1=function( other)
         {
