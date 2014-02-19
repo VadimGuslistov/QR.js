@@ -318,16 +318,18 @@ return stackBlurGray
 
 //code below this line did not come from BlurStack
 
-//code below this line did not come from BlurStack
-
-/*
+ /*
+  
+  the code below this line was derived from a port of ZXing to JavaScript by Lazar Laszlo
+  Much of the code has been modified for speed and to fit well as a JavaScript library
+  
+  Copyright from org code:
+  ----------------------------------------------
   Ported to JavaScript by Lazar Laszlo 2011 
   
   lazarsoft@gmail.com, www.lazarsoft.info
   
-*/
 
-/*
 *
 * Copyright 2007 ZXing authors
 *
@@ -342,6 +344,8 @@ return stackBlurGray
 * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 * See the License for the specific language governing permissions and
 * limitations under the License.
+  ----------------------------------------------
+
 */
 
 
@@ -440,7 +444,6 @@ GridSampler.sampleGrid3=function( image,  dimension,  transform)
                 {
                     for (var x = 0; x < max; x += 2)
                     {
-                        var xpoint = (Math.floor( points[x]) * 4) + (Math.floor( points[x + 1]) * qrcode.width * 4);
                         var bit = image[Math.floor( points[x])+ qrcode.width* Math.floor( points[x + 1])];
 
                         //bits[x >> 1][ y]=bit;
@@ -469,29 +472,6 @@ GridSampler.sampleGridx=function( image,  dimension,  p1ToX,  p1ToY,  p2ToX,  p2
 
     return GridSampler.sampleGrid3(image, dimension, transform);
 }
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 
@@ -730,36 +710,13 @@ function buildVersions()
     new Version(38, new Array(6, 32, 58, 84, 110, 136, 162), new ECBlocks(30, new ECB(4, 122), new ECB(18, 123)), new ECBlocks(28, new ECB(13, 46), new ECB(32, 47)), new ECBlocks(30, new ECB(48, 24), new ECB(14, 25)), new ECBlocks(30, new ECB(42, 15), new ECB(32, 16))), 
     new Version(39, new Array(6, 26, 54, 82, 110, 138, 166), new ECBlocks(30, new ECB(20, 117), new ECB(4, 118)), new ECBlocks(28, new ECB(40, 47), new ECB(7, 48)), new ECBlocks(30, new ECB(43, 24), new ECB(22, 25)), new ECBlocks(30, new ECB(10, 15), new ECB(67, 16))), 
     new Version(40, new Array(6, 30, 58, 86, 114, 142, 170), new ECBlocks(30, new ECB(19, 118), new ECB(6, 119)), new ECBlocks(28, new ECB(18, 47), new ECB(31, 48)), new ECBlocks(30, new ECB(34, 24), new ECB(34, 25)), new ECBlocks(30, new ECB(20, 15), new ECB(61, 16))));
-}/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
+}
 
 
 
 var FORMAT_INFO_MASK_QR = 0x5412;
 var FORMAT_INFO_DECODE_LOOKUP = new Array(new Array(0x5412, 0x00), new Array(0x5125, 0x01), new Array(0x5E7C, 0x02), new Array(0x5B4B, 0x03), new Array(0x45F9, 0x04), new Array(0x40CE, 0x05), new Array(0x4F97, 0x06), new Array(0x4AA0, 0x07), new Array(0x77C4, 0x08), new Array(0x72F3, 0x09), new Array(0x7DAA, 0x0A), new Array(0x789D, 0x0B), new Array(0x662F, 0x0C), new Array(0x6318, 0x0D), new Array(0x6C41, 0x0E), new Array(0x6976, 0x0F), new Array(0x1689, 0x10), new Array(0x13BE, 0x11), new Array(0x1CE7, 0x12), new Array(0x19D0, 0x13), new Array(0x0762, 0x14), new Array(0x0255, 0x15), new Array(0x0D0C, 0x16), new Array(0x083B, 0x17), new Array(0x355F, 0x18), new Array(0x3068, 0x19), new Array(0x3F31, 0x1A), new Array(0x3A06, 0x1B), new Array(0x24B4, 0x1C), new Array(0x2183, 0x1D), new Array(0x2EDA, 0x1E), new Array(0x2BED, 0x1F));
-var BITS_SET_IN_HALF_BYTE = new Array(0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4);
+
 
 
 function FormatInformation(formatInfo)
@@ -786,12 +743,7 @@ function FormatInformation(formatInfo)
     }
 }
 
-FormatInformation.numBitsDiffering=function( a,  b)
-{
-    a ^= b; // a now has a 1 bit exactly where its bit differs with b's
-    // Count bits set quickly with a series of lookups:
-    return BITS_SET_IN_HALF_BYTE[a & 0x0F] + BITS_SET_IN_HALF_BYTE[(URShift(a, 4) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 8) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 12) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 16) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 20) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 24) & 0x0F)] + BITS_SET_IN_HALF_BYTE[(URShift(a, 28) & 0x0F)];
-}
+
 
 FormatInformation.decodeFormatInformation=function( maskedFormatInfo)
 {
@@ -836,30 +788,7 @@ FormatInformation.doDecodeFormatInformation=function( maskedFormatInfo)
     return null;
 }
 
-        /*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
+    
 
 function ErrorCorrectionLevel(ordinal,  bits, name)
 {
@@ -2004,250 +1933,6 @@ function DataMask111()
 
 DataMask.DATA_MASKS = new Array(new DataMask000(), new DataMask001(), new DataMask010(), new DataMask011(), new DataMask100(), new DataMask101(), new DataMask110(), new DataMask111());
 
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
-
-function ReedSolomonDecoder(field)
-{
-    this.field = field;
-    this.hammered = 0
-    this.changed = 0
-    this.avg = 0
-    this.decode=function(received,  twoS)
-    {
-            var poly = new GF256Poly(this.field, received);
-            var syndromeCoefficients = new Array(twoS);
-            for(var i=0;i<syndromeCoefficients.length;i++)syndromeCoefficients[i]=0;
-            var dataMatrix = false;//this.field.Equals(GF256.DATA_MATRIX_FIELD);
-            var noError = true;
-            for (var i = 0; i < twoS; i++)
-            {
-                // Thanks to sanfordsquires for this fix:
-                var eval = poly.evaluateAt(this.field.exp(dataMatrix?i + 1:i));
-                syndromeCoefficients[syndromeCoefficients.length - 1 - i] = eval;
-                if (eval != 0)
-                {
-                    noError = false;
-                }
-            }
-            if (noError)
-            {
-                return ;
-            }
-            var syndrome = new GF256Poly(this.field, syndromeCoefficients);
-            var sigmaOmega = this.runEuclideanAlgorithm(this.field.buildMonomial(twoS, 1), syndrome, twoS);
-            var sigma = sigmaOmega[0];
-            var omega = sigmaOmega[1];
-            var errorLocations = this.findErrorLocations(sigma);
-            var errorMagnitudes = this.findErrorMagnitudes(omega, errorLocations, dataMatrix);
-            var org,_new
-            var diff
-            for (var i = 0; i < errorLocations.length; i++)
-            {
-                var position = received.length - 1 - this.field.log(errorLocations[i]);
-                if (position < 0)
-                {
-                    // fix me can this happen -- investigate
-                    throw "ReedSolomonException Bad error location";
-                }
-                org = received[position]
-                _new = org ^ errorMagnitudes[i]
-                diff = numBitsDiffering(org,_new)
-                if(diff >0){
-                    this.changed++ 
-                }
-                //this.changed += (-diff)>>>31 // this avoids a branch but is it faster fix me - investigate 
-                this.hammered += diff // fix me we know we are working with a mear byte so we can use a numBitsDiffering that won't correct for oversized numbers
-                received[position] = _new
-            }
-            this.avg = this.hammered/this.changed
-    }
-
-    this.runEuclideanAlgorithm=function( a,  b,  R)
-        {
-            // Assume a's degree is >= b's
-            if (a.Degree < b.Degree)
-            {
-                var temp = a;
-                a = b;
-                b = temp;
-            }
-
-            var rLast = a;
-            var r = b;
-            var sLast = this.field.one;
-            var s = this.field.zero;
-            var tLast = this.field.zero;
-            var t = this.field.one;
-
-            // Run Euclidean algorithm until r's degree is less than R/2
-            while (r.Degree >= Math.floor(R / 2))
-            {
-                var rLastLast = rLast;
-                var sLastLast = sLast;
-                var tLastLast = tLast;
-                rLast = r;
-                sLast = s;
-                tLast = t;
-
-                // Divide rLastLast by rLast, with quotient in q and remainder in r
-                if (rLast.isZero())
-                {
-                    // Oops, Euclidean algorithm already terminated?
-                    throw "r_{i-1} was zero";
-                }
-                r = rLastLast;
-                var q = this.field.zero;
-                var denominatorLeadingTerm = rLast.getCoefficient(rLast.Degree);
-                var dltInverse = this.field.inverse(denominatorLeadingTerm);
-                while (r.Degree >= rLast.Degree && !r.isZero())
-                {
-                    var degreeDiff = r.Degree - rLast.Degree;
-                    var scale = this.field.multiply(r.getCoefficient(r.Degree), dltInverse);
-                    q = q.addOrSubtract(this.field.buildMonomial(degreeDiff, scale));
-                    r = r.addOrSubtract(rLast.multiplyByMonomial(degreeDiff, scale));
-                    //r.EXE();
-                }
-
-                s = q.multiply1(sLast).addOrSubtract(sLastLast);
-                t = q.multiply1(tLast).addOrSubtract(tLastLast);
-            }
-
-            var sigmaTildeAtZero = t.getCoefficient(0);
-            if (sigmaTildeAtZero == 0)
-            {
-                throw "ReedSolomonException sigmaTilde(0) was zero";
-            }
-
-            var inverse = this.field.inverse(sigmaTildeAtZero);
-            var sigma = t.multiply2(inverse);
-            var omega = r.multiply2(inverse);
-            return new Array(sigma, omega);
-        }
-    this.findErrorLocations=function( errorLocator)
-        {
-            // This is a direct application of Chien's search
-            var numErrors = errorLocator.Degree;
-            if (numErrors == 1)
-            {
-                // shortcut
-                return new Array(errorLocator.getCoefficient(1));
-            }
-            var result = new Array(numErrors);
-            var e = 0;
-            for (var i = 1; i < 256 && e < numErrors; i++)
-            {
-                if (errorLocator.evaluateAt(i) == 0)
-                {
-                    result[e] = this.field.inverse(i);
-                    e++;
-                }
-            }
-            if (e != numErrors)
-            {
-                throw "Error locator degree does not match number of roots";
-            }
-            return result;
-        }
-    this.findErrorMagnitudes=function( errorEvaluator,  errorLocations,  dataMatrix)
-        {
-            // This is directly applying Forney's Formula
-            var s = errorLocations.length;
-            var result = new Array(s);
-            for (var i = 0; i < s; i++)
-            {
-                var xiInverse = this.field.inverse(errorLocations[i]);
-                var denominator = 1;
-                for (var j = 0; j < s; j++)
-                {
-                    if (i != j)
-                    {
-                        denominator = this.field.multiply(denominator, 1 ^ this.field.multiply(errorLocations[j], xiInverse));
-                    }
-                }
-                result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
-                // Thanks to sanfordsquires for this fix:
-                if (dataMatrix)
-                {
-                    result[i] = this.field.multiply(result[i], xiInverse);
-                }
-            }
-            return result;
-        }
-}
-
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
-
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
-
-
 
 function Decoder(bits){
     var parser = new BitMatrixParser(bits);
@@ -2350,29 +2035,6 @@ Decoder.prototype = {
 }
 
 
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function PerspectiveTransform( a11,  a21,  a31,  a12,  a22,  a32,  a13,  a23,  a33)
@@ -2764,22 +2426,6 @@ function Detector(image)
     }
 }
 
-/*
-   Copyright 2011 Lazar Laszlo (lazarsoft@gmail.com, www.lazarsoft.info)
-   
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-       http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
-*/
-
 
 qrcode = {};
 
@@ -2793,41 +2439,14 @@ qrcode.sizeOfDataLengthInfo =  [  [ 10, 9, 8, 8 ],  [ 12, 11, 16, 10 ],  [ 14, 1
 
 
 
-qrcode.isUrl = function(s)
-{
-    var regexp = /(ftp|http|https):\/\/(\w+:{0,1}\w*@)?(\S+)(:[0-9]+)?(\/|\/([\w#!:.?+=&%@!\-\/]))?/;
-    return regexp.test(s);
-}
-
-qrcode.decode_url = function (s)
-{
-  var escaped = "";
-  try{
-    escaped = escape( s );
-  }
-  catch(e)
-  {
-    console.log(e);
-    escaped = s;
-  }
-  var ret = "";
-  try{
-    ret = decodeURIComponent( escaped );
-  }
-  catch(e)
-  {
-    console.log(e);
-    ret = escaped;
-  }
-  return ret;
-}
 
 qrcode.decode_utf8 = function ( s )
 {
-    if(qrcode.isUrl(s))
+    /*if(qrcode.isUrl(s))
         return qrcode.decode_url(s);
     else
-        return s;
+    */
+        return s; // fix me WAT
 }
 qrcode.process = function(image,w,h){
 
@@ -2857,7 +2476,7 @@ qrcode.process = function(image,w,h){
 
         
         return qrcode.decode_utf8(str);
-        //alert("Time:" + time + " Code: "+str);
+
     
    
 }
@@ -2882,29 +2501,6 @@ Array.prototype.remove = function(from, to) {
   this.length = from < 0 ? this.length + from : from;
   return this.push.apply(this, rest);
 };
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 var MIN_SKIP = 3;
@@ -3531,29 +3127,6 @@ function FinderPatternFinder()
         return new FinderPatternInfo(patternInfo);
     };
 }
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function AlignmentPattern(posX, posY,  estimatedModuleSize)
@@ -3809,29 +3382,7 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
             throw "Couldn't find enough alignment patterns";
         }
 
-}/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+}
 
 
 function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
@@ -4157,26 +3708,6 @@ function numBitsDiffering(a,b){
     _a = (_a & 0x33333333) + ((_a >> 2) & 0x33333333); 
     return c+ (((_a + (_a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24)
     
-}
-
-function gray_from_canvas(buff){
-  buff = new Uint32Array(buff.buffer)
-  var grey = new Uint8Array(buff.length)
-
-  var r,b,g,cur,i,l
-  i=0
-  l = buff.length
-  do{
-       cur = buff[i]
-       r = (cur>>>16)&0xff
-       b = (cur>>>8)&0xff
-       g = cur&0xff
-       grey[i++]  = ((Math.max(r,g,b)+Math.min(r,b,g))*0.5)|0
-      
-  }while(i<l)
-
- 
-  return grey
 }
 
 
