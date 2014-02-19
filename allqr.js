@@ -1055,10 +1055,6 @@ function GF256( primitive)
 
     this.zero = new GF256Poly(this, GF256.zeroArr);
     this.one = new GF256Poly(this, GF256.oneArr);
-    // fix me downstream code is looking data with this name
-
-
-    /////
        
 }
 GF256.prototype ={
@@ -2157,33 +2153,29 @@ function GF256Poly(field,  coefficients)
 
     this.getCoefficient=function( degree)
     {
-        return this.coefficients[this.coefficients.length - 1 - degree];
+        return this.coefficients[this.Degree - degree];
     }
 
-    this.evaluateAt=function( a)
-    {
+    this.evaluateAt=function( a){
+        var i,result,size
         if (a == 0)
         {
             // Just return the x^0 coefficient
             return this.getCoefficient(0);
         }
-        var size = this.coefficients.length;
+        size = this.coefficients.length;
         if (a == 1)
         {
             // Just the sum of the coefficients
-            var result = 0;
-            for (var i = 0; i < size; i++)
-            {
-                result = result ^ this.coefficients[i]
-            }
+            result = 0;
+            i = 0
+            do{result ^=  this.coefficients[i++]}while(i<size)
             return result;
         }
-        var result2 = this.coefficients[0];
-        for (var i = 1; i < size; i++)
-        {
-            result2 = this.field.multiply(a, result2) ^ this.coefficients[i]
-        }
-        return result2;
+        result = this.coefficients[0]
+        i=1
+        do{result = this.field.multiply(a, result) ^ this.coefficients[i++]}while(i<size)
+        return result;
     }
 
     this.addOrSubtract=function( other)
@@ -2224,7 +2216,7 @@ function GF256Poly(field,  coefficients)
         {
             if (this.field!=other.field)
             {
-                throw "GF256Polys do not have same GF256 field";
+                throw "GF256Polys do not have same GF256 field"; // fix me - can this happen in this code
             }
             if (this.isZero() || other.isZero())
             {
