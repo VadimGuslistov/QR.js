@@ -2441,47 +2441,45 @@ qrcode.orderBestPatterns=function(patterns)
 
            
 
-
+            var a,b,c,tmp
+            a =  patterns[0]
+            b =  patterns[1]
+            c =  patterns[2]
             // Find distances between pattern centers
-            var zeroOneDistance = patterns[0].intDistance(patterns[1])
-            var oneTwoDistance  = patterns[1].intDistance(patterns[2])
-            var zeroTwoDistance = patterns[0].intDistance(patterns[2])
+            var zeroOneDistance = a.intDistance(b)
+            var oneTwoDistance  = b.intDistance(c)
+            var zeroTwoDistance = a.intDistance(c)
 
-            var pointA, pointB, pointC;
+
             // Assume one closest to other two is B; A and C will just be guesses at first
             if (oneTwoDistance >= zeroOneDistance && oneTwoDistance >= zeroTwoDistance)
             {
-                pointB = patterns[0];
-                pointA = patterns[1];
-                pointC = patterns[2];
+                tmp = a
+                a = b
+                b = tmp
+
             }
-            else if (zeroTwoDistance >= oneTwoDistance && zeroTwoDistance >= zeroOneDistance)
+            else if (!(zeroTwoDistance >= oneTwoDistance && zeroTwoDistance >= zeroOneDistance))
             {
-                pointB = patterns[1];
-                pointA = patterns[0];
-                pointC = patterns[2];
-            }
-            else
-            {
-                pointB = patterns[2];
-                pointA = patterns[0];
-                pointC = patterns[1];
+                tmp = b
+                b = c
+                c = tmp
             }
 
             // Use cross product to figure out whether A and C are correct or flipped.
             // This asks whether BC x BA has a positive z component, which is the arrangement
             // we want for A, B, C. If it's negative, then we've got it flipped around and
             // should swap A and C.
-            if (qrPattern.crossProductZ(pointA, pointB, pointC) < 0.0)
+            if (qrPattern.crossProductZ(a, b, c) < 0.0)
             {
-                var temp = pointA;
-                pointA = pointC;
-                pointC = temp;
+                tmp = a;
+                a = c;
+                c = tmp;
             }
 
-            patterns[0] = pointA;
-            patterns[1] = pointB;
-            patterns[2] = pointC;
+            patterns[0] = a;
+            patterns[1] = b;
+            patterns[2] = c;
         }
 
 
