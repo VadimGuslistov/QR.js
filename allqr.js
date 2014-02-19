@@ -468,10 +468,7 @@ function ECB(count,  dataCodewords)
     this.count = count;
     this.dataCodewords = dataCodewords;
 
-    this.__defineGetter__("Count", function()
-    {
-        return this.count;
-    });
+  
     this.__defineGetter__("DataCodewords", function()
     {
         return this.dataCodewords;
@@ -524,7 +521,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
     for (var i = 0; i < ecbArray.length; i++)
     {
         var ecBlock = ecbArray[i];
-        total += ecBlock.Count * (ecBlock.DataCodewords + ecCodewords);
+        total += ecBlock.count * (ecBlock.DataCodewords + ecCodewords);
     }
     this.totalCodewords = total;
 
@@ -1246,7 +1243,7 @@ DataBlock.prototype = {
         var s = this.field.zero;
         var tLast = this.field.zero;
         var t = this.field.one;
-        var rDiv2 = R*0.5|0 // Math.floor(R/2)
+        var rDiv2 = R>>1 // Math.floor(R/2)
         // Run Euclidean algorithm until r's degree is less than R/2
         while (r.Degree >=rDiv2)
         {
@@ -1356,7 +1353,7 @@ function DataBlocks(rawCodewords,  version,  ecLevel){
     }while(i<l)
     for (var i = 0; i < ecBlockArray.length; i++)
     {
-        totalBlocks += ecBlockArray[i].Count;
+        totalBlocks += ecBlockArray[i].count;
     }
 
     // Now establish DataBlocks of the appropriate size and number of data codewords
@@ -1366,7 +1363,7 @@ function DataBlocks(rawCodewords,  version,  ecLevel){
     for (var j = 0; j < ecBlockArray.length; j++)
     {
         var ecBlock = ecBlockArray[j];
-        for (var i = 0; i < ecBlock.Count; i++)
+        for (var i = 0; i < ecBlock.count; i++)
         {
             var numDataCodewords = ecBlock.DataCodewords;
             var numBlockCodewords = ecBlocks.ECCodewordsPerBlock + numDataCodewords;
@@ -1709,29 +1706,7 @@ function BitMatrixParser(bitMatrix)
             }
             return result;
         }
-}/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+}
 
 
 var DataMask = {};
@@ -1937,8 +1912,6 @@ function Decoder(bits){
         cur.correct()
         totalBytes += cur.numDataCodewords;
     }while(i<l)
-    this.hammred = 0
-    this.changed = 0
     this.versionNumber = version.VersionNumber
     this.ecBits = ecLevel.Bits
     this.totalBytes = totalBytes
@@ -1967,52 +1940,11 @@ Decoder.prototype = {
             i2=0
             do{this.resultBytes[resultOffset++] = codewordBytes[i2++]}while(i2<numDataCodewords)
         }while(i<l)
-        console.log((this.hammred/(this.totalBytes*8*0.01)) + '% of ' + (this.totalBytes * 8) + ' corrected')
-        console.log((this.changed/(this.totalBytes*0.01)) + '% of ' + (this.totalBytes) + ' bytes corrected')
-        /*if((this.hammred/(this.totalBytes*8*0.01)) >= 3){
-            throw 'over 3% of bits changed bad scan'
-        }*/
+        
         
         return  new QRCodeDataBlockReader(this.resultBytes, this.versionNumber, this.ecBits);
 
-    },
-    correctErrors:function(codewordBytes, numDataCodewords){
-        var numCodewords = codewordBytes.length;
-        var numECCodewords = numCodewords - numDataCodewords;
-        var i
-        // First read into an array of ints 
-        var codewordsInts = new Array(numCodewords);
-        i=0
-        do{
-            codewordsInts[i] = codewordBytes[i] 
-            i++
-        }while(i<numCodewords) // fix me why would we need to mask a byte to fit into a byte 
-        var rsDecoder 
-        rsDecoder =  new ReedSolomonDecoder(GF256.QR_CODE_FIELD)
-            
-        rsDecoder.decode(codewordsInts, numECCodewords)
-        console.log('bytes changed ' + rsDecoder.changed + ' ' + rsDecoder.changed/(codewordBytes.length*0.01) + '% out of ' + codewordBytes.length  )
-        rsDecoder =  new ReedSolomonDecoder(GF256.QR_CODE_FIELD)
-        rsDecoder.decode(codewordsInts, numECCodewords)
-        console.log('bytes changed ' + rsDecoder.changed + ' ' + rsDecoder.changed/(codewordBytes.length*0.01) + '% out of ' + codewordBytes.length  )
-        // Fail if corrected data has errors when decoded a 2nd time  
-        if(rsDecoder.changed >0){
-            throw "scan uncorrectable "
-        }
-        
-        /*if(rsDecoder.changed/(codewordBytes.length*0.01) > 7.0){
-            throw "over 7 % of bytes changed bad scan"
-        }*/
-        this.changed += rsDecoder.changed
-
-        /*if(rsDecoder.hammered/(codewordBytes.length*8*0.01) > 1.0){
-            throw "Corrected bits over 1% this code is bad"
-        }*/
-
-        this.hammred += rsDecoder.hammered
-        i = 0
-        do{codewordBytes[i] = codewordsInts[i];i++}while(i<numCodewords) // fix me why would we need to mask a byte to fit into a byte 
-    },
+    }
     
     
 }
@@ -2047,9 +1979,9 @@ function PerspectiveTransform( a11,  a21,  a31,  a12,  a22,  a32,  a13,  a23,  a
             {
                 var x = points[i];
                 var y = points[i + 1];
-                var denominator = a13 * x + a23 * y + a33;
-                points[i] = (a11 * x + a21 * y + a31) / denominator;
-                points[i + 1] = (a12 * x + a22 * y + a32) / denominator;
+                var denominatorInverse = 1/(a13 * x + a23 * y + a33);
+                points[i] = (a11 * x + a21 * y + a31) *denominatorInverse;
+                points[i + 1] = (a12 * x + a22 * y + a32) *denominatorInverse;
             }
         }
     this. transformPoints2=function(xValues, yValues)
@@ -2059,9 +1991,9 @@ function PerspectiveTransform( a11,  a21,  a31,  a12,  a22,  a32,  a13,  a23,  a
             {
                 var x = xValues[i];
                 var y = yValues[i];
-                var denominator = this.a13 * x + this.a23 * y + this.a33;
-                xValues[i] = (this.a11 * x + this.a21 * y + this.a31) / denominator;
-                yValues[i] = (this.a12 * x + this.a22 * y + this.a32) / denominator;
+                var denominatorInverse = 1/(this.a13 * x + this.a23 * y + this.a33)
+                xValues[i] = (this.a11 * x + this.a21 * y + this.a31) *denominatorInverse;
+                yValues[i] = (this.a12 * x + this.a22 * y + this.a32) *denominatorInverse;
             }
         }
 
@@ -2099,9 +2031,9 @@ PerspectiveTransform.squareToQuadrilateral=function( x0,  y0,  x1,  y1,  x2,  y2
          var dx2 = x3 - x2;
          var dx3 = x0 - x1 + x2 - x3;
          var dy1 = y1 - y2;
-         var denominator = dx1 * dy2 - dx2 * dy1;
-         var a13 = (dx3 * dy2 - dx2 * dy3) / denominator;
-         var a23 = (dx1 * dy3 - dx3 * dy1) / denominator;
+         var denominatorInverse = 1/(dx1 * dy2 - dx2 * dy1)
+         var a13 = (dx3 * dy2 - dx2 * dy3) *denominatorInverse;
+         var a23 = (dx1 * dy3 - dx3 * dy1) *denominatorInverse;
         return new PerspectiveTransform(x1 - x0 + a13 * x1, x3 - x0 + a23 * x3, x0, y1 - y0 + a13 * y1, y3 - y0 + a23 * y3, y0, a13, a23, 1.0);
     }
 }
@@ -2235,22 +2167,22 @@ function Detector(image)
             var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(Math.floor(otherPattern.X), Math.floor(otherPattern.Y), Math.floor( pattern.X), Math.floor(pattern.Y));
             if (isNaN(moduleSizeEst1))
             {
-                return moduleSizeEst2 / 7.0;
+                return moduleSizeEst2 *0.142857143 // div by 7
             }
             if (isNaN(moduleSizeEst2))
             {
-                return moduleSizeEst1 / 7.0;
+                return moduleSizeEst1 *0.142857143 // div by 7
             }
             // Average them, and divide by 7 since we've counted the width of 3 black modules,
             // and 1 white and 1 black module on either side. Ergo, divide sum by 14.
-            return (moduleSizeEst1 + moduleSizeEst2) / 14.0;
+            return (moduleSizeEst1 + moduleSizeEst2) * 0.071428571 // div by 14
         }
 
 
     this.calculateModuleSize=function( topLeft,  topRight,  bottomLeft)
         {
             // Take the average
-            return (this.calculateModuleSizeOneWay(topLeft, topRight) + this.calculateModuleSizeOneWay(topLeft, bottomLeft)) / 2.0;
+            return (this.calculateModuleSizeOneWay(topLeft, topRight) + this.calculateModuleSizeOneWay(topLeft, bottomLeft)) *0.5 // div by 2
         }
 
     this.distance=function( pattern1,  pattern2)
@@ -2488,6 +2420,7 @@ Array.prototype.remove = function(from, to) {
 
 var MIN_SKIP = 3;
 var MAX_MODULES = 57;
+var INVERSE_MAX_MODULESx4 = 0.004385965
 var INTEGER_MATH_SHIFT = 8;
 var CENTER_QUORUM = 2;
 
@@ -2559,12 +2492,9 @@ function FinderPattern(posX, posY,  estimatedModuleSize)
     this.y=posY;
     this.count = 1;
     this.estimatedModuleSize = estimatedModuleSize;
-
+    this.estimatedModuleSizeInverse = 1/estimatedModuleSize // for faster div of estimatedModuleSize
  
-    this.__defineGetter__("Count", function()
-    {
-        return this.count;
-    });
+
     this.__defineGetter__("X", function()
     {
         return this.x;
@@ -2573,16 +2503,13 @@ function FinderPattern(posX, posY,  estimatedModuleSize)
     {
         return this.y;
     });
-    this.incrementCount = function()
-    {
-        this.count++;
-    }
+ 
     this.aboutEquals=function( moduleSize,  i,  j)
         {
             if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
             {
                 var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
-                return moduleSizeDiff <= 1.0 || moduleSizeDiff / this.estimatedModuleSize <= 1.0;
+                return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse <= 1.0;
             }
             return false;
         }
@@ -2630,14 +2557,14 @@ function FinderPatternFinder()
             {
                 return false;
             }
-            var moduleSize = Math.floor((totalModuleSize << INTEGER_MATH_SHIFT) / 7);
-            var maxVariance = Math.floor(moduleSize / 2);
+            var moduleSize = Math.floor((totalModuleSize << INTEGER_MATH_SHIFT) *0.142857143); // div by 7
+            var maxVariance = Math.floor(moduleSize >>1); // div by 2
             // Allow less than 50% variance from 1-1-3-1-1 proportions
             return Math.abs(moduleSize - (stateCount[0] << INTEGER_MATH_SHIFT)) < maxVariance && Math.abs(moduleSize - (stateCount[1] << INTEGER_MATH_SHIFT)) < maxVariance && Math.abs(3 * moduleSize - (stateCount[2] << INTEGER_MATH_SHIFT)) < 3 * maxVariance && Math.abs(moduleSize - (stateCount[3] << INTEGER_MATH_SHIFT)) < maxVariance && Math.abs(moduleSize - (stateCount[4] << INTEGER_MATH_SHIFT)) < maxVariance;
         }
     this.centerFromEnd=function( stateCount,  end)
         {
-            return  (end - stateCount[4] - stateCount[3]) - stateCount[2] / 2.0;
+            return  (end - stateCount[4] - stateCount[3]) - stateCount[2] * 0.5; // div by 2
         }
     this.crossCheckVertical=function( startI,  centerJ,  maxCount,  originalStateCountTotal)
         {
@@ -2803,7 +2730,7 @@ function FinderPatternFinder()
                 centerJ = this.crossCheckHorizontal(Math.floor( centerJ), Math.floor( centerI), stateCount[2], stateCountTotal);
                 if (!isNaN(centerJ))
                 {
-                    var estimatedModuleSize =   stateCountTotal / 7.0;
+                    var estimatedModuleSize =   stateCountTotal *0.142857143; // div by 7
                     var found = false;
                     var max = this.possibleCenters.length;
                     for (var index = 0; index < max; index++)
@@ -2812,7 +2739,7 @@ function FinderPatternFinder()
                         // Look for about the same center and module size:
                         if (center.aboutEquals(estimatedModuleSize, centerI, centerJ))
                         {
-                            center.incrementCount();
+                            center.count++;
                             found = true;
                             break;
                         }
@@ -2905,7 +2832,7 @@ function FinderPatternFinder()
             for (var i = 0; i < max; i++)
             {
                 var center =  this.possibleCenters[i];
-                if (center.Count >= CENTER_QUORUM)
+                if (center.count >= CENTER_QUORUM)
                 {
                     if (firstConfirmedCenter == null)
                     {
@@ -2919,7 +2846,7 @@ function FinderPatternFinder()
                         // difference in the x / y coordinates of the two centers.
                         // This is the case where you find top left last.
                         this.hasSkipped = true;
-                        return Math.floor ((Math.abs(firstConfirmedCenter.X - center.X) - Math.abs(firstConfirmedCenter.Y - center.Y)) / 2);
+                        return (Math.abs(firstConfirmedCenter.X - center.X) - Math.abs(firstConfirmedCenter.Y - center.Y)) >>1; // Math.floor(x/2)
                     }
                 }
             }
@@ -2934,7 +2861,7 @@ function FinderPatternFinder()
             for (var i = 0; i < max; i++)
             {
                 var pattern =  this.possibleCenters[i];
-                if (pattern.Count >= CENTER_QUORUM)
+                if (pattern.count >= CENTER_QUORUM)
                 {
                     confirmedCount++;
                     totalModuleSize += pattern.estimatedModuleSize;
@@ -2963,7 +2890,7 @@ function FinderPatternFinder()
         this.image=image;
         var maxI = qrcode.height;
         var maxJ = qrcode.width;
-        var iSkip = Math.floor((3 * maxI) / (4 * MAX_MODULES));
+        var iSkip = Math.floor((3 * maxI) * INVERSE_MAX_MODULESx4);
         if (iSkip < MIN_SKIP || tryHarder)
         {
                 iSkip = MIN_SKIP;
@@ -3102,30 +3029,18 @@ function AlignmentPattern(posX, posY,  estimatedModuleSize)
     this.y=posY;
     this.count = 1;
     this.estimatedModuleSize = estimatedModuleSize;
+    this.X = posX|0
+    this.Y = posY|0
+    this.estimatedModuleSizeInverse = 1/estimatedModuleSize
+  
+    
 
-
-    this.__defineGetter__("Count", function()
-    {
-        return this.count;
-    });
-    this.__defineGetter__("X", function()
-    {
-        return Math.floor(this.x);
-    });
-    this.__defineGetter__("Y", function()
-    {
-        return Math.floor(this.y);
-    });
-    this.incrementCount = function()
-    {
-        this.count++;
-    }
     this.aboutEquals=function( moduleSize,  i,  j)
         {
             if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
             {
                 var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
-                return moduleSizeDiff <= 1.0 || moduleSizeDiff / this.estimatedModuleSize <= 1.0;
+                return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse  <= 1.0;
             }
             return false;
         }
@@ -3146,12 +3061,12 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
 
     this.centerFromEnd=function(stateCount,  end)
         {
-            return  (end - stateCount[2]) - stateCount[1] / 2.0;
+            return  (end - stateCount[2]) - stateCount[1] * 0.5; // div by 2
         }
     this.foundPatternCross = function(stateCount)
         {
             var moduleSize = this.moduleSize;
-            var maxVariance = moduleSize / 2.0;
+            var maxVariance = moduleSize * 0.5; // div by 2
             for (var i = 0; i < 3; i++)
             {
                 if (Math.abs(moduleSize - stateCount[i]) >= maxVariance)
@@ -3228,10 +3143,10 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
         {
             var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
             var centerJ = this.centerFromEnd(stateCount, j);
-            var centerI = this.crossCheckVertical(i, Math.floor (centerJ), 2 * stateCount[1], stateCountTotal);
+            var centerI = this.crossCheckVertical(i, Math.floor (centerJ), stateCount[1] << 1, stateCountTotal); //  2 * stateCount[1]
             if (!isNaN(centerI))
             {
-                var estimatedModuleSize = (stateCount[0] + stateCount[1] + stateCount[2]) / 3.0;
+                var estimatedModuleSize = (stateCount[0] + stateCount[1] + stateCount[2]) * 0.333333333 // div by 3
                 var max = this.possibleCenters.length;
                 for (var index = 0; index < max; index++)
                 {
@@ -3467,7 +3382,7 @@ function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
                 if (length > 1)
                 {
                     intData = this.getNextBits(11);
-                    var firstLetter = Math.floor(intData / 45);
+                    var firstLetter = Math.floor(intData *0.022222222); // div by 45
                     var secondLetter = intData % 45;
                     strData += tableRomanAndFigure[firstLetter];
                     strData += tableRomanAndFigure[secondLetter];
@@ -3542,7 +3457,7 @@ function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
             {
                 intData = getNextBits(13);
                 var lowerByte = intData % 0xC0;
-                var higherByte = intData / 0xC0;
+                var higherByte = intData *0.005208333333333333; // div by 0xC0
 
                 var tempWord = (higherByte << 8) + lowerByte;
                 var shiftjisWord = 0;
@@ -3661,7 +3576,7 @@ function numBitsDiffering(a,b){
     // Count bits with ultra fast method
     // see http://graphics.stanford.edu/~seander/bithacks.html
     // this needs to be done in half’s as JavaScript will jam unsigned data into singed data making life hard
-    // fix me - my reasoning for splitting in half is anecdotal is not sure if it is truly necessary
+    // fix me - my reasoning for splitting in half is anecdotal and i am not sure if it is truly necessary
     var _a,c
     _a = (a>>>16) ^ (b>>>16) // now first half has 1 bit exactly where its bit differs with b's
     _a = _a - ((_a >> 1) & 0x55555555); 
@@ -3813,7 +3728,7 @@ function gray_from_canvas4(image,w,h)
             /// max and min  of r g and b ^^^^^^^^^^^^^^^^^^
             ///------------------------ 
                
-            target = ((max_c+min_c)*0.5)|0
+            target = (max_c+min_c)>>1
             
             grey1[point]= target
             count[target]++
@@ -3841,7 +3756,7 @@ function gray_from_canvas4(image,w,h)
         }while((dy-areaHeight)>>>31) // (dy < areaHeight)
         middle1.buff[middle_point] = (_min1<<8) | _max1
         
-        _mid = ((_max - _min)*0.5)|0
+        _mid = (_max - _min)>>1
         
         upper1=upper2=lower1=lower2=0
         upper_val1=upper_val2=0
@@ -3995,7 +3910,7 @@ function strech_grey(grey){
        
       
   }while(i<l)
-   _mid = ((_max - _min)*0.5)|0
+   _mid = (_max - _min)>>1
    var upper1=0,upper2=0,lower1=0,lower2=0
    var upper_val1=0,upper_val2=0
    i = _min
