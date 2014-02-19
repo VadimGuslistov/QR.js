@@ -2339,9 +2339,9 @@ function Detector(image)
     this.processFinderPatternInfo = function( info)
         {
 
-            var topLeft = info.TopLeft;
-            var topRight = info.TopRight;
-            var bottomLeft = info.BottomLeft;
+            var topLeft = info.topLeft;
+            var topRight = info.topRight;
+            var bottomLeft = info.bottomLeft;
 
             var moduleSize = this.calculateModuleSize(topLeft, topRight, bottomLeft);
             if (moduleSize < 1.0)
@@ -2560,10 +2560,7 @@ function FinderPattern(posX, posY,  estimatedModuleSize)
     this.count = 1;
     this.estimatedModuleSize = estimatedModuleSize;
 
-    this.__defineGetter__("EstimatedModuleSize", function()
-    {
-        return this.estimatedModuleSize;
-    }); 
+ 
     this.__defineGetter__("Count", function()
     {
         return this.count;
@@ -2596,19 +2593,7 @@ function FinderPatternInfo(patternCenters)
 {
     this.bottomLeft = patternCenters[0];
     this.topLeft = patternCenters[1];
-    this.topRight = patternCenters[2];
-    this.__defineGetter__("BottomLeft", function()
-    {
-        return this.bottomLeft;
-    }); 
-    this.__defineGetter__("TopLeft", function()
-    {
-        return this.topLeft;
-    }); 
-    this.__defineGetter__("TopRight", function()
-    {
-        return this.topRight;
-    }); 
+    this.topRight = patternCenters[2]; 
 }
 
 function FinderPatternFinder()
@@ -2865,15 +2850,14 @@ function FinderPatternFinder()
                 var square = 0.0;
                 for (var i = 0; i < startSize; i++)
                 {
-                    //totalModuleSize +=  this.possibleCenters[i].EstimatedModuleSize;
-                    var    centerValue=this.possibleCenters[i].EstimatedModuleSize;
+                    var    centerValue=this.possibleCenters[i].estimatedModuleSize;
                     totalModuleSize += centerValue;
                     square += (centerValue * centerValue);
                 }
                 var average = totalModuleSize /  startSize;
                 this.possibleCenters.sort(function(center1,center2) {
-                      var dA=Math.abs(center2.EstimatedModuleSize - average);
-                      var dB=Math.abs(center1.EstimatedModuleSize - average);
+                      var dA=Math.abs(center2.estimatedModuleSize - average);
+                      var dB=Math.abs(center1.estimatedModuleSize - average);
                       if (dA < dB) {
                           return (-1);
                       } else if (dA == dB) {
@@ -2888,8 +2872,8 @@ function FinderPatternFinder()
                 for (var i = 0; i < this.possibleCenters.length && this.possibleCenters.length > 3; i++)
                 {
                     var pattern =  this.possibleCenters[i];
-                    //if (Math.abs(pattern.EstimatedModuleSize - average) > 0.2 * average)
-                    if (Math.abs(pattern.EstimatedModuleSize - average) > limit)
+
+                    if (Math.abs(pattern.estimatedModuleSize - average) > limit)
                     {
                         this.possibleCenters.remove(i);
                         i--;
@@ -2953,7 +2937,7 @@ function FinderPatternFinder()
                 if (pattern.Count >= CENTER_QUORUM)
                 {
                     confirmedCount++;
-                    totalModuleSize += pattern.EstimatedModuleSize;
+                    totalModuleSize += pattern.estimatedModuleSize;
                 }
             }
             if (confirmedCount < 3)
@@ -2969,7 +2953,7 @@ function FinderPatternFinder()
             for (var i = 0; i < max; i++)
             {
                 pattern = this.possibleCenters[i];
-                totalDeviation += Math.abs(pattern.EstimatedModuleSize - average);
+                totalDeviation += Math.abs(pattern.estimatedModuleSize - average);
             }
             return totalDeviation <= 0.05 * totalModuleSize;
         }
@@ -3119,10 +3103,7 @@ function AlignmentPattern(posX, posY,  estimatedModuleSize)
     this.count = 1;
     this.estimatedModuleSize = estimatedModuleSize;
 
-    this.__defineGetter__("EstimatedModuleSize", function()
-    {
-        return this.estimatedModuleSize;
-    }); 
+
     this.__defineGetter__("Count", function()
     {
         return this.count;

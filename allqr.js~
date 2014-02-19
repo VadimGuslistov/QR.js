@@ -2100,8 +2100,8 @@ PerspectiveTransform.squareToQuadrilateral=function( x0,  y0,  x1,  y1,  x2,  y2
          var dx3 = x0 - x1 + x2 - x3;
          var dy1 = y1 - y2;
          var denominator = dx1 * dy2 - dx2 * dy1;
-         a13 = (dx3 * dy2 - dx2 * dy3) / denominator;
-         a23 = (dx1 * dy3 - dx3 * dy1) / denominator;
+         var a13 = (dx3 * dy2 - dx2 * dy3) / denominator;
+         var a23 = (dx1 * dy3 - dx3 * dy1) / denominator;
         return new PerspectiveTransform(x1 - x0 + a13 * x1, x3 - x0 + a23 * x3, x0, y1 - y0 + a13 * y1, y3 - y0 + a23 * y3, y0, a13, a23, 1.0);
     }
 }
@@ -2339,9 +2339,9 @@ function Detector(image)
     this.processFinderPatternInfo = function( info)
         {
 
-            var topLeft = info.TopLeft;
-            var topRight = info.TopRight;
-            var bottomLeft = info.BottomLeft;
+            var topLeft = info.topLeft;
+            var topRight = info.topRight;
+            var bottomLeft = info.bottomLeft;
 
             var moduleSize = this.calculateModuleSize(topLeft, topRight, bottomLeft);
             if (moduleSize < 1.0)
@@ -2596,19 +2596,7 @@ function FinderPatternInfo(patternCenters)
 {
     this.bottomLeft = patternCenters[0];
     this.topLeft = patternCenters[1];
-    this.topRight = patternCenters[2];
-    this.__defineGetter__("BottomLeft", function()
-    {
-        return this.bottomLeft;
-    }); 
-    this.__defineGetter__("TopLeft", function()
-    {
-        return this.topLeft;
-    }); 
-    this.__defineGetter__("TopRight", function()
-    {
-        return this.topRight;
-    }); 
+    this.topRight = patternCenters[2]; 
 }
 
 function FinderPatternFinder()
