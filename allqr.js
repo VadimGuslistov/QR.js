@@ -440,8 +440,7 @@ GridSampler.sampleGrid3=function( image,  dimension,  transform)
                 // Quick check to see if points transformed to something inside the image;
                 // sufficient to check the endpoints
                 GridSampler.checkAndNudgePoints(image, points);
-                try
-                {
+               
                     for (var x = 0; x < max; x += 2)
                     {
                         var bit = image[Math.floor( points[x])+ qrcode.width* Math.floor( points[x + 1])];
@@ -450,18 +449,7 @@ GridSampler.sampleGrid3=function( image,  dimension,  transform)
                         if(bit)
                             bits.set_Renamed(x >> 1, y);
                     }
-                }
-                catch ( aioobe)
-                {
-                    // This feels wrong, but, sometimes if the finder patterns are misidentified, the resulting
-                    // transform gets "twisted" such that it maps a straight line of points to a set of points
-                    // whose endpoints are in bounds, but others are not. There is probably some mathematical
-                    // way to detect this about the transformation that I don't know yet.
-                    // This results in an ugly runtime exception despite our clever checks above -- can't have
-                    // that. We could check each point's coordinates but that feels duplicative. We settle for
-                    // catching and wrapping ArrayIndexOutOfBoundsException.
-                    throw "Error.checkAndNudgePoints";
-                }
+               
             }
             return bits;
         }
@@ -626,14 +614,9 @@ Version.getProvisionalVersionForDimension=function(dimension)
     {
         throw "Error getProvisionalVersionForDimension";
     }
-    try
-    {
+    
         return Version.getVersionForNumber((dimension - 17) >> 2);
-    }
-    catch ( iae)
-    {
-        throw "Error getVersionForNumber";
-    }
+   
 }
 
 Version.decodeVersionInformation=function( versionBits)
