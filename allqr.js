@@ -2243,42 +2243,37 @@ function GF256Poly(field,  coefficients)
         }while(i < aLength)
         return new GF256Poly(this.field, product);
     }
-    this.multiply2=function( scalar)
+    this.multiply2=function( scalar){
+        if (scalar == 0)
         {
-            if (scalar == 0)
-            {
-                return this.field.zero;
-            }
-            if (scalar == 1)
-            {
-                return this;
-            }
-            var size = this.coefficients.length;
-            var product = new Uint8Array(size);
-            var i=0
-            do{product[i] = this.field.multiply(this.coefficients[i], scalar);i++}while(i<size)
-            
-            return new GF256Poly(this.field, product);
+            return this.field.zero;
         }
-    this.multiplyByMonomial=function( degree,  coefficient)
+        if (scalar == 1)
         {
-            if (degree < 0)
-            {
-                throw "System.ArgumentException";
-            }
-            if (coefficient == 0)
-            {
-                return this.field.zero;
-            }
-            var size = this.coefficients.length;
-            var product = new Array(size + degree);
-            for(var i=0;i<product.length;i++)product[i]=0;
-            for (var i = 0; i < size; i++)
-            {
-                product[i] = this.field.multiply(this.coefficients[i], coefficient);
-            }
-            return new GF256Poly(this.field, product);
+            return this;
         }
+        var size = this.coefficients.length;
+        var product = new Uint8Array(size);
+        var i=0
+        do{product[i] = this.field.multiply(this.coefficients[i], scalar);i++}while(i<size)
+        
+        return new GF256Poly(this.field, product);
+    }
+    this.multiplyByMonomial=function( degree,  coefficient){
+        if (degree < 0)
+        {
+            throw "System.ArgumentException";
+        }
+        if (coefficient == 0)
+        {
+            return this.field.zero;
+        }
+        var size = this.coefficients.length;
+        var product = new Uint8Array(size + degree);
+        var i=0
+        do{product[i] = this.field.multiply(this.coefficients[i], coefficient);i++}while(i<size)
+        return new GF256Poly(this.field, product);
+    }
     this.divide=function( other)
         {
             if (this.field!=other.field)
