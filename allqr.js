@@ -2196,7 +2196,7 @@ function GF256Poly(field,  coefficients)
         var largerCoefficients_l = largerCoefficients.length
         if (smallerCoefficients_l > largerCoefficients_l)
         {
-            var temp = smallerCoefficients;
+            temp = smallerCoefficients;
             smallerCoefficients = largerCoefficients;
             largerCoefficients = temp;
             // XOR swap
@@ -2218,32 +2218,31 @@ function GF256Poly(field,  coefficients)
 
         return new GF256Poly(field, sumDiff);
     }
-    this.multiply1=function( other)
+    this.multiply1=function( other){
+        if (this.field!=other.field)
         {
-            if (this.field!=other.field)
-            {
-                throw "GF256Polys do not have same GF256 field"; // fix me - can this happen in this code
-            }
-            if (this.isZero() || other.isZero())
-            {
-                return this.field.zero;
-            }
-            var aCoefficients = this.coefficients;
-            var aLength = aCoefficients.length;
-            var bCoefficients = other.coefficients;
-            var bLength = bCoefficients.length;
-            var product = new Uint8Array(aLength + bLength - 1);
-            var i,j
-            var aCoeff
-            i=0
-            do{
-                aCoeff = aCoefficients[i]
-                j=0
-                do{product[i + j] ^=  this.field.multiply(aCoeff, bCoefficients[j];j++)}while(j < bLength)
-                i++
-            }while(i < aLength)
-            return new GF256Poly(this.field, product);
+            throw "GF256Polys do not have same GF256 field"; // fix me - can this happen in this code
         }
+        if (this.isZero() || other.isZero())
+        {
+            return this.field.zero;
+        }
+        var aCoefficients = this.coefficients;
+        var aLength = aCoefficients.length;
+        var bCoefficients = other.coefficients;
+        var bLength = bCoefficients.length;
+        var product = new Uint8Array(aLength + bLength - 1);
+        var i,j
+        var aCoeff
+        i=0
+        do{
+            aCoeff = aCoefficients[i]
+            j=0
+            do{product[i + j] ^=  this.field.multiply(aCoeff, bCoefficients[j]);j++}while(j < bLength)
+            i++
+        }while(i < aLength)
+        return new GF256Poly(this.field, product);
+    }
     this.multiply2=function( scalar)
         {
             if (scalar == 0)

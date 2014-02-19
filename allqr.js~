@@ -2239,9 +2239,7 @@ function GF256Poly(field,  coefficients)
             do{
                 aCoeff = aCoefficients[i]
                 j=0
-                for (var j = 0; j < bLength; j++)
-                do{product[i + j] ^=  this.field.multiply(aCoeff, bCoefficients[j])}while(j < bLength)
-                }
+                do{product[i + j] ^=  this.field.multiply(aCoeff, bCoefficients[j]);j++}while(j < bLength)
                 i++
             }while(i < aLength)
             return new GF256Poly(this.field, product);
