@@ -2254,11 +2254,10 @@ function GF256Poly(field,  coefficients)
                 return this;
             }
             var size = this.coefficients.length;
-            var product = new Array(size);
-            for (var i = 0; i < size; i++)
-            {
-                product[i] = this.field.multiply(this.coefficients[i], scalar);
-            }
+            var product = new Uint8Array(size);
+            var i=0
+            do{product[i] = this.field.multiply(this.coefficients[i], scalar);i++}while(i<size)
+            
             return new GF256Poly(this.field, product);
         }
     this.multiplyByMonomial=function( degree,  coefficient)
