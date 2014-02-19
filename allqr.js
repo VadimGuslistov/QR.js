@@ -2141,25 +2141,19 @@ function GF256Poly(field,  coefficients)
             _coefficients = new Uint8Array(l);
             do{_coefficients[i++] = coefficients[firstNonZero++]}while(i<l)
         }
-    }
-    else
-    {
+    }else{
         _coefficients = coefficients;
     }
-    this.field = field;
+    this.field = field
     this.coefficients = _coefficients
+    this.Degree = _coefficients.length - 1
+    this.Coefficients = _coefficients // fix me downstream code looks for this
     this.__defineGetter__("Zero", function()
     {
         return this.coefficients[0] == 0;
     });
-    this.__defineGetter__("Degree", function()
-    {
-        return this.coefficients.length - 1;
-    });
-    this.__defineGetter__("Coefficients", function()
-    {
-        return this.coefficients;
-    });
+    
+
 
     this.getCoefficient=function( degree)
     {
