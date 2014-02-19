@@ -2199,9 +2199,12 @@ function GF256Poly(field,  coefficients)
             var temp = smallerCoefficients;
             smallerCoefficients = largerCoefficients;
             largerCoefficients = temp;
+            // XOR swap
             smallerCoefficients_l ^= largerCoefficients_l
             largerCoefficients_l ^= smallerCoefficients_l
             smallerCoefficients_l ^= largerCoefficients_l
+            //---
+            // fix me this swap avoids a 2nd call to length but is it faster than calling length a 2nd time - investigate
         }
         sumDiff = new Uint8Array(largerCoefficients_l);
         lengthDiff = largerCoefficients_l - smallerCoefficients_l;
@@ -2229,15 +2232,18 @@ function GF256Poly(field,  coefficients)
             var aLength = aCoefficients.length;
             var bCoefficients = other.coefficients;
             var bLength = bCoefficients.length;
-            var product = new Array(aLength + bLength - 1);
-            for (var i = 0; i < aLength; i++)
-            {
-                var aCoeff = aCoefficients[i];
+            var product = new Uint8Array(aLength + bLength - 1);
+            var i,j
+            var aCoeff
+            i=0
+            do{
+                aCoeff = aCoefficients[i]
+                j=0
                 for (var j = 0; j < bLength; j++)
-                {
-                    product[i + j] = product[i + j] ^ this.field.multiply(aCoeff, bCoefficients[j])
+                do{product[i + j] ^=  this.field.multiply(aCoeff, bCoefficients[j])}while(j < bLength)
                 }
-            }
+                i++
+            }while(i < aLength)
             return new GF256Poly(this.field, product);
         }
     this.multiply2=function( scalar)

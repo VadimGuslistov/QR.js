@@ -2232,15 +2232,16 @@ function GF256Poly(field,  coefficients)
             var aLength = aCoefficients.length;
             var bCoefficients = other.coefficients;
             var bLength = bCoefficients.length;
-            var product = new Array(aLength + bLength - 1);
-            for (var i = 0; i < aLength; i++)
-            {
-                var aCoeff = aCoefficients[i];
-                for (var j = 0; j < bLength; j++)
-                {
-                    product[i + j] = product[i + j] ^ this.field.multiply(aCoeff, bCoefficients[j])
-                }
-            }
+            var product = new Uint8Array(aLength + bLength - 1);
+            var i,j
+            var aCoeff
+            i=0
+            do{
+                aCoeff = aCoefficients[i]
+                j=0
+                do{product[i + j] ^=  this.field.multiply(aCoeff, bCoefficients[j];j++)}while(j < bLength)
+                i++
+            }while(i < aLength)
             return new GF256Poly(this.field, product);
         }
     this.multiply2=function( scalar)
