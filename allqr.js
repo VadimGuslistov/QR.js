@@ -2163,8 +2163,8 @@ function Detector(image)
 
     this.calculateModuleSizeOneWay=function( pattern,  otherPattern)
         {
-            var moduleSizeEst1 = this.sizeOfBlackWhiteBlackRunBothWays(Math.floor( pattern.X), Math.floor( pattern.Y), Math.floor( otherPattern.X), Math.floor(otherPattern.Y));
-            var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(Math.floor(otherPattern.X), Math.floor(otherPattern.Y), Math.floor( pattern.X), Math.floor(pattern.Y));
+            var moduleSizeEst1 = this.sizeOfBlackWhiteBlackRunBothWays(pattern.X, pattern.Y, otherPattern.X, otherPattern.Y);
+            var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(otherPattern.X, otherPattern.Y, pattern.X, pattern.Y);
             if (isNaN(moduleSizeEst1))
             {
                 return moduleSizeEst2 *0.142857143 // div by 7
@@ -2173,6 +2173,7 @@ function Detector(image)
             {
                 return moduleSizeEst1 *0.142857143 // div by 7
             }
+            // fix me can 2 NAN be happen here
             // Average them, and divide by 7 since we've counted the width of 3 black modules,
             // and 1 white and 1 black module on either side. Ergo, divide sum by 14.
             return (moduleSizeEst1 + moduleSizeEst2) * 0.071428571 // div by 14
@@ -2279,7 +2280,7 @@ function Detector(image)
             var moduleSize = this.calculateModuleSize(topLeft, topRight, bottomLeft);
             if (moduleSize < 1.0)
             {
-                throw "Error";
+                throw "moduleSize is too small";
             }
             var dimension = this.computeDimension(topLeft, topRight, bottomLeft, moduleSize);
             var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
@@ -2436,26 +2437,15 @@ var CENTER_QUORUM = 2;
 qrcode.orderBestPatterns=function(patterns)
         {
 
-            function distance( pattern1,  pattern2)
-            {
-                var xDiff = pattern1.X - pattern2.X;
-                var yDiff = pattern1.Y - pattern2.Y;
-                return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));
-            }
 
-            /// <summary> Returns the z component of the cross product between vectors BC and BA.</summary>
-            function crossProductZ( pointA,  pointB,  pointC)
-            {
-                var bX = pointB.x;
-                var bY = pointB.y;
-                return ((pointC.x - bX) * (pointA.y - bY)) - ((pointC.y - bY) * (pointA.x - bX));
-            }
+
+           
 
 
             // Find distances between pattern centers
-            var zeroOneDistance = distance(patterns[0], patterns[1]);
-            var oneTwoDistance = distance(patterns[1], patterns[2]);
-            var zeroTwoDistance = distance(patterns[0], patterns[2]);
+            var zeroOneDistance = patterns[0].intDistance(patterns[1])
+            var oneTwoDistance  = patterns[1].intDistance(patterns[2])
+            var zeroTwoDistance = patterns[0].intDistance(patterns[2])
 
             var pointA, pointB, pointC;
             // Assume one closest to other two is B; A and C will just be guesses at first
@@ -2482,7 +2472,7 @@ qrcode.orderBestPatterns=function(patterns)
             // This asks whether BC x BA has a positive z component, which is the arrangement
             // we want for A, B, C. If it's negative, then we've got it flipped around and
             // should swap A and C.
-            if (crossProductZ(pointA, pointB, pointC) < 0.0)
+            if (qrPattern.crossProductZ(pointA, pointB, pointC) < 0.0)
             {
                 var temp = pointA;
                 pointA = pointC;
@@ -2495,52 +2485,6 @@ qrcode.orderBestPatterns=function(patterns)
         }
 
 
-function FinderPattern(posX, posY,  estimatedModuleSize)
-{
-    this.x=posX;
-    this.y=posY;
-    this.count = 1;
-    this.estimatedModuleSize = estimatedModuleSize;
-    this.estimatedModuleSizeInverse = 1/estimatedModuleSize // for faster div of estimatedModuleSize
-    this.X = posX|0
-    this.Y = posY|0
-
-  
- 
-    this.aboutEquals=function( moduleSize,  i,  j)
-        {
-            if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
-            {
-                var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
-                return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse <= 1.0;
-            }
-            return false;
-        }
-
-}
-function AlignmentPattern(posX, posY,  estimatedModuleSize)
-{
-    this.x=posX;
-    this.y=posY;
-    this.count = 1;
-    this.estimatedModuleSize = estimatedModuleSize;
-    this.X = posX|0
-    this.Y = posY|0
-    this.estimatedModuleSizeInverse = 1/estimatedModuleSize
-  
-    
-
-    this.aboutEquals=function( moduleSize,  i,  j)
-        {
-            if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
-            {
-                var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
-                return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse  <= 1.0;
-            }
-            return false;
-        }
-
-}
 function qrPattern(posX, posY,  estimatedModuleSize)
 {
     this.x=posX;
@@ -2551,18 +2495,32 @@ function qrPattern(posX, posY,  estimatedModuleSize)
     this.Y = posY|0
     this.estimatedModuleSizeInverse = 1/estimatedModuleSize
   
-    
-
-    this.aboutEquals=function( moduleSize,  i,  j)
+}
+qrPattern.prototype = {
+    aboutEquals:function( moduleSize,  i,  j){
+        var moduleSizeDiff
+        if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
         {
-            if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
-            {
-                var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
-                return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse  <= 1.0;
-            }
-            return false;
+            var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
+            return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse  <= 1.0;
         }
-
+        return false;
+    },
+    distance:function(b){
+        var x = this.x - b.x
+        var y = this.y - b.y
+        return Math.sqrt(x*x+y*y)
+    },
+    intDistance:function(b){
+        var x = this.X-b.X
+        var y = this.Y-b.Y
+        return Math.sqrt(x*x+y*y)
+    }
+    
+    
+}
+qrPattern.crossProductZ = function( a,  b,  c){
+    return ((c.x - b.x) * (a.y - b.y)) - ((c.y - b.y) * (a.x - b.y));
 }
 
 function FinderPatternInfo(patternCenters)
@@ -2795,7 +2753,7 @@ function FinderPatternFinder()
                     }
                     if (!found)
                     {
-                        var point = new FinderPattern(centerJ, centerI, estimatedModuleSize);
+                        var point = new qrPattern(centerJ, centerI, estimatedModuleSize);
                         this.possibleCenters.push(point);
                     }
                     return true;
@@ -3168,16 +3126,13 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
                     // Look for about the same center and module size:
                     if (center.aboutEquals(estimatedModuleSize, centerI, centerJ))
                     {
-                        return new AlignmentPattern(centerJ, centerI, estimatedModuleSize);
+                        return new qrPattern(centerJ, centerI, estimatedModuleSize);
                     }
                 }
                 // Hadn't found this before; save it
-                var point = new AlignmentPattern(centerJ, centerI, estimatedModuleSize);
+                var point = new qrPattern(centerJ, centerI, estimatedModuleSize);
                 this.possibleCenters.push(point);
-                if (this.resultPointCallback != null)
-                {
-                    this.resultPointCallback.foundPossibleResultPoint(point);
-                }
+    
             }
             return null;
         }
