@@ -1028,6 +1028,195 @@ function BitMatrix( width,  height)
 * limitations under the License.
 */
 
+function GF256Poly(field,  coefficients){
+    /*
+    this dose not happen in the QR code so it is a useless branch
+    if (coefficients == null || coefficients.length == 0)
+    {
+        throw "System.ArgumentException";
+    }*/
+    
+    var coefficientsLength = coefficients.length;
+    var _coefficients
+    var firstNonZero
+    var l
+    var i
+    if (coefficientsLength > 1 && coefficients[0] == 0){
+        // Leading term must be non-zero for anything except the constant polynomial "0"
+        firstNonZero = 1;
+        while (firstNonZero < coefficientsLength && coefficients[firstNonZero] == 0){
+            firstNonZero++;
+        }
+        
+        if (firstNonZero == coefficientsLength){
+            _coefficients = field.zero.coefficients;
+        }
+        else{
+            l = coefficientsLength - firstNonZero
+            i=0
+            _coefficients = new Uint8Array(l);
+            do{_coefficients[i++] = coefficients[firstNonZero++]}while(i<l)
+        }
+    }else{
+        _coefficients = coefficients;
+    }
+    this.field = field
+    this.coefficients = _coefficients
+    this.Degree = _coefficients.length - 1
+    
+    
+};
+
+GF256Poly.prototype = {
+    isZero:function (){
+        return this.coefficients[0] == 0
+    },
+    getCoefficient:function( degree){
+        return this.coefficients[this.Degree - degree];
+    },
+    evaluateAt:function( a){
+        var i,result,size
+        if (a == 0)
+        {
+            // Just return the x^0 coefficient
+            return this.getCoefficient(0);
+        }
+        size = this.coefficients.length;
+        if (a == 1)
+        {
+            // Just the sum of the coefficients
+            result = 0;
+            i = 0
+            do{result ^=  this.coefficients[i++]}while(i<size)
+            return result;
+        }
+        result = this.coefficients[0]
+        i=1
+        do{result = this.field.multiply(a, result) ^ this.coefficients[i++]}while(i<size)
+        return result;
+    },
+    addOrSubtract:function( other){
+        if (this.field != other.field)
+        {
+            throw "GF256Polys do not have same GF256 field"; // fix me can this happen in this code
+        }
+        if (this.isZero()){
+            return other;
+        }
+        if (other.isZero()){
+            return this;
+        }
+        var i,temp,sumDiff,lengthDiff
+        var smallerCoefficients = this.coefficients;
+        var largerCoefficients = other.coefficients;
+        var smallerCoefficients_l = smallerCoefficients.length
+        var largerCoefficients_l = largerCoefficients.length
+        if (smallerCoefficients_l > largerCoefficients_l)
+        {
+            temp = smallerCoefficients;
+            smallerCoefficients = largerCoefficients;
+            largerCoefficients = temp;
+            // XOR swap
+            smallerCoefficients_l ^= largerCoefficients_l
+            largerCoefficients_l ^= smallerCoefficients_l
+            smallerCoefficients_l ^= largerCoefficients_l
+            //---
+            // fix me this swap avoids a 2nd call to length but is it faster than calling length a 2nd time - investigate
+        }
+        sumDiff = new Uint8Array(largerCoefficients_l);
+        lengthDiff = largerCoefficients_l - smallerCoefficients_l;
+        // Copy high-order terms only found in higher-degree polynomial's coefficients
+
+        i=0
+        do{sumDiff[i]=largerCoefficients[i];i++}while(i<lengthDiff)
+        i = lengthDiff
+        do{sumDiff[i] = smallerCoefficients[i - lengthDiff] ^ largerCoefficients[i];i++}while(i < largerCoefficients_l)
+        
+
+        return new GF256Poly(this.field, sumDiff);
+    },
+    multiply1:function( other){
+        if (this.field!=other.field)
+        {
+            throw "GF256Polys do not have same GF256 field"; // fix me - can this happen in this code
+        }
+        if (this.isZero() || other.isZero())
+        {
+            return this.field.zero;
+        }
+        var aCoefficients = this.coefficients;
+        var aLength = aCoefficients.length;
+        var bCoefficients = other.coefficients;
+        var bLength = bCoefficients.length;
+        var product = new Uint8Array(aLength + bLength - 1);
+        var i,j
+        var aCoeff
+        i=0
+        do{
+            aCoeff = aCoefficients[i]
+            j=0
+            do{product[i + j] ^=  this.field.multiply(aCoeff, bCoefficients[j]);j++}while(j < bLength)
+            i++
+        }while(i < aLength)
+        return new GF256Poly(this.field, product);
+    },
+    multiply2:function( scalar){
+        if (scalar == 0)
+        {
+            return this.field.zero;
+        }
+        if (scalar == 1)
+        {
+            return this;
+        }
+        var size = this.coefficients.length;
+        var product = new Uint8Array(size);
+        var i=0
+        do{product[i] = this.field.multiply(this.coefficients[i], scalar);i++}while(i<size)
+        
+        return new GF256Poly(this.field, product);
+    },
+    multiplyByMonomial:function( degree,  coefficient){
+        if (degree < 0){
+            throw "System.ArgumentException";
+        }
+        if (coefficient == 0){
+            return this.field.zero;
+        }
+        var size = this.coefficients.length;
+        var product = new Uint8Array(size + degree);
+        var i=0
+        do{product[i] = this.field.multiply(this.coefficients[i], coefficient);i++}while(i<size)
+        return new GF256Poly(this.field, product);
+    },
+    divide:function( other){
+        if (this.field!=other.field)
+        {
+            throw "GF256Polys do not have same GF256 field"; // fix me can this happen in the QR code
+        }
+        if (other.isZero())
+        {
+            throw "Divide by 0";
+        }
+
+        var quotient = this.field.zero;
+        var remainder = this;
+
+        var denominatorLeadingTerm = other.getCoefficient(other.Degree);
+        var inverseDenominatorLeadingTerm = this.field.inverse(denominatorLeadingTerm);
+        var degreeDifference,scale,iterationQuotient
+        while (remainder.Degree >= other.Degree && !remainder.isZero()){
+            degreeDifference = remainder.Degree - other.Degree;
+            scale = this.field.multiply(remainder.getCoefficient(remainder.Degree), inverseDenominatorLeadingTerm);
+            term = other.multiplyByMonomial(degreeDifference, scale);
+            iterationQuotient = this.field.buildMonomial(degreeDifference, scale);
+            quotient = quotient.addOrSubtract(iterationQuotient);
+            remainder = remainder.addOrSubtract(term);
+        }
+
+        return [quotient, remainder]
+    }
+};
 
 function GF256( primitive)
 {
@@ -1111,10 +1300,7 @@ GF256.oneArr = new Uint8Array([1])
 GF256.QR_CODE_FIELD = new GF256(0x011D);
 GF256.DATA_MATRIX_FIELD = new GF256(0x012D);
 
-GF256.addOrSubtract=function( a,  b)
-{
-    return a ^ b;
-}
+
 
 function DataBlock(numDataCodewords,  numBlockCodewords){
 
@@ -2106,227 +2292,6 @@ function ReedSolomonDecoder(field)
 * limitations under the License.
 */
 
-
-function GF256Poly(field,  coefficients)
-{
-    /*
-    this dose not happen in the QR code so it is a useless branch
-    if (coefficients == null || coefficients.length == 0)
-    {
-        throw "System.ArgumentException";
-    }*/
-    
-    var coefficientsLength = coefficients.length;
-    var _coefficients
-    var firstNonZero
-    var l
-    var i
-    if (coefficientsLength > 1 && coefficients[0] == 0){
-        // Leading term must be non-zero for anything except the constant polynomial "0"
-        firstNonZero = 1;
-        while (firstNonZero < coefficientsLength && coefficients[firstNonZero] == 0){
-            firstNonZero++;
-        }
-        
-        if (firstNonZero == coefficientsLength){
-            _coefficients = field.zero.coefficients;
-        }
-        else{
-            l = coefficientsLength - firstNonZero
-            i=0
-            _coefficients = new Uint8Array(l);
-            do{_coefficients[i++] = coefficients[firstNonZero++]}while(i<l)
-        }
-    }else{
-        _coefficients = coefficients;
-    }
-    this.field = field
-    this.coefficients = _coefficients
-    this.Degree = _coefficients.length - 1
-    this.Coefficients = _coefficients // fix me downstream code looks for this
-    this.isZero = function (){
-        return this.coefficients[0] == 0
-    }
-
-    
-
-
-    this.getCoefficient=function( degree)
-    {
-        return this.coefficients[this.Degree - degree];
-    }
-
-    this.evaluateAt=function( a){
-        var i,result,size
-        if (a == 0)
-        {
-            // Just return the x^0 coefficient
-            return this.getCoefficient(0);
-        }
-        size = this.coefficients.length;
-        if (a == 1)
-        {
-            // Just the sum of the coefficients
-            result = 0;
-            i = 0
-            do{result ^=  this.coefficients[i++]}while(i<size)
-            return result;
-        }
-        result = this.coefficients[0]
-        i=1
-        do{result = this.field.multiply(a, result) ^ this.coefficients[i++]}while(i<size)
-        return result;
-    }
-
-    this.addOrSubtract=function( other){
-        if (this.field != other.field)
-        {
-            throw "GF256Polys do not have same GF256 field"; // fix me can this happen in this code
-        }
-        if (this.isZero()){
-            return other;
-        }
-        if (other.isZero()){
-            return this;
-        }
-        var i,temp,sumDiff,lengthDiff
-        var smallerCoefficients = this.coefficients;
-        var largerCoefficients = other.coefficients;
-        var smallerCoefficients_l = smallerCoefficients.length
-        var largerCoefficients_l = largerCoefficients.length
-        if (smallerCoefficients_l > largerCoefficients_l)
-        {
-            temp = smallerCoefficients;
-            smallerCoefficients = largerCoefficients;
-            largerCoefficients = temp;
-            // XOR swap
-            smallerCoefficients_l ^= largerCoefficients_l
-            largerCoefficients_l ^= smallerCoefficients_l
-            smallerCoefficients_l ^= largerCoefficients_l
-            //---
-            // fix me this swap avoids a 2nd call to length but is it faster than calling length a 2nd time - investigate
-        }
-        sumDiff = new Uint8Array(largerCoefficients_l);
-        lengthDiff = largerCoefficients_l - smallerCoefficients_l;
-        // Copy high-order terms only found in higher-degree polynomial's coefficients
-
-        i=0
-        do{sumDiff[i]=largerCoefficients[i];i++}while(i<lengthDiff)
-        i = lengthDiff
-        do{sumDiff[i] = smallerCoefficients[i - lengthDiff] ^ largerCoefficients[i];i++}while(i < largerCoefficients_l)
-        
-
-        return new GF256Poly(field, sumDiff);
-    }
-    this.multiply1=function( other){
-        if (this.field!=other.field)
-        {
-            throw "GF256Polys do not have same GF256 field"; // fix me - can this happen in this code
-        }
-        if (this.isZero() || other.isZero())
-        {
-            return this.field.zero;
-        }
-        var aCoefficients = this.coefficients;
-        var aLength = aCoefficients.length;
-        var bCoefficients = other.coefficients;
-        var bLength = bCoefficients.length;
-        var product = new Uint8Array(aLength + bLength - 1);
-        var i,j
-        var aCoeff
-        i=0
-        do{
-            aCoeff = aCoefficients[i]
-            j=0
-            do{product[i + j] ^=  this.field.multiply(aCoeff, bCoefficients[j]);j++}while(j < bLength)
-            i++
-        }while(i < aLength)
-        return new GF256Poly(this.field, product);
-    }
-    this.multiply2=function( scalar){
-        if (scalar == 0)
-        {
-            return this.field.zero;
-        }
-        if (scalar == 1)
-        {
-            return this;
-        }
-        var size = this.coefficients.length;
-        var product = new Uint8Array(size);
-        var i=0
-        do{product[i] = this.field.multiply(this.coefficients[i], scalar);i++}while(i<size)
-        
-        return new GF256Poly(this.field, product);
-    }
-    this.multiplyByMonomial=function( degree,  coefficient)
-        {
-            if (degree < 0)
-            {
-                throw "System.ArgumentException";
-            }
-            if (coefficient == 0)
-            {
-                return this.field.zero;
-            }
-            var size = this.coefficients.length;
-            var product = new Uint8Array(size + degree);
-            var i=0
-            do{product[i] = this.field.multiply(this.coefficients[i], coefficient);i++}while(i<size)
-            return new GF256Poly(this.field, product);
-        }
-    this.divide=function( other)
-        {
-            if (this.field!=other.field)
-            {
-                throw "GF256Polys do not have same GF256 field";
-            }
-            if (other.isZero())
-            {
-                throw "Divide by 0";
-            }
-
-            var quotient = this.field.zero;
-            var remainder = this;
-
-            var denominatorLeadingTerm = other.getCoefficient(other.Degree);
-            var inverseDenominatorLeadingTerm = this.field.inverse(denominatorLeadingTerm);
-
-            while (remainder.Degree >= other.Degree && !remainder.isZero())
-            {
-                var degreeDifference = remainder.Degree - other.Degree;
-                var scale = this.field.multiply(remainder.getCoefficient(remainder.Degree), inverseDenominatorLeadingTerm);
-                var term = other.multiplyByMonomial(degreeDifference, scale);
-                var iterationQuotient = this.field.buildMonomial(degreeDifference, scale);
-                quotient = quotient.addOrSubtract(iterationQuotient);
-                remainder = remainder.addOrSubtract(term);
-            }
-
-            return new Array(quotient, remainder);
-        }
-}/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
-
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 
 function Decoder(bits){
