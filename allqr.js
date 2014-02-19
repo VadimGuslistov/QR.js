@@ -2187,8 +2187,8 @@ function Detector(image)
 
     this.distance=function( pattern1,  pattern2)
     {
-        var xDiff = pattern1.X - pattern2.X;
-        var yDiff = pattern1.Y - pattern2.Y;
+        var xDiff = pattern1.x - pattern2.x;
+        var yDiff = pattern1.y - pattern2.y;
         return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));
     }
     this.computeDimension=function( topLeft,  topRight,  bottomLeft,  moduleSize)
@@ -2223,9 +2223,10 @@ function Detector(image)
             var allowance = Math.floor (allowanceFactor * overallEstModuleSize);
             var alignmentAreaLeftX = Math.max(0, estAlignmentX - allowance);
             var alignmentAreaRightX = Math.min(qrcode.width - 1, estAlignmentX + allowance);
+            
             if (alignmentAreaRightX - alignmentAreaLeftX < overallEstModuleSize * 3)
             {
-                throw "Error";
+                return null
             }
 
             var alignmentAreaTopY = Math.max(0, estAlignmentY - allowance);
@@ -2284,7 +2285,7 @@ function Detector(image)
             var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
             var modulesBetweenFPCenters = provisionalVersion.DimensionForVersion - 7;
 
-            var alignmentPattern = null;
+            var alignmentPattern;
             // Anything above version 1 has an alignment pattern
             if (provisionalVersion.AlignmentPatternCenters.length > 0)
             {
@@ -2300,17 +2301,25 @@ function Detector(image)
                 var estAlignmentY = Math.floor (topLeft.Y + correctionToTopLeft * (bottomRightY - topLeft.Y));
 
                 // Kind of arbitrary -- expand search radius before giving up
-                for (var i = 4; i <= 16; i <<= 1)
-                {
+
+                var i = 4
+                // fix me re enabled commented out code by returning null on a error
+                // it works better idono 
+                // check the code in zxing and see what they are doing here
+                do{
                     //try
                     //{
                         alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
-                        break;
+                        
                     //}
                     //catch (re)
                     //{
                         // try next round
                     //}
+                    i <<= 1 
+                }while(alignmentPattern !== null && i<16)
+                if(alignmentPattern === null){
+                    throw "Couldn't find enough alignment patterns";
                 }
                 // If we didn't find alignment pattern... well try anyway without it
             }
@@ -2493,16 +2502,10 @@ function FinderPattern(posX, posY,  estimatedModuleSize)
     this.count = 1;
     this.estimatedModuleSize = estimatedModuleSize;
     this.estimatedModuleSizeInverse = 1/estimatedModuleSize // for faster div of estimatedModuleSize
- 
+    this.X = posX|0
+    this.Y = posY|0
 
-    this.__defineGetter__("X", function()
-    {
-        return this.x;
-    });
-    this.__defineGetter__("Y", function()
-    {
-        return this.y;
-    });
+  
  
     this.aboutEquals=function( moduleSize,  i,  j)
         {
@@ -2510,6 +2513,52 @@ function FinderPattern(posX, posY,  estimatedModuleSize)
             {
                 var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
                 return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse <= 1.0;
+            }
+            return false;
+        }
+
+}
+function AlignmentPattern(posX, posY,  estimatedModuleSize)
+{
+    this.x=posX;
+    this.y=posY;
+    this.count = 1;
+    this.estimatedModuleSize = estimatedModuleSize;
+    this.X = posX|0
+    this.Y = posY|0
+    this.estimatedModuleSizeInverse = 1/estimatedModuleSize
+  
+    
+
+    this.aboutEquals=function( moduleSize,  i,  j)
+        {
+            if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
+            {
+                var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
+                return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse  <= 1.0;
+            }
+            return false;
+        }
+
+}
+function qrPattern(posX, posY,  estimatedModuleSize)
+{
+    this.x=posX;
+    this.y=posY;
+    this.count = 1;
+    this.estimatedModuleSize = estimatedModuleSize;
+    this.X = posX|0
+    this.Y = posY|0
+    this.estimatedModuleSizeInverse = 1/estimatedModuleSize
+  
+    
+
+    this.aboutEquals=function( moduleSize,  i,  j)
+        {
+            if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
+            {
+                var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
+                return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse  <= 1.0;
             }
             return false;
         }
@@ -2748,10 +2797,6 @@ function FinderPatternFinder()
                     {
                         var point = new FinderPattern(centerJ, centerI, estimatedModuleSize);
                         this.possibleCenters.push(point);
-                        if (this.resultPointCallback != null)
-                        {
-                            this.resultPointCallback.foundPossibleResultPoint(point);
-                        }
                     }
                     return true;
                 }
@@ -2783,15 +2828,10 @@ function FinderPatternFinder()
                 }
                 var average = totalModuleSize /  startSize;
                 this.possibleCenters.sort(function(center1,center2) {
-                      var dA=Math.abs(center2.estimatedModuleSize - average);
-                      var dB=Math.abs(center1.estimatedModuleSize - average);
-                      if (dA < dB) {
-                          return (-1);
-                      } else if (dA == dB) {
-                          return 0;
-                      } else {
-                          return 1;
-                      }
+                      var a=Math.abs(center2.estimatedModuleSize - average);
+                      var b=Math.abs(center1.estimatedModuleSize - average);
+                      return ((a-b)>>31)^((b-a)>>>31)
+                      
                     });
 
                 var stdDev = Math.sqrt(square / startSize - average * average);
@@ -2811,14 +2851,10 @@ function FinderPatternFinder()
             if (this.possibleCenters.length > 3)
             {
                 // Throw away all but those first size candidate points we found.
-                this.possibleCenters.sort(function(a, b){
-                    if (a.count > b.count){return -1;}
-                    if (a.count < b.count){return 1;}
-                    return 0;
-                });
+                this.possibleCenters.sort(function(a, b){return ((b.count-a.count)>>31)^((a.count-b.count)>>>31)});
             }
 
-            return new Array( this.possibleCenters[0],  this.possibleCenters[1],  this.possibleCenters[2]);
+            return [this.possibleCenters[0],  this.possibleCenters[1],  this.possibleCenters[2]]
         }
 
     this.findRowSkip=function()
@@ -2846,7 +2882,7 @@ function FinderPatternFinder()
                         // difference in the x / y coordinates of the two centers.
                         // This is the case where you find top left last.
                         this.hasSkipped = true;
-                        return (Math.abs(firstConfirmedCenter.X - center.X) - Math.abs(firstConfirmedCenter.Y - center.Y)) >>1; // Math.floor(x/2)
+                        return (Math.abs(firstConfirmedCenter.x - center.x) - Math.abs(firstConfirmedCenter.y - center.y)) >>1; // Math.floor(x/2)
                     }
                 }
             }
@@ -3023,29 +3059,7 @@ function FinderPatternFinder()
 }
 
 
-function AlignmentPattern(posX, posY,  estimatedModuleSize)
-{
-    this.x=posX;
-    this.y=posY;
-    this.count = 1;
-    this.estimatedModuleSize = estimatedModuleSize;
-    this.X = posX|0
-    this.Y = posY|0
-    this.estimatedModuleSizeInverse = 1/estimatedModuleSize
-  
-    
 
-    this.aboutEquals=function( moduleSize,  i,  j)
-        {
-            if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
-            {
-                var moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
-                return moduleSizeDiff <= 1.0 || moduleSizeDiff * this.estimatedModuleSizeInverse  <= 1.0;
-            }
-            return false;
-        }
-
-}
 
 function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  moduleSize,  resultPointCallback)
 {
@@ -3257,8 +3271,8 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
             {
                 return  this.possibleCenters[0];
             }
+            return null
 
-            throw "Couldn't find enough alignment patterns";
         }
 
 }
