@@ -1594,8 +1594,10 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
     var resultOffset = 0;
     var currentByte = 0;
     var bitsRead = 0;
+    var j = dimension - 1
+    var dimensionMinus1 = j
     // Read columns in pairs, from right to left
-    for (var j = dimension - 1; j > 0; j -= 2)
+    for ( ; j > 0; j -= 2)
     {
        
         if (j == 6)
@@ -1607,7 +1609,7 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
         // Read alternatingly from bottom to top then top to bottom
         for (var count = 0; count < dimension; count++)
         {
-            var i = readingUp?dimension - 1 - count:count;
+            var i = readingUp?dimensionMinus1  - count:count;
             for (var col = 0; col < 2; col++)
             {
                 // Ignore bits covered by the function pattern
@@ -1615,7 +1617,7 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
                 {
                     // Read a bit
                     bitsRead++;
-                    currentByte = this.bitMatrix.copyBit(j - col, i,currentByte)
+                    currentByte = bits.copyBit(j - col, i,currentByte)
                     
                     // If we've made a whole byte, save it off
                     if (bitsRead == 8)
