@@ -785,38 +785,31 @@ function BitMatrix(dimension)
     
     this.rowSize = rowSize;
     this.bits = new Int32Array(rowSize * dimension);
-    this.load = function (x){
+    
+    
+}
+BitMatrix.prototype = {
+    load:function (x){
         this.bits[this.offset] = this.loaded
         this.loaded = this.bits[x]
         this.offset = x
-    }
-
- 
-    this.__defineGetter__("Dimension", function()
-    {
-        if (this.width != this.height)
-        {
-            throw "Can't call getDimension() on a non-square matrix";
-        }
-        return this.width;
-    });
-
-    this.get_Renamed=function( x,  y){
+    },
+    get_Renamed:function( x,  y){
         var offset = y * this.rowSize + (x >> 5)
         if(offset != this.offset) this.load(offset)
         return this.loaded >>> (x & 31) & 1
-    }
-    this.set_Renamed=function( x,  y){
+    },
+    set_Renamed:function( x,  y){
         var offset = y * this.rowSize + (x >> 5)
         if(offset != this.offset) this.load(offset)
         this.loaded |= 1 << (x & 31);
-    }
-    this.flip=function( x,  y){
+    },
+    flip:function( x,  y){
         var offset = y * this.rowSize + (x >> 5)
         if(offset != this.offset) this.load(offset)
         this.loaded ^= 1 << (x & 31);
-    }
-    this.clear=function(){
+    },
+    clear:function(){
         var max = this.bits.length;
         for (var i = 0; i < max; i++)
         {
@@ -824,8 +817,8 @@ function BitMatrix(dimension)
         }
         this.loaded =0
         this.offset = 0
-    }
-    this.setRegion=function( left,  top,  width,  height){
+    },
+    setRegion:function( left,  top,  width,  height){
 
         var right = left + width;
         var bottom = top + height;
@@ -1488,7 +1481,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 
 function BitMatrixParser(bitMatrix)
 {
-    var dimension = bitMatrix.Dimension;
+    var dimension = bitMatrix.dimension;
     if (dimension < 21 || (dimension & 0x03) != 1)
     {
         throw "Error BitMatrixParser";
@@ -1532,7 +1525,7 @@ function BitMatrixParser(bitMatrix)
             }
 
             // Hmm, failed. Try the top-right/bottom-left pattern
-            var dimension = this.bitMatrix.Dimension;
+            var dimension = this.bitMatrix.dimension;
             formatInfoBits = 0;
             var iMin = dimension - 8;
             for (var i = dimension - 1; i >= iMin; i--)
@@ -1559,7 +1552,7 @@ function BitMatrixParser(bitMatrix)
                 return this.parsedVersion;
             }
 
-            var dimension = this.bitMatrix.Dimension;
+            var dimension = this.bitMatrix.dimension;
 
             var provisionalVersion = (dimension - 17) >> 2;
             if (provisionalVersion <= 6)
@@ -1610,7 +1603,7 @@ function BitMatrixParser(bitMatrix)
             // Get the data mask for the format used in this QR Code. This will exclude
             // some bits from reading as we wind through the bit matrix.
             var dataMask = DataMask.forReference( formatInfo.dataMask);
-            var dimension = this.bitMatrix.Dimension;
+            var dimension = this.bitMatrix.dimension;
             dataMask.unmaskBitMatrix(this.bitMatrix, dimension);
 
             var functionPattern = version.buildFunctionPattern();

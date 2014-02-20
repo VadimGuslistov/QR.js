@@ -785,47 +785,38 @@ function BitMatrix(dimension)
     
     this.rowSize = rowSize;
     this.bits = new Int32Array(rowSize * dimension);
-    this.load = function (x){
+    
+    
+}
+BitMatrix.prototype = {
+    load:function (x){
         this.bits[this.offset] = this.loaded
         this.loaded = this.bits[x]
         this.offset = x
-    }
-
- 
-    this.__defineGetter__("Dimension", function()
-    {
-        if (this.width != this.height)
-        {
-            throw "Can't call getDimension() on a non-square matrix";
-        }
-        return this.width;
-    });
-
-    this.get_Renamed=function( x,  y){
+    },
+    get_Renamed:function( x,  y){
         var offset = y * this.rowSize + (x >> 5)
         if(offset != this.offset) this.load(offset)
         return this.loaded >>> (x & 31) & 1
-    }
-    this.set_Renamed=function( x,  y){
+    },
+    set_Renamed:function( x,  y){
         var offset = y * this.rowSize + (x >> 5)
         if(offset != this.offset) this.load(offset)
         this.loaded |= 1 << (x & 31);
-    }
-    this.flip=function( x,  y){
+    },
+    flip:function( x,  y){
         var offset = y * this.rowSize + (x >> 5)
         if(offset != this.offset) this.load(offset)
         this.loaded ^= 1 << (x & 31);
-    }
-    this.clear=function(){
-        var max = this.bits.length;
-        for (var i = 0; i < max; i++)
-        {
-            this.bits[i] = 0;
-        }
+    },
+    clear:function(){
+        var l = this.bits.length
+        var i = 0
+        do{this.bits[i++]=0}while(i<l)
         this.loaded =0
         this.offset = 0
-    }
-    this.setRegion=function( left,  top,  width,  height){
+    },
+    setRegion:function( left,  top,  width,  height){
 
         var right = left + width;
         var bottom = top + height;
