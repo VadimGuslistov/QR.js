@@ -804,17 +804,21 @@ BitMatrix.prototype = {
         if(offset != this.offset) this.load(offset)
         this.loaded |= 1 << (x & 31);
     },
+    copyBit:function(x, y,  input) // it is assumed that a integer so large that it will get it sign bit set will not be passed here
+    {
+        var offset = y * this.rowSize + (x >> 5)
+        if(offset != this.offset) this.load(offset)
+        return (input << 1) | (this.loaded >>> (x & 31) & 1)
+    },
     flip:function( x,  y){
         var offset = y * this.rowSize + (x >> 5)
         if(offset != this.offset) this.load(offset)
         this.loaded ^= 1 << (x & 31);
     },
     clear:function(){
-        var max = this.bits.length;
-        for (var i = 0; i < max; i++)
-        {
-            this.bits[i] = 0;
-        }
+        var l = this.bits.length
+        var i = 0
+        do{this.bits[i++]=0}while(i<l)
         this.loaded =0
         this.offset = 0
     },
@@ -842,14 +846,7 @@ BitMatrix.prototype = {
     }
 }
 
-function GF256Poly(field,  coefficients){
-    /*
-    this dose not happen in the QR code so it is a useless branch
-    if (coefficients == null || coefficients.length == 0)
-    {
-        throw "System.ArgumentException";
-    }*/
-    
+function GF256Poly(field,  coefficients){    
     var coefficientsLength = coefficients.length;
     var _coefficients
     var firstNonZero
@@ -876,7 +873,7 @@ function GF256Poly(field,  coefficients){
     }
     this.field = field
     this.coefficients = _coefficients
-    this.Degree = _coefficients.length - 1
+    this.degree = _coefficients.length - 1
     
     
 };
@@ -886,7 +883,7 @@ GF256Poly.prototype = {
         return this.coefficients[0] == 0
     },
     getCoefficient:function( degree){
-        return this.coefficients[this.Degree - degree];
+        return this.coefficients[this.degree - degree];
     },
     evaluateAt:function( a){
         var i,result,size
@@ -1016,12 +1013,12 @@ GF256Poly.prototype = {
         var quotient = this.field.zero;
         var remainder = this;
 
-        var denominatorLeadingTerm = other.getCoefficient(other.Degree);
+        var denominatorLeadingTerm = other.getCoefficient(other.degree);
         var inverseDenominatorLeadingTerm = this.field.inverse(denominatorLeadingTerm);
         var degreeDifference,scale,iterationQuotient
-        while (remainder.Degree >= other.Degree && !remainder.isZero()){
-            degreeDifference = remainder.Degree - other.Degree;
-            scale = this.field.multiply(remainder.getCoefficient(remainder.Degree), inverseDenominatorLeadingTerm);
+        while (remainder.degree >= other.degree && !remainder.isZero()){
+            degreeDifference = remainder.degree - other.degree;
+            scale = this.field.multiply(remainder.getCoefficient(remainder.degree), inverseDenominatorLeadingTerm);
             term = other.multiplyByMonomial(degreeDifference, scale);
             iterationQuotient = this.field.buildMonomial(degreeDifference, scale);
             quotient = quotient.addOrSubtract(iterationQuotient);
@@ -1180,7 +1177,7 @@ DataBlock.prototype = {
     runEuclideanAlgorithm:function( a,  b,  R){
         // Assume a's degree is >= b's
         var temp
-        if (a.Degree < b.Degree)
+        if (a.degree < b.degree)
         {
             temp = a;
             a = b;
@@ -1195,7 +1192,7 @@ DataBlock.prototype = {
         var t = this.field.one;
         var rDiv2 = R>>1 // Math.floor(R/2)
         // Run Euclidean algorithm until r's degree is less than R/2
-        while (r.Degree >=rDiv2)
+        while (r.degree >=rDiv2)
         {
             var rLastLast = rLast;
             var sLastLast = sLast;
@@ -1212,12 +1209,12 @@ DataBlock.prototype = {
             }
             r = rLastLast;
             var q = this.field.zero;
-            var denominatorLeadingTerm = rLast.getCoefficient(rLast.Degree);
+            var denominatorLeadingTerm = rLast.getCoefficient(rLast.degree);
             var dltInverse = this.field.inverse(denominatorLeadingTerm);
-            while (r.Degree >= rLast.Degree && !r.isZero())
+            while (r.degree >= rLast.degree && !r.isZero())
             {
-                var degreeDiff = r.Degree - rLast.Degree;
-                var scale = this.field.multiply(r.getCoefficient(r.Degree), dltInverse);
+                var degreeDiff = r.degree - rLast.degree;
+                var scale = this.field.multiply(r.getCoefficient(r.degree), dltInverse);
                 q = q.addOrSubtract(this.field.buildMonomial(degreeDiff, scale));
                 r = r.addOrSubtract(rLast.multiplyByMonomial(degreeDiff, scale));
             }
@@ -1238,7 +1235,7 @@ DataBlock.prototype = {
     },
     findErrorLocations:function( errorLocator){
         // This is a direct application of Chien's search
-        var numErrors = errorLocator.Degree;
+        var numErrors = errorLocator.degree;
         if (numErrors == 1)
         {
             // shortcut
@@ -1478,186 +1475,166 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 * limitations under the License.
 */
 
-
-function BitMatrixParser(bitMatrix)
-{
+// fix me maybe bitMatrix could grab more than one bit at a time? 
+function BitMatrixParser(bitMatrix){
     var dimension = bitMatrix.dimension;
-    if (dimension < 21 || (dimension & 0x03) != 1)
-    {
+    if (dimension < 21 || (dimension & 0x03) != 1){
         throw "Error BitMatrixParser";
     }
-    this.bitMatrix = bitMatrix;
-    this.parsedVersion = null;
-    this.parsedFormatInfo = null;
-
-    this.copyBit=function( i,  j,  versionBits)
+    var parsedFormatInfo = BitMatrixParser.readFormatInformation(bitMatrix)
+    var parsedVersion = BitMatrixParser.readVersion(bitMatrix)
+    var codewords = BitMatrixParser.readCodewords(bitMatrix,parsedFormatInfo,parsedVersion)
+    this.bitMatrix = bitMatrix; // fix me do we have nay need to hold on to this
+    this.formatInfo = parsedFormatInfo
+    this.version = parsedVersion
+    this.codewords = codewords
+     
+    
+}
+BitMatrixParser.readFormatInformation = function(bits){
+ 
+    // Read top-left format info bits
+    var formatInfoBits = 0;
+    for (var i = 0; i < 6; i++){
+        formatInfoBits = bits.copyBit(i, 8, formatInfoBits);
+    }
+    // .. and skip a bit in the timing pattern ...
+    formatInfoBits = bits.copyBit(7, 8, formatInfoBits);
+    formatInfoBits = bits.copyBit(8, 8, formatInfoBits);
+    formatInfoBits = bits.copyBit(8, 7, formatInfoBits);
+    // .. and skip a bit in the timing pattern ...
+    for (var j = 5; j >= 0; j--)
     {
-        return (versionBits << 1) | this.bitMatrix.get_Renamed(i, j)
+        formatInfoBits = bits.copyBit(8, j, formatInfoBits);
     }
 
-    this.readFormatInformation=function()
+    var parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
+    if (parsedFormatInfo != null)
     {
-            if (this.parsedFormatInfo != null)
-            {
-                return this.parsedFormatInfo;
-            }
-
-            // Read top-left format info bits
-            var formatInfoBits = 0;
-            for (var i = 0; i < 6; i++)
-            {
-                formatInfoBits = this.copyBit(i, 8, formatInfoBits);
-            }
-            // .. and skip a bit in the timing pattern ...
-            formatInfoBits = this.copyBit(7, 8, formatInfoBits);
-            formatInfoBits = this.copyBit(8, 8, formatInfoBits);
-            formatInfoBits = this.copyBit(8, 7, formatInfoBits);
-            // .. and skip a bit in the timing pattern ...
-            for (var j = 5; j >= 0; j--)
-            {
-                formatInfoBits = this.copyBit(8, j, formatInfoBits);
-            }
-
-            this.parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
-            if (this.parsedFormatInfo != null)
-            {
-                return this.parsedFormatInfo;
-            }
-
-            // Hmm, failed. Try the top-right/bottom-left pattern
-            var dimension = this.bitMatrix.dimension;
-            formatInfoBits = 0;
-            var iMin = dimension - 8;
-            for (var i = dimension - 1; i >= iMin; i--)
-            {
-                formatInfoBits = this.copyBit(i, 8, formatInfoBits);
-            }
-            for (var j = dimension - 7; j < dimension; j++)
-            {
-                formatInfoBits = this.copyBit(8, j, formatInfoBits);
-            }
-
-            this.parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
-            if (this.parsedFormatInfo != null)
-            {
-                return this.parsedFormatInfo;
-            }
-            throw "Error readFormatInformation";    
+        return parsedFormatInfo;
     }
-    this.readVersion=function()
-        {
 
-            if (this.parsedVersion != null)
-            {
-                return this.parsedVersion;
-            }
+    // Hmm, failed. Try the top-right/bottom-left pattern
+    var dimension = bits.dimension;
+    formatInfoBits = 0;
+    var iMin = dimension - 8;
+    for (var i = dimension - 1; i >= iMin; i--)
+    {
+        formatInfoBits = bits.copyBit(i, 8, formatInfoBits);
+    }
+    for (var j = dimension - 7; j < dimension; j++)
+    {
+        formatInfoBits = bits.copyBit(8, j, formatInfoBits);
+    }
 
-            var dimension = this.bitMatrix.dimension;
-
-            var provisionalVersion = (dimension - 17) >> 2;
-            if (provisionalVersion <= 6)
-            {
-                return Version.getVersionForNumber(provisionalVersion);
-            }
-
-            // Read top-right version info: 3 wide by 6 tall
-            var versionBits = 0;
-            var ijMin = dimension - 11;
-            for (var j = 5; j >= 0; j--)
-            {
-                for (var i = dimension - 9; i >= ijMin; i--)
-                {
-                    versionBits = this.copyBit(i, j, versionBits);
-                }
-            }
-
-            this.parsedVersion = Version.decodeVersionInformation(versionBits);
-            if (this.parsedVersion != null && this.parsedVersion.DimensionForVersion == dimension)
-            {
-                return this.parsedVersion;
-            }
-
-            // Hmm, failed. Try bottom left: 6 wide by 3 tall
-            versionBits = 0;
-            for (var i = 5; i >= 0; i--)
-            {
-                for (var j = dimension - 9; j >= ijMin; j--)
-                {
-                    versionBits = this.copyBit(i, j, versionBits);
-                }
-            }
-
-            this.parsedVersion = Version.decodeVersionInformation(versionBits);
-            if (this.parsedVersion != null && this.parsedVersion.DimensionForVersion == dimension)
-            {
-                return this.parsedVersion;
-            }
-            throw "Error readVersion";
-        }
-    this.readCodewords=function()
-        {
-
-            var formatInfo = this.readFormatInformation();
-            var version = this.readVersion();
-
-            // Get the data mask for the format used in this QR Code. This will exclude
-            // some bits from reading as we wind through the bit matrix.
-            var dataMask = DataMask.forReference( formatInfo.dataMask);
-            var dimension = this.bitMatrix.dimension;
-            dataMask.unmaskBitMatrix(this.bitMatrix, dimension);
-
-            var functionPattern = version.buildFunctionPattern();
-
-            var readingUp = true;
-            var result = new Array(version.TotalCodewords);
-            var resultOffset = 0;
-            var currentByte = 0;
-            var bitsRead = 0;
-            // Read columns in pairs, from right to left
-            for (var j = dimension - 1; j > 0; j -= 2)
-            {
-                if (j == 6)
-                {
-                    // Skip whole column with vertical alignment pattern;
-                    // saves time and makes the other code proceed more cleanly
-                    j--;
-                }
-                // Read alternatingly from bottom to top then top to bottom
-                for (var count = 0; count < dimension; count++)
-                {
-                    var i = readingUp?dimension - 1 - count:count;
-                    for (var col = 0; col < 2; col++)
-                    {
-                        // Ignore bits covered by the function pattern
-                        if (!functionPattern.get_Renamed(j - col, i))
-                        {
-                            // Read a bit
-                            bitsRead++;
-                            currentByte <<= 1;
-                            if (this.bitMatrix.get_Renamed(j - col, i))
-                            {
-                                currentByte |= 1;
-                            }
-                            // If we've made a whole byte, save it off
-                            if (bitsRead == 8)
-                            {
-                                result[resultOffset++] =  currentByte;
-                                bitsRead = 0;
-                                currentByte = 0;
-                            }
-                        }
-                    }
-                }
-                readingUp ^= true; // readingUp = !readingUp; // switch directions
-            }
-            if (resultOffset != version.TotalCodewords)
-            {
-                throw "Error readCodewords";
-            }
-            return result;
-        }
+    parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
+    if (parsedFormatInfo != null)
+    {
+        return parsedFormatInfo;
+    }
+    throw "Error readFormatInformation";    
 }
 
+BitMatrixParser.readVersion=function(bits){
+    var dimension = bits.dimension
+
+    var provisionalVersion = (dimension - 17) >> 2
+    if (provisionalVersion <= 6)
+    {
+        return Version.getVersionForNumber(provisionalVersion);
+    }
+
+    // Read top-right version info: 3 wide by 6 tall
+    var versionBits = 0
+    var ijMin = dimension - 11
+    for (var j = 5; j >= 0; j--)
+    {
+        for (var i = dimension - 9; i >= ijMin; i--)
+        {
+            versionBits = bits.copyBit(i, j, versionBits);
+        }
+    }
+
+    var parsedVersion = Version.decodeVersionInformation(versionBits);
+    if (parsedVersion != null && parsedVersion.DimensionForVersion == dimension)
+    {
+        return parsedVersion;
+    }
+
+    // Hmm, failed. Try bottom left: 6 wide by 3 tall
+    versionBits = 0;
+    for (var i = 5; i >= 0; i--)
+    {
+        for (var j = dimension - 9; j >= ijMin; j--)
+        {
+            versionBits = bits.copyBit(i, j, versionBits);
+        }
+    }
+
+    parsedVersion = Version.decodeVersionInformation(versionBits);
+    if (parsedVersion != null && parsedVersion.DimensionForVersion == dimension)
+    {
+        return parsedVersion;
+    }
+    throw "Error readVersion";
+} 
+BitMatrixParser.readCodewords=function(bits,formatInfo,version){
+
+
+    // Get the data mask for the format used in this QR Code. This will exclude
+    // some bits from reading as we wind through the bit matrix.
+    var dataMask = DataMask.forReference( formatInfo.dataMask);
+    var dimension = bits.dimension;
+    dataMask.unmaskBitMatrix(bits, dimension);
+
+    var functionPattern = version.buildFunctionPattern();
+
+    var readingUp = 1;
+    var result = new Uint8Array(version.TotalCodewords);
+    var resultOffset = 0;
+    var currentByte = 0;
+    var bitsRead = 0;
+    // Read columns in pairs, from right to left
+    for (var j = dimension - 1; j > 0; j -= 2)
+    {
+       
+        if (j == 6)
+        {
+            // Skip whole column with vertical alignment pattern;
+            // saves time and makes the other code proceed more cleanly
+            j--;
+        }
+        // Read alternatingly from bottom to top then top to bottom
+        for (var count = 0; count < dimension; count++)
+        {
+            var i = readingUp?dimension - 1 - count:count;
+            for (var col = 0; col < 2; col++)
+            {
+                // Ignore bits covered by the function pattern
+                if (!functionPattern.get_Renamed(j - col, i))
+                {
+                    // Read a bit
+                    bitsRead++;
+                    currentByte = this.bitMatrix.copyBit(j - col, i,currentByte)
+                    
+                    // If we've made a whole byte, save it off
+                    if (bitsRead == 8)
+                    {
+                        result[resultOffset++] =  currentByte;
+                        bitsRead = 0;
+                        currentByte = 0;
+                    }
+                }
+            }
+        }
+        readingUp ^= 1; // readingUp = !readingUp; // switch directions
+    }
+    if (resultOffset != version.TotalCodewords)
+    {
+        throw "Error readCodewords";
+    }
+    return result;
+}
 
 var DataMask = {};
 
@@ -1844,11 +1821,12 @@ DataMask.DATA_MASKS = new Array(new DataMask000(), new DataMask001(), new DataMa
 
 function Decoder(bits){
     var parser = new BitMatrixParser(bits);
-    var version = parser.readVersion();
-    var ecLevel = parser.readFormatInformation().errorCorrectionLevel;
+    var ecLevel = parser.formatInfo.errorCorrectionLevel;
+    var version = parser.version;
+    
 
     // Read codewords
-    var codewords = parser.readCodewords();
+    var codewords = parser.codewords;
 
     // Separate into data blocks
     var dataBlocks = DataBlock.getDataBlocks(codewords, version, ecLevel);
@@ -1866,7 +1844,7 @@ function Decoder(bits){
     this.ecBits = ecLevel.bits
     this.totalBytes = totalBytes
     this.dataBlocks = dataBlocks
-    this.resultBytes = new Array(totalBytes);
+    this.resultBytes = new Uint8Array(totalBytes);
     
 }
 Decoder.prototype = {
