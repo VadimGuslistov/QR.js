@@ -695,7 +695,8 @@ function buildVersions()
 
 
 var FORMAT_INFO_MASK_QR = 0x5412;
-var FORMAT_INFO_DECODE_LOOKUP = new Array(new Array(0x5412, 0x00), new Array(0x5125, 0x01), new Array(0x5E7C, 0x02), new Array(0x5B4B, 0x03), new Array(0x45F9, 0x04), new Array(0x40CE, 0x05), new Array(0x4F97, 0x06), new Array(0x4AA0, 0x07), new Array(0x77C4, 0x08), new Array(0x72F3, 0x09), new Array(0x7DAA, 0x0A), new Array(0x789D, 0x0B), new Array(0x662F, 0x0C), new Array(0x6318, 0x0D), new Array(0x6C41, 0x0E), new Array(0x6976, 0x0F), new Array(0x1689, 0x10), new Array(0x13BE, 0x11), new Array(0x1CE7, 0x12), new Array(0x19D0, 0x13), new Array(0x0762, 0x14), new Array(0x0255, 0x15), new Array(0x0D0C, 0x16), new Array(0x083B, 0x17), new Array(0x355F, 0x18), new Array(0x3068, 0x19), new Array(0x3F31, 0x1A), new Array(0x3A06, 0x1B), new Array(0x24B4, 0x1C), new Array(0x2183, 0x1D), new Array(0x2EDA, 0x1E), new Array(0x2BED, 0x1F));
+var FORMAT_INFO_DECODE_LOOKUP = new Uint32Array([0x541200, 0x512501, 0x5E7C02, 0x5B4B03, 0x45F904, 0x40CE05, 0x4F9706, 0x4AA007, 0x77C408, 0x72F309, 0x7DAA0A, 0x789D0B, 0x662F0C, 0x63180D, 0x6C410E, 0x69760F, 0x168910, 0x13BE11, 0x1CE712, 0x19D013, 0x076214, 0x025515, 0x0D0C16, 0x083B17, 0x355F18, 0x306819, 0x3F311A, 0x3A061B, 0x24B41C, 0x21831D, 0x2EDA1E, 0x2BED1F])
+
 
 
 
@@ -704,106 +705,68 @@ function FormatInformation(formatInfo)
     this.errorCorrectionLevel = ErrorCorrectionLevel.forBits((formatInfo >> 3) & 0x03);
     this.dataMask =  (formatInfo & 0x07);
 
-    this.__defineGetter__("ErrorCorrectionLevel", function()
-    {
-        return this.errorCorrectionLevel;
-    });
-    this.__defineGetter__("DataMask", function()
-    {
-        return this.dataMask;
-    });
-    this.GetHashCode=function()
-    {
-        return (this.errorCorrectionLevel.ordinal() << 3) |  dataMask;
-    }
-    this.Equals=function( o)
-    {
-        var other =  o;
-        return this.errorCorrectionLevel == other.errorCorrectionLevel && this.dataMask == other.dataMask;
-    }
 }
 
 
 
-FormatInformation.decodeFormatInformation=function( maskedFormatInfo)
+
+FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail)
 {
-    var formatInfo = FormatInformation.doDecodeFormatInformation(maskedFormatInfo);
-    if (formatInfo != null)
-    {
-        return formatInfo;
-    }
-    // Should return null, but, some QR codes apparently
-    // do not mask this info. Try again by actually masking the pattern
-    // first
-    return FormatInformation.doDecodeFormatInformation(maskedFormatInfo ^ FORMAT_INFO_MASK_QR);
-}
-FormatInformation.doDecodeFormatInformation=function( maskedFormatInfo)
-{
-    // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
-    var bestDifference = 0xffffffff;
-    var bestFormatInfo = 0;
-    for (var i = 0; i < FORMAT_INFO_DECODE_LOOKUP.length; i++)
-    {
-        var decodeInfo = FORMAT_INFO_DECODE_LOOKUP[i];
-        var targetInfo = decodeInfo[0];
-        if (targetInfo == maskedFormatInfo)
-        {
-            // Found an exact match
-            return new FormatInformation(decodeInfo[1]);
-        }
-        //var bitsDifference = this.numBitsDiffering(maskedFormatInfo, targetInfo);
-        var bitsDifference = numBitsDiffering(maskedFormatInfo, targetInfo);
-        if (bitsDifference < bestDifference)
-        {
-            bestFormatInfo = decodeInfo[1];
-            bestDifference = bitsDifference;
-        }
-    }
+   // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
+	var bestDifference = 0xffffffff;
+	var bestFormatInfo = 0;
+	var decodeInfo,targetInfo
+	var l = FORMAT_INFO_DECODE_LOOKUP.length
+	var bitsDifference
+	var i = 0
+	do{
+	   decodeInfo = targetInfo =  FORMAT_INFO_DECODE_LOOKUP[i++]
+	   targetInfo = targetInfo >>> 8
+	   decodeInfo = decodeInfo & 0xff
+	   if (targetInfo == maskedFormatInfo){
+			// Found an exact match
+			return new FormatInformation(decodeInfo);
+	   }
+       bitsDifference = numBitsDiffering(maskedFormatInfo, targetInfo);
+       if (bitsDifference < bestDifference){
+			bestFormatInfo = decodeInfo;
+			bestDifference = bitsDifference;
+		}
+	}while(i<l)
     // Hamming distance of the 32 masked codes is 7, by construction, so <= 3 bits
     // differing means we found a match
     if (bestDifference <= 3)
     {
         return new FormatInformation(bestFormatInfo);
     }
-    return null;
+    if(fail){
+        return null;
+    }
+    return FormatInformation.fromMaskedFormatInfo(maskedFormatInfo ^ FORMAT_INFO_MASK_QR,true)
+    
 }
 
     
-
-function ErrorCorrectionLevel(ordinal,  bits, name)
+function ErrorCorrectionLevel(ordinal,  bits)
 {
-    this.ordinal_Renamed_Field = ordinal;
-    this.bits = bits;
-    this.name = name;
-    this.__defineGetter__("Bits", function()
-    {
-        return this.bits;
-    });
-    this.__defineGetter__("Name", function()
-    {
-        return this.name;
-    });
-    this.ordinal=function()
-    {
-        return this.ordinal_Renamed_Field;
-    }
+	this.ordinal = ordinal;
+	this.bits = bits;
 }
 
 ErrorCorrectionLevel.forBits=function( bits)
 {
-    if (bits < 0 || bits >= FOR_BITS.length)
-    {
-        throw "ArgumentException";
+    var ret = ErrorCorrectionLevel.lvls[bits]
+    if(!ret){
+        throw "Invalid Error Correction Level"
     }
-    return FOR_BITS[bits];
+    return ret
 }
-
-var L = new ErrorCorrectionLevel(0, 0x01, "L");
-var M = new ErrorCorrectionLevel(1, 0x00, "M");
-var Q = new ErrorCorrectionLevel(2, 0x03, "Q");
-var H = new ErrorCorrectionLevel(3, 0x02, "H");
-var FOR_BITS = new Array( M, L, H, Q);
-
+ErrorCorrectionLevel.lvls = [
+    new ErrorCorrectionLevel(1, 0x00), //M 
+    new ErrorCorrectionLevel(0, 0x01), //L 
+    new ErrorCorrectionLevel(3, 0x02), //H  
+    new ErrorCorrectionLevel(2, 0x03)
+]
 
 function BitMatrix( width,  height)
 {
@@ -1568,7 +1531,7 @@ function BitMatrixParser(bitMatrix)
                 formatInfoBits = this.copyBit(8, j, formatInfoBits);
             }
 
-            this.parsedFormatInfo = FormatInformation.decodeFormatInformation(formatInfoBits);
+            this.parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
             if (this.parsedFormatInfo != null)
             {
                 return this.parsedFormatInfo;
@@ -1587,7 +1550,7 @@ function BitMatrixParser(bitMatrix)
                 formatInfoBits = this.copyBit(8, j, formatInfoBits);
             }
 
-            this.parsedFormatInfo = FormatInformation.decodeFormatInformation(formatInfoBits);
+            this.parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
             if (this.parsedFormatInfo != null)
             {
                 return this.parsedFormatInfo;
@@ -1652,7 +1615,7 @@ function BitMatrixParser(bitMatrix)
 
             // Get the data mask for the format used in this QR Code. This will exclude
             // some bits from reading as we wind through the bit matrix.
-            var dataMask = DataMask.forReference( formatInfo.DataMask);
+            var dataMask = DataMask.forReference( formatInfo.dataMask);
             var dimension = this.bitMatrix.Dimension;
             dataMask.unmaskBitMatrix(this.bitMatrix, dimension);
 
@@ -1895,7 +1858,7 @@ DataMask.DATA_MASKS = new Array(new DataMask000(), new DataMask001(), new DataMa
 function Decoder(bits){
     var parser = new BitMatrixParser(bits);
     var version = parser.readVersion();
-    var ecLevel = parser.readFormatInformation().ErrorCorrectionLevel;
+    var ecLevel = parser.readFormatInformation().errorCorrectionLevel;
 
     // Read codewords
     var codewords = parser.readCodewords();
@@ -1913,7 +1876,7 @@ function Decoder(bits){
         totalBytes += cur.numDataCodewords;
     }while(i<l)
     this.versionNumber = version.VersionNumber
-    this.ecBits = ecLevel.Bits
+    this.ecBits = ecLevel.bits
     this.totalBytes = totalBytes
     this.dataBlocks = dataBlocks
     this.resultBytes = new Array(totalBytes);
@@ -2186,17 +2149,12 @@ function Detector(image)
             return (this.calculateModuleSizeOneWay(topLeft, topRight) + this.calculateModuleSizeOneWay(topLeft, bottomLeft)) *0.5 // div by 2
         }
 
-    this.distance=function( pattern1,  pattern2)
-    {
-        var xDiff = pattern1.x - pattern2.x;
-        var yDiff = pattern1.y - pattern2.y;
-        return  Math.sqrt( (xDiff * xDiff + yDiff * yDiff));
-    }
+
     this.computeDimension=function( topLeft,  topRight,  bottomLeft,  moduleSize)
         {
 
-            var tltrCentersDimension = Math.round(this.distance(topLeft, topRight) / moduleSize);
-            var tlblCentersDimension = Math.round(this.distance(topLeft, bottomLeft) / moduleSize);
+            var tltrCentersDimension = Math.round(topLeft.distance(topRight) / moduleSize);
+            var tlblCentersDimension = Math.round(topLeft.distance(bottomLeft) / moduleSize);
             var dimension = ((tltrCentersDimension + tlblCentersDimension) >> 1) + 7;
             switch (dimension & 0x03)
             {
@@ -2371,8 +2329,9 @@ qrcode.decode_utf8 = function ( s )
         return qrcode.decode_url(s);
     else
     */
-        return s; // fix me WAT
+        return s; // fix me WAT 
 }
+
 qrcode.process = function(image,w,h){
 
 
@@ -2434,53 +2393,44 @@ var INVERSE_MAX_MODULESx4 = 0.004385965
 var INTEGER_MATH_SHIFT = 8;
 var CENTER_QUORUM = 2;
 
-qrcode.orderBestPatterns=function(patterns)
-        {
+qrcode.orderBestPatterns=function(patterns){
+    var a,b,c,tmp
+    a =  patterns[0]
+    b =  patterns[1]
+    c =  patterns[2]
+    // Find distances between pattern centers
+    var zeroOneDistance = a.intDistance(b)
+    var oneTwoDistance  = b.intDistance(c)
+    var zeroTwoDistance = a.intDistance(c)
 
 
+    // Assume one closest to other two is B; A and C will just be guesses at first
+    if (oneTwoDistance >= zeroOneDistance && oneTwoDistance >= zeroTwoDistance){
+        tmp = a
+        a = b
+        b = tmp
 
-           
+    }
+    else if (!(zeroTwoDistance >= oneTwoDistance && zeroTwoDistance >= zeroOneDistance)){
+        tmp = b
+        b = c
+        c = tmp
+    }
 
-            var a,b,c,tmp
-            a =  patterns[0]
-            b =  patterns[1]
-            c =  patterns[2]
-            // Find distances between pattern centers
-            var zeroOneDistance = a.intDistance(b)
-            var oneTwoDistance  = b.intDistance(c)
-            var zeroTwoDistance = a.intDistance(c)
+    // Use cross product to figure out whether A and C are correct or flipped.
+    // This asks whether BC x BA has a positive z component, which is the arrangement
+    // we want for A, B, C. If it's negative, then we've got it flipped around and
+    // should swap A and C.
+    if (qrPattern.crossProductZ(a, b, c) < 0.0){
+        tmp = a;
+        a = c;
+        c = tmp;
+    }
 
-
-            // Assume one closest to other two is B; A and C will just be guesses at first
-            if (oneTwoDistance >= zeroOneDistance && oneTwoDistance >= zeroTwoDistance)
-            {
-                tmp = a
-                a = b
-                b = tmp
-
-            }
-            else if (!(zeroTwoDistance >= oneTwoDistance && zeroTwoDistance >= zeroOneDistance)
-            {
-                tmp = b
-                b = c
-                c = tmp
-            }
-
-            // Use cross product to figure out whether A and C are correct or flipped.
-            // This asks whether BC x BA has a positive z component, which is the arrangement
-            // we want for A, B, C. If it's negative, then we've got it flipped around and
-            // should swap A and C.
-            if (qrPattern.crossProductZ(a, b, c) < 0.0)
-            {
-                tmp = a;
-                a = c;
-                c = tmp;
-            }
-
-            patterns[0] = a;
-            patterns[1] = b;
-            patterns[2] = c;
-        }
+    patterns[0] = a;
+    patterns[1] = b;
+    patterns[2] = c;
+}
 
 
 function qrPattern(posX, posY,  estimatedModuleSize)
