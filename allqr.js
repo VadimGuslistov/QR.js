@@ -1451,6 +1451,29 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
     return result;
 }
     
+/*
+  Ported to JavaScript by Lazar Laszlo 2011 
+  
+  lazarsoft@gmail.com, www.lazarsoft.info
+  
+*/
+
+/*
+*
+* Copyright 2007 ZXing authors
+*
+* Licensed under the Apache License, Version 2.0 (the "License");
+* you may not use this file except in compliance with the License.
+* You may obtain a copy of the License at
+*
+*      http://www.apache.org/licenses/LICENSE-2.0
+*
+* Unless required by applicable law or agreed to in writing, software
+* distributed under the License is distributed on an "AS IS" BASIS,
+* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+* See the License for the specific language governing permissions and
+* limitations under the License.
+*/
 
 // fix me maybe bitMatrix could grab more than one bit at a time? 
 function BitMatrixParser(bitMatrix){
@@ -1571,10 +1594,8 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
     var resultOffset = 0;
     var currentByte = 0;
     var bitsRead = 0;
-    var j = dimension - 1
-    var dimensionMinus1 = j
     // Read columns in pairs, from right to left
-    for ( ; j > 0; j -= 2)
+    for (var j = dimension - 1; j > 0; j -= 2)
     {
        
         if (j == 6)
@@ -1586,7 +1607,7 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
         // Read alternatingly from bottom to top then top to bottom
         for (var count = 0; count < dimension; count++)
         {
-            var i = readingUp?dimensionMinus1  - count:count;
+            var i = readingUp?dimension - 1 - count:count;
             for (var col = 0; col < 2; col++)
             {
                 // Ignore bits covered by the function pattern

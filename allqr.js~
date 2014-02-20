@@ -1594,10 +1594,8 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
     var resultOffset = 0;
     var currentByte = 0;
     var bitsRead = 0;
-    var j = dimension - 1
-    var dimensionMinus1 = j
     // Read columns in pairs, from right to left
-    for ( ; j > 0; j -= 2)
+    for (var j = dimension - 1; j > 0; j -= 2)
     {
        
         if (j == 6)
@@ -1609,7 +1607,7 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
         // Read alternatingly from bottom to top then top to bottom
         for (var count = 0; count < dimension; count++)
         {
-            var i = readingUp?dimensionMinus1  - count:count;
+            var i = readingUp?dimension - 1 - count:count;
             for (var col = 0; col < 2; col++)
             {
                 // Ignore bits covered by the function pattern
@@ -4008,4 +4006,119 @@ addEventListener('message', function(e) {
 
 //=============================
 
-})();
+})();{
+    var bestDifference = 0xffffffff;
+    var bestVersion = 0;
+    for (var i = 0; i < Version.VERSION_DECODE_INFO.length; i++)
+    {
+        var targetVersion = Version.VERSION_DECODE_INFO[i];
+        // Do the version info bits match exactly? done.
+        if (targetVersion == versionBits)
+        {
+            return this.getVersionForNumber(i + 7);
+        }
+        // Otherwise see if this is the closest to a real version info bit string
+        // we have seen so far
+        //var bitsDifference = FormatInformation.numBitsDiffering(versionBits, targetVersion);
+        var bitsDifference = numBitsDiffering(versionBits, targetVersion);
+        if (bitsDifference < bestDifference)
+        {
+            bestVersion = i + 7;
+            bestDifference = bitsDifference;
+        }
+    }
+    // We can tolerate up to 3 bits of error since no two version info codewords will
+    // differ in less than 4 bits.
+    if (bestDifference <= 3)
+    {
+        return this.getVersionForNumber(bestVersion);
+    }
+    // If we didn't find a close enough match, fail
+    return null;
+}
+{
+ 
+    // Read top-left format info bits
+    var formatInfoBits = 0;
+    for (var i = 0; i < 6; i++){
+        formatInfoBits = bits.copyBit(i, 8, formatInfoBits);
+    }
+    // .. and skip a bit in the timing pattern ...
+    formatInfoBits = bits.copyBit(7, 8, formatInfoBits);
+    formatInfoBits = bits.copyBit(8, 8, formatInfoBits);
+    formatInfoBits = bits.copyBit(8, 7, formatInfoBits);
+    // .. and skip a bit in the timing pattern ...
+    for (var j = 5; j >= 0; j--)
+    {
+        formatInfoBits = bits.copyBit(8, j, formatInfoBits);
+    }
+
+    var parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
+    if (parsedFormatInfo != null)
+    {
+        return parsedFormatInfo;
+    }
+
+    // Hmm, failed. Try the top-right/bottom-left pattern
+    var dimension = bits.dimension;
+    formatInfoBits = 0;
+    var iMin = dimension - 8;
+    for (var i = dimension - 1; i >= iMin; i--)
+    {
+        formatInfoBits = bits.copyBit(i, 8, formatInfoBits);
+    }
+    for (var j = dimension - 7; j < dimension; j++)
+    {
+        formatInfoBits = bits.copyBit(8, j, formatInfoBits);
+    }
+
+    parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
+    if (parsedFormatInfo != null)
+    {
+        return parsedFormatInfo;
+    }
+    throw "Error readFormatInformation";    
+}
+{
+    var dimension = bits.dimension
+
+    var provisionalVersion = (dimension - 17) >> 2
+    if (provisionalVersion <= 6)
+    {
+        return Version.getVersionForNumber(provisionalVersion);
+    }
+
+    // Read top-right version info: 3 wide by 6 tall
+    var versionBits = 0
+    var ijMin = dimension - 11
+    for (var j = 5; j >= 0; j--)
+    {
+        for (var i = dimension - 9; i >= ijMin; i--)
+        {
+            versionBits = bits.copyBit(i, j, versionBits);
+        }
+    }
+
+    var parsedVersion = Version.decodeVersionInformation(versionBits);
+    if (parsedVersion != null && parsedVersion.DimensionForVersion == dimension)
+    {
+        return parsedVersion;
+    }
+
+    // Hmm, failed. Try bottom left: 6 wide by 3 tall
+    versionBits = 0;
+    for (var i = 5; i >= 0; i--)
+    {
+        for (var j = dimension - 9; j >= ijMin; j--)
+        {
+            versionBits = bits.copyBit(i, j, versionBits);
+        }
+    }
+
+    parsedVersion = Version.decodeVersionInformation(versionBits);
+    if (parsedVersion != null && parsedVersion.DimensionForVersion == dimension)
+    {
+        return parsedVersion;
+    }
+    throw "Error readVersion";
+}
