@@ -769,34 +769,29 @@ ErrorCorrectionLevel.lvls = [
 
 ]
 
-function BitMatrix( width,  height)
+function BitMatrix(dimension)
 {
-    if(!height)
-        height=width;
-    if (width < 1 || height < 1)
-    {
-        throw "Both dimensions must be greater than 0";
-    }
-    this.width = width;
-    this.height = height;
-    var rowSize = width >> 5;
-    if ((width & 0x1f) != 0)
+ 
+    var rowSize = dimension >> 5;
+    if ((dimension & 31) != 0)
     {
         rowSize++;
     }
-    this.rowSize = rowSize;
-    this.bits = new Array(rowSize * height);
-    for(var i=0;i<this.bits.length;i++)
-        this.bits[i]=0;
+    this.dimension = dimension;
+    // fix me it is belived that avoiding hitting the Arr will speed things up -- find out if this is actually true
+    this.loaded = 0
+    this.offset = 0
 
-    this.__defineGetter__("Width", function()
-    {
-        return this.width;
-    });
-    this.__defineGetter__("Height", function()
-    {
-        return this.height;
-    });
+    
+    this.rowSize = rowSize;
+    this.bits = new Int32Array(rowSize * dimension);
+    this.load = function (x){
+        this.bits[this.offset] = this.loaded
+        this.loaded = this.bits[x]
+        this.offset = x
+    }
+
+ 
     this.__defineGetter__("Dimension", function()
     {
         if (this.width != this.height)
@@ -806,54 +801,52 @@ function BitMatrix( width,  height)
         return this.width;
     });
 
-    this.get_Renamed=function( x,  y)
+    this.get_Renamed=function( x,  y){
+        var offset = y * this.rowSize + (x >> 5)
+        if(offset != this.offset) this.load(offset)
+        return this.loaded >>> (x & 31) & 1
+    }
+    this.set_Renamed=function( x,  y){
+        var offset = y * this.rowSize + (x >> 5)
+        if(offset != this.offset) this.load(offset)
+        this.loaded |= 1 << (x & 31);
+    }
+    this.flip=function( x,  y){
+        var offset = y * this.rowSize + (x >> 5)
+        if(offset != this.offset) this.load(offset)
+        this.loaded ^= 1 << (x & 31);
+    }
+    this.clear=function(){
+        var max = this.bits.length;
+        for (var i = 0; i < max; i++)
         {
-            var offset = y * this.rowSize + (x >> 5);
-            return ((URShift(this.bits[offset], (x & 0x1f))) & 1) != 0;
+            this.bits[i] = 0;
         }
-    this.set_Renamed=function( x,  y)
-        {
-            var offset = y * this.rowSize + (x >> 5);
-            this.bits[offset] |= 1 << (x & 0x1f);
-        }
-    this.flip=function( x,  y)
-        {
-            var offset = y * this.rowSize + (x >> 5);
-            this.bits[offset] ^= 1 << (x & 0x1f);
-        }
-    this.clear=function()
-        {
-            var max = this.bits.length;
-            for (var i = 0; i < max; i++)
-            {
-                this.bits[i] = 0;
-            }
-        }
-    this.setRegion=function( left,  top,  width,  height)
-        {
-            if (top < 0 || left < 0)
-            {
-                throw "Left and top must be nonnegative";
-            }
-            if (height < 1 || width < 1)
-            {
-                throw "Height and width must be at least 1";
-            }
-            var right = left + width;
-            var bottom = top + height;
-            if (bottom > this.height || right > this.width)
-            {
-                throw "The region must fit inside the matrix";
-            }
-            for (var y = top; y < bottom; y++)
-            {
-                var offset = y * this.rowSize;
-                for (var x = left; x < right; x++)
-                {
-                    this.bits[offset + (x >> 5)] |= 1 << (x & 0x1f);
-                }
-            }
-        }
+        this.loaded =0
+        this.offset = 0
+    }
+    this.setRegion=function( left,  top,  width,  height){
+
+        var right = left + width;
+        var bottom = top + height;
+        var y = top
+        var x = left
+        var offset,tmp,tmp2
+        do{
+            offset = y * this.rowSize + (x >> 5)
+            if(offset != this.offset) this.load(offset)
+            this.loaded |= 1 << (x & 31)
+            // this avoids a nested loop - fix me - know if it was worth it
+            x++
+            tmp = (x-right)>>>31
+            tmp2 = tmp^1
+            x = (x ^ ((-tmp ^ x) & x)) | (left ^ ((-tmp2 ^ left) & left))
+            y += tmp2
+            ///////
+            
+        }while(y < bottom)
+        
+    }
 }
 
 function GF256Poly(field,  coefficients){
@@ -1495,7 +1488,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 
 function BitMatrixParser(bitMatrix)
 {
-    var dimension = bitMatrix.Dimension;
+    var dimension = bitMatrix.dimension;
     if (dimension < 21 || (dimension & 0x03) != 1)
     {
         throw "Error BitMatrixParser";
@@ -1506,7 +1499,7 @@ function BitMatrixParser(bitMatrix)
 
     this.copyBit=function( i,  j,  versionBits)
     {
-        return this.bitMatrix.get_Renamed(i, j)?(versionBits << 1) | 0x1:versionBits << 1;
+        return (versionBits << 1) | this.bitMatrix.get_Renamed(i, j)
     }
 
     this.readFormatInformation=function()
@@ -1539,7 +1532,7 @@ function BitMatrixParser(bitMatrix)
             }
 
             // Hmm, failed. Try the top-right/bottom-left pattern
-            var dimension = this.bitMatrix.Dimension;
+            var dimension = this.bitMatrix.dimension;
             formatInfoBits = 0;
             var iMin = dimension - 8;
             for (var i = dimension - 1; i >= iMin; i--)
@@ -1566,7 +1559,7 @@ function BitMatrixParser(bitMatrix)
                 return this.parsedVersion;
             }
 
-            var dimension = this.bitMatrix.Dimension;
+            var dimension = this.bitMatrix.dimension;
 
             var provisionalVersion = (dimension - 17) >> 2;
             if (provisionalVersion <= 6)
@@ -1617,7 +1610,7 @@ function BitMatrixParser(bitMatrix)
             // Get the data mask for the format used in this QR Code. This will exclude
             // some bits from reading as we wind through the bit matrix.
             var dataMask = DataMask.forReference( formatInfo.dataMask);
-            var dimension = this.bitMatrix.Dimension;
+            var dimension = this.bitMatrix.dimension;
             dataMask.unmaskBitMatrix(this.bitMatrix, dimension);
 
             var functionPattern = version.buildFunctionPattern();
