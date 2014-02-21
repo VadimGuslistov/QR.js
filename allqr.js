@@ -514,7 +514,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
     this.versionNumber = versionNumber;
     this.alignmentPatternCenters = alignmentPatternCenters;
     this.ecBlocks = new Array(ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4);
-
+    this.functionPattern = null
     var total = 0;
     var ecCodewords = ecBlocks1.ECCodewordsPerBlock;
     var ecbArray = ecBlocks1.getECBlocks();
@@ -524,8 +524,176 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         total += ecBlock.count * (ecBlock.DataCodewords + ecCodewords);
     }
     this.totalCodewords = total;
+    this.masks = {}
+    this.getMask= function (maskNum){
+        var mask = this.masks[maskNum]
+        if(mask) return mask
+        this['buildDataMask'+maskNum]()
+        return this.masks[maskNum]
+    }
+    this.setMask = function(maskNum,mask){
+        // this seemingly unnecessary function is here due to the fact js objects in hash mode will force a function to de-optimise
+        // therefore putting the setting in a separate function will isolate the de-optimization to a small point 
+        this.masks[maskNum] = mask
+    }
+    this.buildDataMask0 = function (){
+        var dimension = this.DimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+        var i = 0
+        var j = 0
+        var tmp
 
-    this.__defineGetter__("VersionNumber", function()
+        //(i + j) mod 2 == 0
+        do{
+            if( -((i + j) & 0x01)>>>31^1 )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-dimension)>>>31
+            j ^= ((j^-tmp) & j)
+            i += tmp^1
+        }while(i<dimension)
+        this.setMask(0,bitMatrix)
+       
+    }
+    this.buildDataMask1 = function (){
+        var dimension = this.DimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+        var i = 0
+        var j = 0
+        var tmp
+        //(i + j) mod 2 == 0
+        do{
+            if( (-(i & 0x01)>>>31^1) )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-dimension)>>>31
+            j ^= ((j^-tmp) & j)
+            i += tmp^1
+        }while(i<dimension)
+        
+        this.setMask(1,bitMatrix)
+    }
+    
+    this.buildDataMask2 = function (){
+        var dimension = this.DimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+        var i = 0
+        var j = 0
+        var tmp
+        // j % 3 == 0;
+        do{
+            if( (-(j % 3)>>>31^1) )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-dimension)>>>31
+            j ^= ((j^-tmp) & j)
+            i += tmp^1
+        }while(i<dimension)
+        
+        this.setMask(2,bitMatrix)
+    }
+    this.buildDataMask3 = function (){
+        var dimension = this.DimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+        var i = 0
+        var j = 0
+        var tmp
+        //  (i + j) % 3 == 0
+        do{
+            if( (-((i + j) % 3)>>>31^1) )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-dimension)>>>31
+            j ^= ((j^-tmp) & j)
+            i += tmp^1
+        }while(i<dimension)
+        
+        this.setMask(3,bitMatrix)
+    }
+    this.buildDataMask4 = function (){
+        var dimension = this.DimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+        var i = 0
+        var j = 0
+        var tmp
+        //(i/2 + j/3) % 2 == 0
+        do{ // bit shift short-cuts can not be taken here ! X 0.3333333333 short-cuts can not be taken here 
+            if( -((i*0.5 + j/3)&0x01)>>>31^1 )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-dimension)>>>31
+            j ^= ((j^-tmp) & j)
+            i += tmp^1
+        }while(i<dimension)
+        
+        this.setMask(4,bitMatrix)
+    }
+    this.buildDataMask5 = function (){
+        var dimension = this.DimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+        var i = 0
+        var j = 0
+        var tmp
+        var tmp2
+        // xy % 2 + xy % 3 == 0
+        do{
+            tmp2 = i*j
+            if( (-((tmp2 & 0x01) + (tmp2 %3))>>>31^1) )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-dimension)>>>31
+            j ^= ((j^-tmp) & j)
+            i += tmp^1
+        }while(i<dimension)
+        
+        this.setMask(5,bitMatrix)
+    }
+    this.buildDataMask6 = function (){
+        var dimension = this.DimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+        var i = 0
+        var j = 0
+        var tmp
+        var tmp2
+        // (xy % 2 + xy % 3) % 2 == 0
+        do{
+            tmp2 = i*j
+
+
+            if( (-((((tmp2 & 0x01) + (tmp2 % 3)) & 0x01))>>>31^1) )bitMatrix.set_Renamed(j,i)  //  
+            
+            j++
+            tmp = (j-dimension)>>>31
+            j ^= ((j^-tmp) & j)
+            i += tmp^1
+        }while(i<dimension)
+        
+        this.setMask(6,bitMatrix)
+    }
+    this.buildDataMask7 = function (){
+        var dimension = this.DimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+        var i = 0
+        var j = 0
+        var tmp
+        //  ((x+y) % 2 + xy % 3) % 2 == 0
+        do{
+
+
+
+            if( (-( (( ((i+j) & 0x01) + ((i*j) % 3) ) & 0x01) )>>>31^1) )bitMatrix.set_Renamed(j,i)  
+            
+            j++
+            tmp = (j-dimension)>>>31
+            j ^= ((j^-tmp) & j)
+            i += tmp^1
+        }while(i<dimension)
+        
+        this.setMask(7,bitMatrix)
+    }
+
+
+   this.__defineGetter__("VersionNumber", function()
     {
         return  this.versionNumber;
     });
@@ -545,6 +713,10 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
 
     this.buildFunctionPattern=function()
         {
+            if(this.functionPattern !== null){
+                return this.functionPattern
+            }
+            console.log('built function pat')
             var dimension = this.DimensionForVersion;
             var bitMatrix = new BitMatrix(dimension);
 
@@ -583,7 +755,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
                 // Version info, bottom left
                 bitMatrix.setRegion(0, dimension - 11, 6, 3);
             }
-
+            this.functionPattern = bitMatrix
             return bitMatrix;
         }
     this.getECBlocksForLevel=function( ecLevel)
@@ -804,12 +976,6 @@ BitMatrix.prototype = {
         if(offset != this.offset) this.load(offset)
         this.loaded |= 1 << (x & 31);
     },
-    copyBit:function(x, y,  input) // it is assumed that a integer so large that it will get it sign bit set will not be passed here
-    {
-        var offset = y * this.rowSize + (x >> 5)
-        if(offset != this.offset) this.load(offset)
-        return (input << 1) | (this.loaded >>> (x & 31) & 1)
-    },
     flip:function( x,  y){
         var offset = y * this.rowSize + (x >> 5)
         if(offset != this.offset) this.load(offset)
@@ -843,7 +1009,27 @@ BitMatrix.prototype = {
             
         }while(y < bottom)
         
+    },
+    copyBit:function(x, y,  input) // it is assumed that a integer so large that it will get it sign bit set will not be passed here
+    {
+        var offset = y * this.rowSize + (x >> 5)
+        if(offset != this.offset) this.load(offset)
+        return (input << 1) | (this.loaded >>> (x & 31) & 1)
+    },
+    XOR_Matrix:function (b){
+        this.load(0)
+        var a = this.bits
+        b = b.bits
+        var l = a.length
+        if(l != b.length) throw "Masking of a BitMatrix can only happen with a equal sized BitMatrix"
+        i = 0
+        do{
+            a[i] ^= b[i]
+            i++
+        }while(i<l)
+        this.loaded = this.bits[0]
     }
+    
 }
 
 function GF256Poly(field,  coefficients){    
@@ -1476,6 +1662,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 */
 
 // fix me maybe bitMatrix could grab more than one bit at a time? 
+
 function BitMatrixParser(bitMatrix){
     var dimension = bitMatrix.dimension;
     if (dimension < 21 || (dimension & 0x03) != 1){
@@ -1583,9 +1770,11 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
 
     // Get the data mask for the format used in this QR Code. This will exclude
     // some bits from reading as we wind through the bit matrix.
-    var dataMask = DataMask.forReference( formatInfo.dataMask);
+
+    bits.XOR_Matrix(version.getMask(formatInfo.dataMask))
+    //var dataMask = DataMask.forReference( formatInfo.dataMask);
     var dimension = bits.dimension;
-    dataMask.unmaskBitMatrix(bits, dimension);
+    //dataMask.unmaskBitMatrix(bits, dimension);
 
     var functionPattern = version.buildFunctionPattern();
 
@@ -2307,8 +2496,9 @@ qrcode.process = function(image,w,h){
        
         
         
+        var d = new Detector(image).detect()
 
-        var decoder = new Decoder( (new Detector(image)).detect().bits )
+        var decoder = new Decoder( d.bits )
         
        
         
