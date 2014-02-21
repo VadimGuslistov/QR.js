@@ -426,7 +426,7 @@ GridSampler.checkAndNudgePoints=function( image,  points)
 GridSampler.sampleGrid3=function( image,  dimension,  transform)
         {
             var bits = new BitMatrix(dimension);
-            var points = new Array(dimension << 1);
+            var points = new Float32Array(dimension << 1);
             for (var y = 0; y < dimension; y++)
             {
                 var max = points.length;
@@ -479,9 +479,9 @@ function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
 {
     this.ecCodewordsPerBlock = ecCodewordsPerBlock;
     if(ecBlocks2)
-        this.ecBlocks = new Array(ecBlocks1, ecBlocks2);
+        this.ecBlocks = [ecBlocks1, ecBlocks2]
     else
-        this.ecBlocks = new Array(ecBlocks1);
+        this.ecBlocks = [ecBlocks1];
 
     this.__defineGetter__("ECCodewordsPerBlock", function()
     {
@@ -513,7 +513,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
 {
     this.versionNumber = versionNumber;
     this.alignmentPatternCenters = alignmentPatternCenters;
-    this.ecBlocks = new Array(ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4);
+    this.ecBlocks = [ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4]
     this.functionPattern = null
     var total = 0;
     var ecCodewords = ecBlocks1.ECCodewordsPerBlock;
@@ -618,7 +618,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         var tmp
         //(i/2 + j/3) % 2 == 0
         do{ // bit shift short-cuts can not be taken here ! X 0.3333333333 short-cuts can not be taken here 
-            if( -((i*0.5 + j/3)&0x01)>>>31^1 )bitMatrix.set_Renamed(j,i)
+            if( -(( (i>>1) + (j/3)|0) &0x01)>>>31^1 )bitMatrix.set_Renamed(j,i)
             
             j++
             tmp = (j-dimension)>>>31
@@ -764,7 +764,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
     }
 }
 
-Version.VERSION_DECODE_INFO = new Array(0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78, 0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EC, 0x18EC4, 0x191E1, 0x1AFAB, 0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B, 0x2542E, 0x26A64, 0x27541, 0x28C69);
+Version.VERSION_DECODE_INFO = new Uint32Array([0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78, 0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EC, 0x18EC4, 0x191E1, 0x1AFAB, 0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B, 0x2542E, 0x26A64, 0x27541, 0x28C69]);
 
 Version.VERSIONS = buildVersions();
 
@@ -1425,7 +1425,7 @@ DataBlock.prototype = {
         if (numErrors == 1)
         {
             // shortcut
-            return new Array(errorLocator.getCoefficient(1));
+            return new Int32Array([errorLocator.getCoefficient(1)]);
         }
         var result = new Int32Array(numErrors);
         var e = 0;
@@ -1772,9 +1772,9 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
     // some bits from reading as we wind through the bit matrix.
 
     bits.XOR_Matrix(version.getMask(formatInfo.dataMask))
-    //var dataMask = DataMask.forReference( formatInfo.dataMask);
+
     var dimension = bits.dimension;
-    //dataMask.unmaskBitMatrix(bits, dimension);
+
 
     var functionPattern = version.buildFunctionPattern();
 
@@ -1825,189 +1825,6 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
     return result;
 }
 
-var DataMask = {};
-
-DataMask.forReference = function(reference)
-{
-    if (reference < 0 || reference > 7)
-    {
-        throw "System.ArgumentException";
-    }
-    return DataMask.DATA_MASKS[reference];
-}
-
-function DataMask000()
-{
-    this.unmaskBitMatrix=function(bits,  dimension)
-    {
-        for (var i = 0; i < dimension; i++)
-        {
-            for (var j = 0; j < dimension; j++)
-            {
-                if (this.isMasked(i, j))
-                {
-                    bits.flip(j, i);
-                }
-            }
-        }
-    }
-    this.isMasked=function( i,  j)
-    {
-        return ((i + j) & 0x01) == 0;
-    }
-}
-
-function DataMask001()
-{
-    this.unmaskBitMatrix=function(bits,  dimension)
-    {
-        for (var i = 0; i < dimension; i++)
-        {
-            for (var j = 0; j < dimension; j++)
-            {
-                if (this.isMasked(i, j))
-                {
-                    bits.flip(j, i);
-                }
-            }
-        }
-    }
-    this.isMasked=function( i,  j)
-    {
-        return (i & 0x01) == 0;
-    }
-}
-
-function DataMask010()
-{
-    this.unmaskBitMatrix=function(bits,  dimension)
-    {
-        for (var i = 0; i < dimension; i++)
-        {
-            for (var j = 0; j < dimension; j++)
-            {
-                if (this.isMasked(i, j))
-                {
-                    bits.flip(j, i);
-                }
-            }
-        }
-    }
-    this.isMasked=function( i,  j)
-    {
-        return j % 3 == 0;
-    }
-}
-
-function DataMask011()
-{
-    this.unmaskBitMatrix=function(bits,  dimension)
-    {
-        for (var i = 0; i < dimension; i++)
-        {
-            for (var j = 0; j < dimension; j++)
-            {
-                if (this.isMasked(i, j))
-                {
-                    bits.flip(j, i);
-                }
-            }
-        }
-    }
-    this.isMasked=function( i,  j)
-    {
-        return (i + j) % 3 == 0;
-    }
-}
-
-function DataMask100()
-{
-    this.unmaskBitMatrix=function(bits,  dimension)
-    {
-        for (var i = 0; i < dimension; i++)
-        {
-            for (var j = 0; j < dimension; j++)
-            {
-                if (this.isMasked(i, j))
-                {
-                    bits.flip(j, i);
-                }
-            }
-        }
-    }
-    this.isMasked=function( i,  j)
-    {
-        return (((URShift(i, 1)) + (j / 3)) & 0x01) == 0;
-    }
-}
-
-function DataMask101()
-{
-    this.unmaskBitMatrix=function(bits,  dimension)
-    {
-        for (var i = 0; i < dimension; i++)
-        {
-            for (var j = 0; j < dimension; j++)
-            {
-                if (this.isMasked(i, j))
-                {
-                    bits.flip(j, i);
-                }
-            }
-        }
-    }
-    this.isMasked=function( i,  j)
-    {
-        var temp = i * j;
-        return (temp & 0x01) + (temp % 3) == 0;
-    }
-}
-
-function DataMask110()
-{
-    this.unmaskBitMatrix=function(bits,  dimension)
-    {
-        for (var i = 0; i < dimension; i++)
-        {
-            for (var j = 0; j < dimension; j++)
-            {
-                if (this.isMasked(i, j))
-                {
-                    bits.flip(j, i);
-                }
-            }
-        }
-    }
-    this.isMasked=function( i,  j)
-    {
-        var temp = i * j;
-        return (((temp & 0x01) + (temp % 3)) & 0x01) == 0;
-    }
-}
-function DataMask111()
-{
-    this.unmaskBitMatrix=function(bits,  dimension)
-    {
-        for (var i = 0; i < dimension; i++)
-        {
-            for (var j = 0; j < dimension; j++)
-            {
-                if (this.isMasked(i, j))
-                {
-                    bits.flip(j, i);
-                }
-            }
-        }
-    }
-    this.isMasked=function( i,  j)
-    {
-        return ((((i + j) & 0x01) + ((i * j) % 3)) & 0x01) == 0;
-    }
-}
-
-DataMask.DATA_MASKS = new Array(new DataMask000(), new DataMask001(), new DataMask010(), new DataMask011(), new DataMask100(), new DataMask101(), new DataMask110(), new DataMask111());
-
-
 function Decoder(bits){
     var parser = new BitMatrixParser(bits);
     var ecLevel = parser.formatInfo.errorCorrectionLevel;
@@ -2053,7 +1870,7 @@ Decoder.prototype = {
             dataBlock = this.dataBlocks[i++]
             codewordBytes = dataBlock.codewords
             numDataCodewords = dataBlock.numDataCodewords
-            //this.correctErrors(codewordBytes, numDataCodewords)
+
             i2=0
             do{this.resultBytes[resultOffset++] = codewordBytes[i2++]}while(i2<numDataCodewords)
         }while(i<l)
@@ -2444,11 +2261,11 @@ function Detector(image)
             var points;
             if (alignmentPattern == null)
             {
-                points = new Array(bottomLeft, topLeft, topRight);
+                points = [bottomLeft, topLeft, topRight];
             }
             else
             {
-                points = new Array(bottomLeft, topLeft, topRight, alignmentPattern);
+                points = [bottomLeft, topLeft, topRight, alignmentPattern];
             }
             return new DetectorResult(bits, points);
         }
@@ -2526,20 +2343,9 @@ qrcode.process = function(image,w,h){
 
 
 
-function URShift( number,  bits)
-{
-    if (number >= 0)
-        return number >> bits;
-    else
-        return (number >> bits) + (2 << ~bits);
-}
 
 
-Array.prototype.remove = function(from, to) {
-  var rest = this.slice((to || from) + 1 || this.length);
-  this.length = from < 0 ? this.length + from : from;
-  return this.push.apply(this, rest);
-};
+
 
 
 var MIN_SKIP = 3;
@@ -2903,7 +2709,8 @@ function FinderPatternFinder()
 
                     if (Math.abs(pattern.estimatedModuleSize - average) > limit)
                     {
-                        this.possibleCenters.remove(i);
+                        this.possibleCenters.splice(i,1);
+
                         i--;
                     }
                 }
@@ -2994,7 +2801,7 @@ function FinderPatternFinder()
         }
 
         var done = false;
-        var stateCount = new Array(5);
+        var stateCount = new Array(0,0,0,0,0);
         for (var i = iSkip - 1; i < maxI && !done; i += iSkip)
         {
             // Get a row of black/white values
@@ -3544,10 +3351,7 @@ function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
                     shiftjisWord = tempWord + 0xC140;
                 }
 
-                //var tempByte = new Array(0,0);
-                //tempByte[0] = (sbyte) (shiftjisWord >> 8);
-                //tempByte[1] = (sbyte) (shiftjisWord & 0xFF);
-                //unicodeString += new String(SystemUtils.ToCharArray(SystemUtils.ToByteArray(tempByte)));
+               
                 unicodeString += String.fromCharCode(shiftjisWord);
                 length--;
             }
