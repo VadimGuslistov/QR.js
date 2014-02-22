@@ -1022,7 +1022,7 @@ BitMatrix.prototype = {
         b = b.bits
         var l = a.length
         if(l != b.length) throw "Masking of a BitMatrix can only happen with a equal sized BitMatrix"
-        i = 0
+        var i = 0
         do{
             a[i] ^= b[i]
             i++
@@ -1051,12 +1051,13 @@ function GF256Poly(field,  coefficients){
         else{
             l = coefficientsLength - firstNonZero
             i=0
-            _coefficients = new Uint8Array(l);
+            _coefficients = new Int32Array(l);
             do{_coefficients[i++] = coefficients[firstNonZero++]}while(i<l)
         }
     }else{
         _coefficients = coefficients;
     }
+   
     this.field = field
     this.coefficients = _coefficients
     this.degree = _coefficients.length - 1
@@ -1076,7 +1077,7 @@ GF256Poly.prototype = {
         if (a == 0)
         {
             // Just return the x^0 coefficient
-            return this.getCoefficient(0);
+            return this.coefficients[this.degree]
         }
         size = this.coefficients.length;
         if (a == 1)
@@ -1120,7 +1121,7 @@ GF256Poly.prototype = {
             //---
             // fix me this swap avoids a 2nd call to length but is it faster than calling length a 2nd time - investigate
         }
-        sumDiff = new Uint8Array(largerCoefficients_l);
+        sumDiff = new Int32Array(largerCoefficients_l);
         lengthDiff = largerCoefficients_l - smallerCoefficients_l;
         // Copy high-order terms only found in higher-degree polynomial's coefficients
 
@@ -1145,7 +1146,7 @@ GF256Poly.prototype = {
         var aLength = aCoefficients.length;
         var bCoefficients = other.coefficients;
         var bLength = bCoefficients.length;
-        var product = new Uint8Array(aLength + bLength - 1);
+        var product = new Int32Array(aLength + bLength - 1);
         var i,j
         var aCoeff
         i=0
@@ -1167,7 +1168,7 @@ GF256Poly.prototype = {
             return this;
         }
         var size = this.coefficients.length;
-        var product = new Uint8Array(size);
+        var product = new Int32Array(size);
         var i=0
         do{product[i] = this.field.multiply(this.coefficients[i], scalar);i++}while(i<size)
         
@@ -1181,7 +1182,7 @@ GF256Poly.prototype = {
             return this.field.zero;
         }
         var size = this.coefficients.length;
-        var product = new Uint8Array(size + degree);
+        var product = new Int32Array(size + degree);
         var i=0
         do{product[i] = this.field.multiply(this.coefficients[i], coefficient);i++}while(i<size)
         return new GF256Poly(this.field, product);
@@ -1217,8 +1218,8 @@ GF256Poly.prototype = {
 
 function GF256( primitive)
 {
-    var expTable = new Uint8Array(256);
-    var logTable = new Uint8Array(256);
+    var expTable = new Int32Array(256);
+    var logTable = new Int32Array(256);
     var x = 1
     var i = 0
     do{
@@ -1253,7 +1254,7 @@ GF256.prototype ={
         {
             return zero;
         }
-        var coefficients = new Uint8Array(degree + 1)
+        var coefficients = new Int32Array(degree + 1)
         coefficients[0] = coefficient
         return new GF256Poly(this, coefficients)
     },
@@ -1272,7 +1273,7 @@ GF256.prototype ={
         {
             throw "System.ArithmeticException";
         }
-        return this.expTable[255 - this.logTable[a]];
+        return this.expTable[256 - this.logTable[a]-1];
     },
     multiply:function( a,  b){
         if (a == 0 || b == 0)
@@ -1290,12 +1291,12 @@ GF256.prototype ={
         return this.expTable[(this.logTable[a] + this.logTable[b]) % 255]
     }    
 }
-GF256.zeroArr = new Uint8Array([0])
-GF256.oneArr = new Uint8Array([1])
+GF256.zeroArr = new Int32Array([0])
+GF256.oneArr = new Int32Array([1])
 
 
 GF256.QR_CODE_FIELD = new GF256(0x011D);
-GF256.DATA_MATRIX_FIELD = new GF256(0x012D);
+
 
 
 
@@ -1306,6 +1307,7 @@ function DataBlock(numDataCodewords,  numBlockCodewords){
     this.codewords = new Uint8Array(numBlockCodewords)
     this.numECCodewords = numBlockCodewords - numDataCodewords
     this.numBlockCodewordsMinusOne = numBlockCodewords-1
+    //this.before = new Uint8Array(numBlockCodewords) // delete me debug code
 }
 
 DataBlock.prototype = {
@@ -1313,19 +1315,26 @@ DataBlock.prototype = {
         var poly = new GF256Poly(this.field, this.codewords);
         var twoS = this.numECCodewords
         var i = 0
-        do{if(poly.evaluateAt(this.field.exp(i++)) != 0) throw "Bad Scan Uncorrectable block" }while(i<twoS)
+        do{
+            if(poly.evaluateAt(this.field.exp(i++)) != 0){
+                     
+
+                throw "Bad Scan Uncorrectable block" 
+            }
+    	}while(i<twoS)
     },
     correct:function(){
+            //this.before.set(this.codewords) // debug code delete me
             var poly = new GF256Poly(this.field, this.codewords)
             var twoS = this.numECCodewords
             var towSMinusOne = twoS-1
-            var syndromeCoefficients = new Uint8Array(twoS)
+            var syndromeCoefficients = new Int32Array(twoS)
             var numBlockCodewordsMinusOne = this.numBlockCodewordsMinusOne
             var noError = true
             var _eval
             var i = 0
             do{
-                // Thanks to sanfordsquires for this fix:
+                // Thanks to sanfordsquires for this fix: // fix me is the sanfordsquires fix still in this code?
                 _eval = poly.evaluateAt(this.field.exp(i));
                 
                 if (_eval != 0)
@@ -1352,6 +1361,7 @@ DataBlock.prototype = {
                 org = this.codewords[position]
                 _new = org ^ errorMagnitudes[i]
                 hamming+= numBitsDiffering(_new,org)
+                //console.log(org + ' changed to ' + _new + ' at ' + position) debug code delete me
                  this.codewords[position] = _new
                 i++
                 
@@ -1372,19 +1382,15 @@ DataBlock.prototype = {
 
         var rLast = a;
         var r = b;
-        var sLast = this.field.one;
-        var s = this.field.zero;
         var tLast = this.field.zero;
         var t = this.field.one;
-        var rDiv2 = R>>1 // Math.floor(R/2)
+        var rDiv2 = R/2 
         // Run Euclidean algorithm until r's degree is less than R/2
         while (r.degree >=rDiv2)
         {
             var rLastLast = rLast;
-            var sLastLast = sLast;
             var tLastLast = tLast;
             rLast = r;
-            sLast = s;
             tLast = t;
 
             // Divide rLastLast by rLast, with quotient in q and remainder in r
@@ -1405,8 +1411,10 @@ DataBlock.prototype = {
                 r = r.addOrSubtract(rLast.multiplyByMonomial(degreeDiff, scale));
             }
 
-            s = q.multiply1(sLast).addOrSubtract(sLastLast);
             t = q.multiply1(tLast).addOrSubtract(tLastLast);
+             if (r.degree >= rLast.degree) {
+                throw "Division algorithm failed to reduce polynomial?"
+             }
         }
 
         var sigmaTildeAtZero = t.getCoefficient(0);
@@ -1455,7 +1463,9 @@ DataBlock.prototype = {
                 {
                     if (i != j)
                     {
-                        denominator = this.field.multiply(denominator, 1 ^ this.field.multiply(errorLocations[j], xiInverse));
+                        var term = this.field.multiply(errorLocations[j], xiInverse);
+                        var termPlus1 = (term & 0x1) == 0 ? term | 1 : term & ~1;
+                        denominator = this.field.multiply(denominator, termPlus1);
                     }
                 }
                 result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
@@ -1844,8 +1854,16 @@ function Decoder(bits){
     do{
         cur = dataBlocks[i++]
         cur.correct()
+          //console.log('------------------\n\n\n')
+
+
+
+                    //console.log(JSON.stringify({numDataCodewords:cur.numDataCodewords,numECCodewords:cur.numECCodewords,codewords:Array.prototype.slice.apply(cur.codewords)}))
+                //console.log('\n\n\n------------------')
+       
         totalBytes += cur.numDataCodewords;
     }while(i<l)
+
     this.versionNumber = version.VersionNumber
     this.ecBits = ecLevel.bits
     this.totalBytes = totalBytes
@@ -2718,7 +2736,10 @@ function FinderPatternFinder()
 
             if (this.possibleCenters.length > 3)
             {
+                // Credit for putting a sort function here goes to Jaron Viëtor
+                // https://github.com/Thulinma
                 // Throw away all but those first size candidate points we found.
+                
                 this.possibleCenters.sort(function(a, b){return ((b.count-a.count)>>31)^((a.count-b.count)>>>31)});
             }
 
@@ -3967,6 +3988,7 @@ addEventListener('message', function(e) {
           var test2 = (ret == "MXp8FodxoKZcLsQt9NpG94nUWoQk133Qo6cyNPTzjtq7udUP563u9VoKV9VAjH88fGbVZfjNimg5DHpAQwCGZCkbsrdFvnRguYsL7KveEf9tyx6UPaU3gk3pYUMgPWmzNTEqCN8MPsajrr8pxSfvWAfz5uLRtiqNpgQV3ayWguDw2Yc2UsAvA6sadhL55KQzVzS43WRYqMShNy47wv4v6UwYa3qhT3QRCMqrf3AobW3av5EzpvyWzq4FFJkSvGH7nCBptSgXTBvgdL12qmAez6iPkiFtDT2pdVpE4qSi5TEGcDpRttWXRH4ZFX3uUntJrgLBmTAE")          
           if(test1 || test2){
               console.log('found')
+              //self.close()
           }else {
               console.log('bad Data')
               self.close()
