@@ -1090,7 +1090,7 @@ GF256Poly.prototype = {
         }
         result = this.coefficients[0]
         i=1
-        do{result = this.field.multiply(a, result) ^ this.coefficients[i++]}while(i<size)
+        while(i<size){result = this.field.multiply(a, result) ^ this.coefficients[i++]}
         return result;
     },
     addOrSubtract:function( other){
@@ -1307,7 +1307,7 @@ function DataBlock(numDataCodewords,  numBlockCodewords){
     this.codewords = new Uint8Array(numBlockCodewords)
     this.numECCodewords = numBlockCodewords - numDataCodewords
     this.numBlockCodewordsMinusOne = numBlockCodewords-1
-    //this.before = new Uint8Array(numBlockCodewords) // delete me debug code
+    this.before = new Uint8Array(numBlockCodewords) // delete me debug code
 }
 
 DataBlock.prototype = {
@@ -1317,14 +1317,13 @@ DataBlock.prototype = {
         var i = 0
         do{
             if(poly.evaluateAt(this.field.exp(i++)) != 0){
-                     
-
+                //console.log(JSON.stringify({numDataCodewords:this.numDataCodewords,numECCodewords:this.numECCodewords,codewords:Array.prototype.slice.apply(this.before)}))
                 throw "Bad Scan Uncorrectable block" 
             }
     	}while(i<twoS)
     },
     correct:function(){
-            //this.before.set(this.codewords) // debug code delete me
+            this.before.set(this.codewords) // debug code delete me
             var poly = new GF256Poly(this.field, this.codewords)
             var twoS = this.numECCodewords
             var towSMinusOne = twoS-1
@@ -1359,7 +1358,7 @@ DataBlock.prototype = {
                 var position = numBlockCodewordsMinusOne - this.field.log(errorLocations[i]);
                 if (position < 0) throw "ReedSolomonException Bad error location"
                 org = this.codewords[position]
-                _new = org ^ errorMagnitudes[i]
+                _new = (org ^ errorMagnitudes[i])
                 hamming+= numBitsDiffering(_new,org)
                 //console.log(org + ' changed to ' + _new + ' at ' + position) debug code delete me
                  this.codewords[position] = _new
@@ -1367,7 +1366,7 @@ DataBlock.prototype = {
                 
             }while(i<l)
             console.log(hamming +  'bits different')
-            this.check()
+            //this.check()
     },
 
     runEuclideanAlgorithm:function( a,  b,  R){
@@ -1447,6 +1446,7 @@ DataBlock.prototype = {
         }
         if (e != numErrors)
         {
+            //console.log(JSON.stringify({numDataCodewords:this.numDataCodewords,numECCodewords:this.numECCodewords,codewords:Array.prototype.slice.apply(this.before)}))
             throw "Error locator degree does not match number of roots";
         }
         return result;
@@ -1463,9 +1463,8 @@ DataBlock.prototype = {
                 {
                     if (i != j)
                     {
-                        var term = this.field.multiply(errorLocations[j], xiInverse);
-                        var termPlus1 = (term & 0x1) == 0 ? term | 1 : term & ~1;
-                        denominator = this.field.multiply(denominator, termPlus1);
+                        denominator = this.field.multiply(denominator,1 ^ this.field.multiply(errorLocations[j], xiInverse));
+                        
                     }
                 }
                 result[i] = this.field.multiply(errorEvaluator.evaluateAt(xiInverse), this.field.inverse(denominator));
@@ -2462,7 +2461,7 @@ function FinderPatternFinder()
     this.image=null;
     this.possibleCenters = [];
     this.hasSkipped = false;
-    this.crossCheckStateCount = new Array(0,0,0,0,0);
+    this.crossCheckStateCount = new Int32Array(5);
     this.resultPointCallback = null;
 
     this.__defineGetter__("CrossCheckStateCount", function()
@@ -2822,7 +2821,7 @@ function FinderPatternFinder()
         }
 
         var done = false;
-        var stateCount = new Array(0,0,0,0,0);
+        var stateCount = new Int32Array(5);
         for (var i = iSkip - 1; i < maxI && !done; i += iSkip)
         {
             // Get a row of black/white values
@@ -2959,7 +2958,7 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
     this.width = width;
     this.height = height;
     this.moduleSize = moduleSize;
-    this.crossCheckStateCount = new Array(0,0,0);
+    this.crossCheckStateCount = new Int32Array(3);
     this.resultPointCallback = resultPointCallback;
 
     this.centerFromEnd=function(stateCount,  end)
@@ -3076,7 +3075,7 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
             var middleI = startY + (height >> 1);
             // We are looking for black/white/black modules in 1:1:1 ratio;
             // this tracks the number of black/white/black modules seen so far
-            var stateCount = new Array(0,0,0);
+            var stateCount = new Int32Array(3);
             for (var iGen = 0; iGen < height; iGen++)
             {
                 // Search from middle outwards
