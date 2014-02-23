@@ -716,7 +716,6 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
             if(this.functionPattern !== null){
                 return this.functionPattern
             }
-            console.log('built function pat')
             var dimension = this.DimensionForVersion;
             var bitMatrix = new BitMatrix(dimension);
 
@@ -822,46 +821,47 @@ Version.decodeVersionInformation=function( versionBits)
 
 function buildVersions()
 {
-    return new Array(new Version(1, new Array(), new ECBlocks(7, new ECB(1, 19)), new ECBlocks(10, new ECB(1, 16)), new ECBlocks(13, new ECB(1, 13)), new ECBlocks(17, new ECB(1, 9))), 
-    new Version(2, new Array(6, 18), new ECBlocks(10, new ECB(1, 34)), new ECBlocks(16, new ECB(1, 28)), new ECBlocks(22, new ECB(1, 22)), new ECBlocks(28, new ECB(1, 16))), 
-    new Version(3, new Array(6, 22), new ECBlocks(15, new ECB(1, 55)), new ECBlocks(26, new ECB(1, 44)), new ECBlocks(18, new ECB(2, 17)), new ECBlocks(22, new ECB(2, 13))), 
-    new Version(4, new Array(6, 26), new ECBlocks(20, new ECB(1, 80)), new ECBlocks(18, new ECB(2, 32)), new ECBlocks(26, new ECB(2, 24)), new ECBlocks(16, new ECB(4, 9))), 
-    new Version(5, new Array(6, 30), new ECBlocks(26, new ECB(1, 108)), new ECBlocks(24, new ECB(2, 43)), new ECBlocks(18, new ECB(2, 15), new ECB(2, 16)), new ECBlocks(22, new ECB(2, 11), new ECB(2, 12))), 
-    new Version(6, new Array(6, 34), new ECBlocks(18, new ECB(2, 68)), new ECBlocks(16, new ECB(4, 27)), new ECBlocks(24, new ECB(4, 19)), new ECBlocks(28, new ECB(4, 15))), 
-    new Version(7, new Array(6, 22, 38), new ECBlocks(20, new ECB(2, 78)), new ECBlocks(18, new ECB(4, 31)), new ECBlocks(18, new ECB(2, 14), new ECB(4, 15)), new ECBlocks(26, new ECB(4, 13), new ECB(1, 14))), 
-    new Version(8, new Array(6, 24, 42), new ECBlocks(24, new ECB(2, 97)), new ECBlocks(22, new ECB(2, 38), new ECB(2, 39)), new ECBlocks(22, new ECB(4, 18), new ECB(2, 19)), new ECBlocks(26, new ECB(4, 14), new ECB(2, 15))), 
-    new Version(9, new Array(6, 26, 46), new ECBlocks(30, new ECB(2, 116)), new ECBlocks(22, new ECB(3, 36), new ECB(2, 37)), new ECBlocks(20, new ECB(4, 16), new ECB(4, 17)), new ECBlocks(24, new ECB(4, 12), new ECB(4, 13))), 
-    new Version(10, new Array(6, 28, 50), new ECBlocks(18, new ECB(2, 68), new ECB(2, 69)), new ECBlocks(26, new ECB(4, 43), new ECB(1, 44)), new ECBlocks(24, new ECB(6, 19), new ECB(2, 20)), new ECBlocks(28, new ECB(6, 15), new ECB(2, 16))), 
-    new Version(11, new Array(6, 30, 54), new ECBlocks(20, new ECB(4, 81)), new ECBlocks(30, new ECB(1, 50), new ECB(4, 51)), new ECBlocks(28, new ECB(4, 22), new ECB(4, 23)), new ECBlocks(24, new ECB(3, 12), new ECB(8, 13))), 
-    new Version(12, new Array(6, 32, 58), new ECBlocks(24, new ECB(2, 92), new ECB(2, 93)), new ECBlocks(22, new ECB(6, 36), new ECB(2, 37)), new ECBlocks(26, new ECB(4, 20), new ECB(6, 21)), new ECBlocks(28, new ECB(7, 14), new ECB(4, 15))), 
-    new Version(13, new Array(6, 34, 62), new ECBlocks(26, new ECB(4, 107)), new ECBlocks(22, new ECB(8, 37), new ECB(1, 38)), new ECBlocks(24, new ECB(8, 20), new ECB(4, 21)), new ECBlocks(22, new ECB(12, 11), new ECB(4, 12))), 
-    new Version(14, new Array(6, 26, 46, 66), new ECBlocks(30, new ECB(3, 115), new ECB(1, 116)), new ECBlocks(24, new ECB(4, 40), new ECB(5, 41)), new ECBlocks(20, new ECB(11, 16), new ECB(5, 17)), new ECBlocks(24, new ECB(11, 12), new ECB(5, 13))), 
-    new Version(15, new Array(6, 26, 48, 70), new ECBlocks(22, new ECB(5, 87), new ECB(1, 88)), new ECBlocks(24, new ECB(5, 41), new ECB(5, 42)), new ECBlocks(30, new ECB(5, 24), new ECB(7, 25)), new ECBlocks(24, new ECB(11, 12), new ECB(7, 13))), 
-    new Version(16, new Array(6, 26, 50, 74), new ECBlocks(24, new ECB(5, 98), new ECB(1, 99)), new ECBlocks(28, new ECB(7, 45), new ECB(3, 46)), new ECBlocks(24, new ECB(15, 19), new ECB(2, 20)), new ECBlocks(30, new ECB(3, 15), new ECB(13, 16))), 
-    new Version(17, new Array(6, 30, 54, 78), new ECBlocks(28, new ECB(1, 107), new ECB(5, 108)), new ECBlocks(28, new ECB(10, 46), new ECB(1, 47)), new ECBlocks(28, new ECB(1, 22), new ECB(15, 23)), new ECBlocks(28, new ECB(2, 14), new ECB(17, 15))), 
-    new Version(18, new Array(6, 30, 56, 82), new ECBlocks(30, new ECB(5, 120), new ECB(1, 121)), new ECBlocks(26, new ECB(9, 43), new ECB(4, 44)), new ECBlocks(28, new ECB(17, 22), new ECB(1, 23)), new ECBlocks(28, new ECB(2, 14), new ECB(19, 15))), 
-    new Version(19, new Array(6, 30, 58, 86), new ECBlocks(28, new ECB(3, 113), new ECB(4, 114)), new ECBlocks(26, new ECB(3, 44), new ECB(11, 45)), new ECBlocks(26, new ECB(17, 21), new ECB(4, 22)), new ECBlocks(26, new ECB(9, 13), new ECB(16, 14))), 
-    new Version(20, new Array(6, 34, 62, 90), new ECBlocks(28, new ECB(3, 107), new ECB(5, 108)), new ECBlocks(26, new ECB(3, 41), new ECB(13, 42)), new ECBlocks(30, new ECB(15, 24), new ECB(5, 25)), new ECBlocks(28, new ECB(15, 15), new ECB(10, 16))), 
-    new Version(21, new Array(6, 28, 50, 72, 94), new ECBlocks(28, new ECB(4, 116), new ECB(4, 117)), new ECBlocks(26, new ECB(17, 42)), new ECBlocks(28, new ECB(17, 22), new ECB(6, 23)), new ECBlocks(30, new ECB(19, 16), new ECB(6, 17))), 
-    new Version(22, new Array(6, 26, 50, 74, 98), new ECBlocks(28, new ECB(2, 111), new ECB(7, 112)), new ECBlocks(28, new ECB(17, 46)), new ECBlocks(30, new ECB(7, 24), new ECB(16, 25)), new ECBlocks(24, new ECB(34, 13))), 
-    new Version(23, new Array(6, 30, 54, 74, 102), new ECBlocks(30, new ECB(4, 121), new ECB(5, 122)), new ECBlocks(28, new ECB(4, 47), new ECB(14, 48)), new ECBlocks(30, new ECB(11, 24), new ECB(14, 25)), new ECBlocks(30, new ECB(16, 15), new ECB(14, 16))), 
-    new Version(24, new Array(6, 28, 54, 80, 106), new ECBlocks(30, new ECB(6, 117), new ECB(4, 118)), new ECBlocks(28, new ECB(6, 45), new ECB(14, 46)), new ECBlocks(30, new ECB(11, 24), new ECB(16, 25)), new ECBlocks(30, new ECB(30, 16), new ECB(2, 17))), 
-    new Version(25, new Array(6, 32, 58, 84, 110), new ECBlocks(26, new ECB(8, 106), new ECB(4, 107)), new ECBlocks(28, new ECB(8, 47), new ECB(13, 48)), new ECBlocks(30, new ECB(7, 24), new ECB(22, 25)), new ECBlocks(30, new ECB(22, 15), new ECB(13, 16))), 
-    new Version(26, new Array(6, 30, 58, 86, 114), new ECBlocks(28, new ECB(10, 114), new ECB(2, 115)), new ECBlocks(28, new ECB(19, 46), new ECB(4, 47)), new ECBlocks(28, new ECB(28, 22), new ECB(6, 23)), new ECBlocks(30, new ECB(33, 16), new ECB(4, 17))), 
-    new Version(27, new Array(6, 34, 62, 90, 118), new ECBlocks(30, new ECB(8, 122), new ECB(4, 123)), new ECBlocks(28, new ECB(22, 45), new ECB(3, 46)), new ECBlocks(30, new ECB(8, 23), new ECB(26, 24)), new ECBlocks(30, new ECB(12, 15),         new ECB(28, 16))),
-    new Version(28, new Array(6, 26, 50, 74, 98, 122), new ECBlocks(30, new ECB(3, 117), new ECB(10, 118)), new ECBlocks(28, new ECB(3, 45), new ECB(23, 46)), new ECBlocks(30, new ECB(4, 24), new ECB(31, 25)), new ECBlocks(30, new ECB(11, 15), new ECB(31, 16))), 
-    new Version(29, new Array(6, 30, 54, 78, 102, 126), new ECBlocks(30, new ECB(7, 116), new ECB(7, 117)), new ECBlocks(28, new ECB(21, 45), new ECB(7, 46)), new ECBlocks(30, new ECB(1, 23), new ECB(37, 24)), new ECBlocks(30, new ECB(19, 15), new ECB(26, 16))), 
-    new Version(30, new Array(6, 26, 52, 78, 104, 130), new ECBlocks(30, new ECB(5, 115), new ECB(10, 116)), new ECBlocks(28, new ECB(19, 47), new ECB(10, 48)), new ECBlocks(30, new ECB(15, 24), new ECB(25, 25)), new ECBlocks(30, new ECB(23, 15), new ECB(25, 16))), 
-    new Version(31, new Array(6, 30, 56, 82, 108, 134), new ECBlocks(30, new ECB(13, 115), new ECB(3, 116)), new ECBlocks(28, new ECB(2, 46), new ECB(29, 47)), new ECBlocks(30, new ECB(42, 24), new ECB(1, 25)), new ECBlocks(30, new ECB(23, 15), new ECB(28, 16))), 
-    new Version(32, new Array(6, 34, 60, 86, 112, 138), new ECBlocks(30, new ECB(17, 115)), new ECBlocks(28, new ECB(10, 46), new ECB(23, 47)), new ECBlocks(30, new ECB(10, 24), new ECB(35, 25)), new ECBlocks(30, new ECB(19, 15), new ECB(35, 16))), 
-    new Version(33, new Array(6, 30, 58, 86, 114, 142), new ECBlocks(30, new ECB(17, 115), new ECB(1, 116)), new ECBlocks(28, new ECB(14, 46), new ECB(21, 47)), new ECBlocks(30, new ECB(29, 24), new ECB(19, 25)), new ECBlocks(30, new ECB(11, 15), new ECB(46, 16))), 
-    new Version(34, new Array(6, 34, 62, 90, 118, 146), new ECBlocks(30, new ECB(13, 115), new ECB(6, 116)), new ECBlocks(28, new ECB(14, 46), new ECB(23, 47)), new ECBlocks(30, new ECB(44, 24), new ECB(7, 25)), new ECBlocks(30, new ECB(59, 16), new ECB(1, 17))), 
-    new Version(35, new Array(6, 30, 54, 78, 102, 126, 150), new ECBlocks(30, new ECB(12, 121), new ECB(7, 122)), new ECBlocks(28, new ECB(12, 47), new ECB(26, 48)), new ECBlocks(30, new ECB(39, 24), new ECB(14, 25)),new ECBlocks(30, new ECB(22, 15), new ECB(41, 16))), 
-    new Version(36, new Array(6, 24, 50, 76, 102, 128, 154), new ECBlocks(30, new ECB(6, 121), new ECB(14, 122)), new ECBlocks(28, new ECB(6, 47), new ECB(34, 48)), new ECBlocks(30, new ECB(46, 24), new ECB(10, 25)), new ECBlocks(30, new ECB(2, 15), new ECB(64, 16))), 
-    new Version(37, new Array(6, 28, 54, 80, 106, 132, 158), new ECBlocks(30, new ECB(17, 122), new ECB(4, 123)), new ECBlocks(28, new ECB(29, 46), new ECB(14, 47)), new ECBlocks(30, new ECB(49, 24), new ECB(10, 25)), new ECBlocks(30, new ECB(24, 15), new ECB(46, 16))), 
-    new Version(38, new Array(6, 32, 58, 84, 110, 136, 162), new ECBlocks(30, new ECB(4, 122), new ECB(18, 123)), new ECBlocks(28, new ECB(13, 46), new ECB(32, 47)), new ECBlocks(30, new ECB(48, 24), new ECB(14, 25)), new ECBlocks(30, new ECB(42, 15), new ECB(32, 16))), 
-    new Version(39, new Array(6, 26, 54, 82, 110, 138, 166), new ECBlocks(30, new ECB(20, 117), new ECB(4, 118)), new ECBlocks(28, new ECB(40, 47), new ECB(7, 48)), new ECBlocks(30, new ECB(43, 24), new ECB(22, 25)), new ECBlocks(30, new ECB(10, 15), new ECB(67, 16))), 
-    new Version(40, new Array(6, 30, 58, 86, 114, 142, 170), new ECBlocks(30, new ECB(19, 118), new ECB(6, 119)), new ECBlocks(28, new ECB(18, 47), new ECB(31, 48)), new ECBlocks(30, new ECB(34, 24), new ECB(34, 25)), new ECBlocks(30, new ECB(20, 15), new ECB(61, 16))));
+    return [
+    new Version(1, new Uint8Array(0), new ECBlocks(7, new ECB(1, 19)), new ECBlocks(10, new ECB(1, 16)), new ECBlocks(13, new ECB(1, 13)), new ECBlocks(17, new ECB(1, 9))), 
+    new Version(2, new Uint8Array([6, 18]), new ECBlocks(10, new ECB(1, 34)), new ECBlocks(16, new ECB(1, 28)), new ECBlocks(22, new ECB(1, 22)), new ECBlocks(28, new ECB(1, 16))), 
+    new Version(3, new Uint8Array([6, 22]), new ECBlocks(15, new ECB(1, 55)), new ECBlocks(26, new ECB(1, 44)), new ECBlocks(18, new ECB(2, 17)), new ECBlocks(22, new ECB(2, 13))), 
+    new Version(4, new Uint8Array([6, 26]), new ECBlocks(20, new ECB(1, 80)), new ECBlocks(18, new ECB(2, 32)), new ECBlocks(26, new ECB(2, 24)), new ECBlocks(16, new ECB(4, 9))), 
+    new Version(5, new Uint8Array([6, 30]), new ECBlocks(26, new ECB(1, 108)), new ECBlocks(24, new ECB(2, 43)), new ECBlocks(18, new ECB(2, 15), new ECB(2, 16)), new ECBlocks(22, new ECB(2, 11), new ECB(2, 12))), 
+    new Version(6, new Uint8Array([6, 34]), new ECBlocks(18, new ECB(2, 68)), new ECBlocks(16, new ECB(4, 27)), new ECBlocks(24, new ECB(4, 19)), new ECBlocks(28, new ECB(4, 15))), 
+    new Version(7, new Uint8Array([6, 22, 38]), new ECBlocks(20, new ECB(2, 78)), new ECBlocks(18, new ECB(4, 31)), new ECBlocks(18, new ECB(2, 14), new ECB(4, 15)), new ECBlocks(26, new ECB(4, 13), new ECB(1, 14))), 
+    new Version(8, new Uint8Array([6, 24, 42]), new ECBlocks(24, new ECB(2, 97)), new ECBlocks(22, new ECB(2, 38), new ECB(2, 39)), new ECBlocks(22, new ECB(4, 18), new ECB(2, 19)), new ECBlocks(26, new ECB(4, 14), new ECB(2, 15))), 
+    new Version(9, new Uint8Array([6, 26, 46]), new ECBlocks(30, new ECB(2, 116)), new ECBlocks(22, new ECB(3, 36), new ECB(2, 37)), new ECBlocks(20, new ECB(4, 16), new ECB(4, 17)), new ECBlocks(24, new ECB(4, 12), new ECB(4, 13))), 
+    new Version(10, new Uint8Array([6, 28, 50]), new ECBlocks(18, new ECB(2, 68), new ECB(2, 69)), new ECBlocks(26, new ECB(4, 43), new ECB(1, 44)), new ECBlocks(24, new ECB(6, 19), new ECB(2, 20)), new ECBlocks(28, new ECB(6, 15), new ECB(2, 16))), 
+    new Version(11, new Uint8Array([6, 30, 54]), new ECBlocks(20, new ECB(4, 81)), new ECBlocks(30, new ECB(1, 50), new ECB(4, 51)), new ECBlocks(28, new ECB(4, 22), new ECB(4, 23)), new ECBlocks(24, new ECB(3, 12), new ECB(8, 13))), 
+    new Version(12, new Uint8Array([6, 32, 58]), new ECBlocks(24, new ECB(2, 92), new ECB(2, 93)), new ECBlocks(22, new ECB(6, 36), new ECB(2, 37)), new ECBlocks(26, new ECB(4, 20), new ECB(6, 21)), new ECBlocks(28, new ECB(7, 14), new ECB(4, 15))), 
+    new Version(13, new Uint8Array([6, 34, 62]), new ECBlocks(26, new ECB(4, 107)), new ECBlocks(22, new ECB(8, 37), new ECB(1, 38)), new ECBlocks(24, new ECB(8, 20), new ECB(4, 21)), new ECBlocks(22, new ECB(12, 11), new ECB(4, 12))), 
+    new Version(14, new Uint8Array([6, 26, 46, 66]), new ECBlocks(30, new ECB(3, 115), new ECB(1, 116)), new ECBlocks(24, new ECB(4, 40), new ECB(5, 41)), new ECBlocks(20, new ECB(11, 16), new ECB(5, 17)), new ECBlocks(24, new ECB(11, 12), new ECB(5, 13))), 
+    new Version(15, new Uint8Array([6, 26, 48, 70]), new ECBlocks(22, new ECB(5, 87), new ECB(1, 88)), new ECBlocks(24, new ECB(5, 41), new ECB(5, 42)), new ECBlocks(30, new ECB(5, 24), new ECB(7, 25)), new ECBlocks(24, new ECB(11, 12), new ECB(7, 13))), 
+    new Version(16, new Uint8Array([6, 26, 50, 74]), new ECBlocks(24, new ECB(5, 98), new ECB(1, 99)), new ECBlocks(28, new ECB(7, 45), new ECB(3, 46)), new ECBlocks(24, new ECB(15, 19), new ECB(2, 20)), new ECBlocks(30, new ECB(3, 15), new ECB(13, 16))), 
+    new Version(17, new Uint8Array([6, 30, 54, 78]), new ECBlocks(28, new ECB(1, 107), new ECB(5, 108)), new ECBlocks(28, new ECB(10, 46), new ECB(1, 47)), new ECBlocks(28, new ECB(1, 22), new ECB(15, 23)), new ECBlocks(28, new ECB(2, 14), new ECB(17, 15))), 
+    new Version(18, new Uint8Array([6, 30, 56, 82]), new ECBlocks(30, new ECB(5, 120), new ECB(1, 121)), new ECBlocks(26, new ECB(9, 43), new ECB(4, 44)), new ECBlocks(28, new ECB(17, 22), new ECB(1, 23)), new ECBlocks(28, new ECB(2, 14), new ECB(19, 15))), 
+    new Version(19, new Uint8Array([6, 30, 58, 86]), new ECBlocks(28, new ECB(3, 113), new ECB(4, 114)), new ECBlocks(26, new ECB(3, 44), new ECB(11, 45)), new ECBlocks(26, new ECB(17, 21), new ECB(4, 22)), new ECBlocks(26, new ECB(9, 13), new ECB(16, 14))), 
+    new Version(20, new Uint8Array([6, 34, 62, 90]), new ECBlocks(28, new ECB(3, 107), new ECB(5, 108)), new ECBlocks(26, new ECB(3, 41), new ECB(13, 42)), new ECBlocks(30, new ECB(15, 24), new ECB(5, 25)), new ECBlocks(28, new ECB(15, 15), new ECB(10, 16))), 
+    new Version(21, new Uint8Array([6, 28, 50, 72, 94]), new ECBlocks(28, new ECB(4, 116), new ECB(4, 117)), new ECBlocks(26, new ECB(17, 42)), new ECBlocks(28, new ECB(17, 22), new ECB(6, 23)), new ECBlocks(30, new ECB(19, 16), new ECB(6, 17))), 
+    new Version(22, new Uint8Array([6, 26, 50, 74, 98]), new ECBlocks(28, new ECB(2, 111), new ECB(7, 112)), new ECBlocks(28, new ECB(17, 46)), new ECBlocks(30, new ECB(7, 24), new ECB(16, 25)), new ECBlocks(24, new ECB(34, 13))), 
+    new Version(23, new Uint8Array([6, 30, 54, 74, 102]), new ECBlocks(30, new ECB(4, 121), new ECB(5, 122)), new ECBlocks(28, new ECB(4, 47), new ECB(14, 48)), new ECBlocks(30, new ECB(11, 24), new ECB(14, 25)), new ECBlocks(30, new ECB(16, 15), new ECB(14, 16))), 
+    new Version(24, new Uint8Array([6, 28, 54, 80, 106]), new ECBlocks(30, new ECB(6, 117), new ECB(4, 118)), new ECBlocks(28, new ECB(6, 45), new ECB(14, 46)), new ECBlocks(30, new ECB(11, 24), new ECB(16, 25)), new ECBlocks(30, new ECB(30, 16), new ECB(2, 17))), 
+    new Version(25, new Uint8Array([6, 32, 58, 84, 110]), new ECBlocks(26, new ECB(8, 106), new ECB(4, 107)), new ECBlocks(28, new ECB(8, 47), new ECB(13, 48)), new ECBlocks(30, new ECB(7, 24), new ECB(22, 25)), new ECBlocks(30, new ECB(22, 15), new ECB(13, 16))), 
+    new Version(26, new Uint8Array([6, 30, 58, 86, 114]), new ECBlocks(28, new ECB(10, 114), new ECB(2, 115)), new ECBlocks(28, new ECB(19, 46), new ECB(4, 47)), new ECBlocks(28, new ECB(28, 22), new ECB(6, 23)), new ECBlocks(30, new ECB(33, 16), new ECB(4, 17))), 
+    new Version(27, new Uint8Array([6, 34, 62, 90, 118]), new ECBlocks(30, new ECB(8, 122), new ECB(4, 123)), new ECBlocks(28, new ECB(22, 45), new ECB(3, 46)), new ECBlocks(30, new ECB(8, 23), new ECB(26, 24)), new ECBlocks(30, new ECB(12, 15),         new ECB(28, 16))),
+    new Version(28, new Uint8Array([6, 26, 50, 74, 98, 122]), new ECBlocks(30, new ECB(3, 117), new ECB(10, 118)), new ECBlocks(28, new ECB(3, 45), new ECB(23, 46)), new ECBlocks(30, new ECB(4, 24), new ECB(31, 25)), new ECBlocks(30, new ECB(11, 15), new ECB(31, 16))), 
+    new Version(29, new Uint8Array([6, 30, 54, 78, 102, 126]), new ECBlocks(30, new ECB(7, 116), new ECB(7, 117)), new ECBlocks(28, new ECB(21, 45), new ECB(7, 46)), new ECBlocks(30, new ECB(1, 23), new ECB(37, 24)), new ECBlocks(30, new ECB(19, 15), new ECB(26, 16))), 
+    new Version(30, new Uint8Array([6, 26, 52, 78, 104, 130]), new ECBlocks(30, new ECB(5, 115), new ECB(10, 116)), new ECBlocks(28, new ECB(19, 47), new ECB(10, 48)), new ECBlocks(30, new ECB(15, 24), new ECB(25, 25)), new ECBlocks(30, new ECB(23, 15), new ECB(25, 16))), 
+    new Version(31, new Uint8Array([6, 30, 56, 82, 108, 134]), new ECBlocks(30, new ECB(13, 115), new ECB(3, 116)), new ECBlocks(28, new ECB(2, 46), new ECB(29, 47)), new ECBlocks(30, new ECB(42, 24), new ECB(1, 25)), new ECBlocks(30, new ECB(23, 15), new ECB(28, 16))), 
+    new Version(32, new Uint8Array([6, 34, 60, 86, 112, 138]), new ECBlocks(30, new ECB(17, 115)), new ECBlocks(28, new ECB(10, 46), new ECB(23, 47)), new ECBlocks(30, new ECB(10, 24), new ECB(35, 25)), new ECBlocks(30, new ECB(19, 15), new ECB(35, 16))), 
+    new Version(33, new Uint8Array([6, 30, 58, 86, 114, 142]), new ECBlocks(30, new ECB(17, 115), new ECB(1, 116)), new ECBlocks(28, new ECB(14, 46), new ECB(21, 47)), new ECBlocks(30, new ECB(29, 24), new ECB(19, 25)), new ECBlocks(30, new ECB(11, 15), new ECB(46, 16))), 
+    new Version(34, new Uint8Array([6, 34, 62, 90, 118, 146]), new ECBlocks(30, new ECB(13, 115), new ECB(6, 116)), new ECBlocks(28, new ECB(14, 46), new ECB(23, 47)), new ECBlocks(30, new ECB(44, 24), new ECB(7, 25)), new ECBlocks(30, new ECB(59, 16), new ECB(1, 17))), 
+    new Version(35, new Uint8Array([6, 30, 54, 78, 102, 126, 150]), new ECBlocks(30, new ECB(12, 121), new ECB(7, 122)), new ECBlocks(28, new ECB(12, 47), new ECB(26, 48)), new ECBlocks(30, new ECB(39, 24), new ECB(14, 25)),new ECBlocks(30, new ECB(22, 15), new ECB(41, 16))), 
+    new Version(36, new Uint8Array([6, 24, 50, 76, 102, 128, 154]), new ECBlocks(30, new ECB(6, 121), new ECB(14, 122)), new ECBlocks(28, new ECB(6, 47), new ECB(34, 48)), new ECBlocks(30, new ECB(46, 24), new ECB(10, 25)), new ECBlocks(30, new ECB(2, 15), new ECB(64, 16))), 
+    new Version(37, new Uint8Array([6, 28, 54, 80, 106, 132, 158]), new ECBlocks(30, new ECB(17, 122), new ECB(4, 123)), new ECBlocks(28, new ECB(29, 46), new ECB(14, 47)), new ECBlocks(30, new ECB(49, 24), new ECB(10, 25)), new ECBlocks(30, new ECB(24, 15), new ECB(46, 16))), 
+    new Version(38, new Uint8Array([6, 32, 58, 84, 110, 136, 162]), new ECBlocks(30, new ECB(4, 122), new ECB(18, 123)), new ECBlocks(28, new ECB(13, 46), new ECB(32, 47)), new ECBlocks(30, new ECB(48, 24), new ECB(14, 25)), new ECBlocks(30, new ECB(42, 15), new ECB(32, 16))), 
+    new Version(39, new Uint8Array([6, 26, 54, 82, 110, 138, 166]), new ECBlocks(30, new ECB(20, 117), new ECB(4, 118)), new ECBlocks(28, new ECB(40, 47), new ECB(7, 48)), new ECBlocks(30, new ECB(43, 24), new ECB(22, 25)), new ECBlocks(30, new ECB(10, 15), new ECB(67, 16))), 
+    new Version(40, new Uint8Array([6, 30, 58, 86, 114, 142, 170]), new ECBlocks(30, new ECB(19, 118), new ECB(6, 119)), new ECBlocks(28, new ECB(18, 47), new ECB(31, 48)), new ECBlocks(30, new ECB(34, 24), new ECB(34, 25)), new ECBlocks(30, new ECB(20, 15), new ECB(61, 16)))]
 }
 
 
@@ -1307,23 +1307,11 @@ function DataBlock(numDataCodewords,  numBlockCodewords){
     this.codewords = new Uint8Array(numBlockCodewords)
     this.numECCodewords = numBlockCodewords - numDataCodewords
     this.numBlockCodewordsMinusOne = numBlockCodewords-1
-    this.before = new Uint8Array(numBlockCodewords) // delete me debug code
+
 }
 
 DataBlock.prototype = {
-    check:function(){
-        var poly = new GF256Poly(this.field, this.codewords);
-        var twoS = this.numECCodewords
-        var i = 0
-        do{
-            if(poly.evaluateAt(this.field.exp(i++)) != 0){
-                //console.log(JSON.stringify({numDataCodewords:this.numDataCodewords,numECCodewords:this.numECCodewords,codewords:Array.prototype.slice.apply(this.before)}))
-                throw "Bad Scan Uncorrectable block" 
-            }
-    	}while(i<twoS)
-    },
     correct:function(){
-            this.before.set(this.codewords) // debug code delete me
             var poly = new GF256Poly(this.field, this.codewords)
             var twoS = this.numECCodewords
             var towSMinusOne = twoS-1
@@ -1359,14 +1347,13 @@ DataBlock.prototype = {
                 if (position < 0) throw "ReedSolomonException Bad error location"
                 org = this.codewords[position]
                 _new = (org ^ errorMagnitudes[i])
-                hamming+= numBitsDiffering(_new,org)
-                //console.log(org + ' changed to ' + _new + ' at ' + position) debug code delete me
+
+
                  this.codewords[position] = _new
                 i++
                 
             }while(i<l)
-            console.log(hamming +  'bits different')
-            //this.check()
+ 
     },
 
     runEuclideanAlgorithm:function( a,  b,  R){
@@ -1446,7 +1433,6 @@ DataBlock.prototype = {
         }
         if (e != numErrors)
         {
-            //console.log(JSON.stringify({numDataCodewords:this.numDataCodewords,numECCodewords:this.numECCodewords,codewords:Array.prototype.slice.apply(this.before)}))
             throw "Error locator degree does not match number of roots";
         }
         return result;
@@ -1853,12 +1839,7 @@ function Decoder(bits){
     do{
         cur = dataBlocks[i++]
         cur.correct()
-          //console.log('------------------\n\n\n')
-
-
-
-                    //console.log(JSON.stringify({numDataCodewords:cur.numDataCodewords,numECCodewords:cur.numECCodewords,codewords:Array.prototype.slice.apply(cur.codewords)}))
-                //console.log('\n\n\n------------------')
+         
        
         totalBytes += cur.numDataCodewords;
     }while(i<l)
@@ -2250,10 +2231,11 @@ function Detector(image)
                 // Kind of arbitrary -- expand search radius before giving up
 
                 var i = 4
+                alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
                 // fix me re enabled commented out code by returning null on a error
                 // it works better idono 
                 // check the code in zxing and see what they are doing here
-                do{
+                //do{
                     //try
                     //{
                         alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
@@ -2263,8 +2245,8 @@ function Detector(image)
                     //{
                         // try next round
                     //}
-                    i <<= 1 
-                }while(alignmentPattern !== null && i<16)
+                    //i <<= 1 
+                //}while(alignmentPattern !== null && i<16)
                 if(alignmentPattern === null){
                     throw "Couldn't find enough alignment patterns";
                 }
@@ -2461,7 +2443,7 @@ function FinderPatternFinder()
     this.image=null;
     this.possibleCenters = [];
     this.hasSkipped = false;
-    this.crossCheckStateCount = new Int32Array(5);
+    this.crossCheckStateCount = new Uint16Array(5);
     this.resultPointCallback = null;
 
     this.__defineGetter__("CrossCheckStateCount", function()
@@ -2821,7 +2803,7 @@ function FinderPatternFinder()
         }
 
         var done = false;
-        var stateCount = new Int32Array(5);
+        var stateCount = new Uint16Array(5);
         for (var i = iSkip - 1; i < maxI && !done; i += iSkip)
         {
             // Get a row of black/white values
@@ -2958,7 +2940,7 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
     this.width = width;
     this.height = height;
     this.moduleSize = moduleSize;
-    this.crossCheckStateCount = new Int32Array(3);
+    this.crossCheckStateCount = new Uint16Array(3);
     this.resultPointCallback = resultPointCallback;
 
     this.centerFromEnd=function(stateCount,  end)
@@ -3075,7 +3057,7 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
             var middleI = startY + (height >> 1);
             // We are looking for black/white/black modules in 1:1:1 ratio;
             // this tracks the number of black/white/black modules seen so far
-            var stateCount = new Int32Array(3);
+            var stateCount = new Uint16Array(3);
             for (var iGen = 0; iGen < height; iGen++)
             {
                 // Search from middle outwards
@@ -3966,9 +3948,9 @@ function blur_diff(buff,r1,r2,w,h) {
 }
 
 
-
+var ended={isEnded:false}
 addEventListener('message', function(e) {
-
+  if(ended.isEnded) return
   var w = e.data.w
   var h = e.data.h
   qrcode.width = w
@@ -3983,26 +3965,30 @@ addEventListener('message', function(e) {
 
           ret = qrcode.process(bits,w,h)
           console.log(new Date() - start2 + ' fin')
-          var test1 = (ret == "6JKeKYJ4SGrK4h1xwT3MJ6TfyGfn1kK57QuMJED5ap5NmDqViqaEZwGrRqhimZuXAFKUrM6vrKvNR4pRCicmCwBXo7AC2DWeWrNPCJGpTKzuCYZUHVvhX62aYpYWGLAABmJRGc97M6RQHsonR4fn2y7J2fHtEybAVevX")
-          var test2 = (ret == "MXp8FodxoKZcLsQt9NpG94nUWoQk133Qo6cyNPTzjtq7udUP563u9VoKV9VAjH88fGbVZfjNimg5DHpAQwCGZCkbsrdFvnRguYsL7KveEf9tyx6UPaU3gk3pYUMgPWmzNTEqCN8MPsajrr8pxSfvWAfz5uLRtiqNpgQV3ayWguDw2Yc2UsAvA6sadhL55KQzVzS43WRYqMShNy47wv4v6UwYa3qhT3QRCMqrf3AobW3av5EzpvyWzq4FFJkSvGH7nCBptSgXTBvgdL12qmAez6iPkiFtDT2pdVpE4qSi5TEGcDpRttWXRH4ZFX3uUntJrgLBmTAE")          
-          if(test1 || test2){
+          ended.isEnded = true
+          postMessage(ret)
+          //var test1 = (ret == "6JKeKYJ4SGrK4h1xwT3MJ6TfyGfn1kK57QuMJED5ap5NmDqViqaEZwGrRqhimZuXAFKUrM6vrKvNR4pRCicmCwBXo7AC2DWeWrNPCJGpTKzuCYZUHVvhX62aYpYWGLAABmJRGc97M6RQHsonR4fn2y7J2fHtEybAVevX")
+          //var test2 = (ret == "MXp8FodxoKZcLsQt9NpG94nUWoQk133Qo6cyNPTzjtq7udUP563u9VoKV9VAjH88fGbVZfjNimg5DHpAQwCGZCkbsrdFvnRguYsL7KveEf9tyx6UPaU3gk3pYUMgPWmzNTEqCN8MPsajrr8pxSfvWAfz5uLRtiqNpgQV3ayWguDw2Yc2UsAvA6sadhL55KQzVzS43WRYqMShNy47wv4v6UwYa3qhT3QRCMqrf3AobW3av5EzpvyWzq4FFJkSvGH7nCBptSgXTBvgdL12qmAez6iPkiFtDT2pdVpE4qSi5TEGcDpRttWXRH4ZFX3uUntJrgLBmTAE")          
+          /*if(test1 || test2){
               console.log('found')
-              //self.close()
+              
+
           }else {
               console.log('bad Data')
-              self.close()
-          }        
+              ended.isEnded = ture
+              //self.close()
+          }     */   
 
           //postMessage(ret)
           
           //self.close()
         } catch(e){
-            console.log(new Date() - start2 + ' 2')
-             console.log(e)
-             console.log(e.stack)
+            //console.log(new Date() - start2 + ' 2')
+            //console.log(e)
+            //console.log(e.stack)
             
         }
-        console.log(Object.keys(self))
+       // console.log(Object.keys(self))
   }
   var dat
   
@@ -4012,6 +3998,8 @@ addEventListener('message', function(e) {
   var bits = dat.m2.blur_guided_binary(dat.g2,b1)
   postMessage(bits_to_canvas_buff(bits))
   post(bits)
+  post(dat.b2)
+  post(dat.b1)
   
 
  
