@@ -79,7 +79,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 /-----------------------------------------------------
 */
 
-;var stackBlurGray=(function (){
+;var blurMechineGray=(function (){
 //===============================
 
 var mul_table = new Uint16Array([
@@ -121,13 +121,202 @@ var shg_table = new Uint8Array([
 
 
 
+function blurMechineGray(width, height, radius){
+    var div = radius + radius + 1
+    var radiusPlus1  = radius + 1
+    var stackStart = new BlurStack()
+    var stack = stackStart
+    var stackEnd
+    var i = 1
+    do{
+        stack = stack.next = new BlurStack()
+        stackEnd = ( i++ == radiusPlus1 )? stack:stackEnd
+    }while(i < div)
+    stack.next = stackStart
+    this.sumFactor = radiusPlus1 * ( radiusPlus1 + 1 ) * 0.5
+    this.mul_sum = mul_table[radius];
+    this.shg_sum = shg_table[radius];
+    this.radiusPlus1 = radiusPlus1
+    this.stackStart= stackStart
+    this.stackEnd = stackEnd
+    this.widthMinus1 = width-1
+    this.heightMinus1 = height -1
+    this.width = width
+    this.height = height
+    this.pixels = new Uint8Array(width*height)
+}
+blurMechineGray.prototype = {
+    blur:function(buff){
+        var pixels = this.pixels
+        var radiusPlus1 = this.radiusPlus1
+        var sumFactor = this.sumFactor
+        var stackStart = this.stackStart
+        var widthMinus1 = this.widthMinus1
+        pixels.set(buff)
+        var x, y, i, p, yp, yi, yw, sum,
+        out_sum,
+        in_sum,
+        pg, bs,tmp;
+    
 
+    
+    
+        
+        var stackIn ;
+        var stackOut ;
+    
+        y = yw = yi = 0;
+    
+       
+        do{
+            i = in_sum = sum = 0;
+    
+            out_sum = radiusPlus1 * ( pg = pixels[yi] );
+    
+    
+            sum += sumFactor * pg;
+    
+    
+            stack = stackStart;
 
+            do{
+                stack.v = pg;
+                stack = stack.next;
+                i++
+            }while(i < radiusPlus1)
+            i = 1
+            do{
+    
+                sum += ( stack.v = ( pg = pixels[yi + ( widthMinus1  + (tmp = i - widthMinus1 , tmp & (tmp >> 31)) )])) * ( bs = radiusPlus1 - i );
+    
+                in_sum += pg;
+    
+                stack = stack.next;
+                i++
+            }while(i < radiusPlus1)
+    
+    
+            stackIn = stackStart;
+            stackOut = this.stackEnd;
+            x=0
+    
+            do{
+                pixels[yi]  = (sum * this.mul_sum) >> this.shg_sum;
+    
+    
+                sum -= out_sum;
+    
+    
+                out_sum -= stackIn.v;
+    
+    
+    
+                in_sum += ( stackIn.v = pixels[yw + ( widthMinus1  + (tmp = (x + radiusPlus1 ) - widthMinus1 , tmp & (tmp >> 31)) )]);
+    
+    
+                sum += in_sum;
+    
+    
+                stackIn = stackIn.next;
+    
+                out_sum += ( pg = stackOut.v );
+    
+    
+                in_sum -= pg;
+    
+    
+                stackOut = stackOut.next;
+    
+                yi++;
+                x++
+            }while(x < this.width)
+            yw += this.width;
+            y++
+        }while(y < this.height)
+    
+        x=0
+    
+        do{
+            in_sum = sum = 0;
+    
+            yi = x;
+            out_sum = radiusPlus1 * ( pg = pixels[yi]);
+    
+    
+            sum += sumFactor * pg;
+    
+    
+            stack = stackStart;
+            i=0
+            do{
+                stack.v = pg;
+                stack = stack.next;
+                i++
+            }while(i<radiusPlus1)
+            
+    
+            yp = this.width;
+    
+            i=1
+    
+            do{
+    
+                sum += ( stack.v = ( pg = pixels[yp + x])) * ( bs = radiusPlus1 - i );
+    
+    
+                in_sum += pg;
+    
+    
+                stack = stack.next;
+    
+        
+                yp += this.width^(this.width ^ (i-this.heightMinus1))&this.width;
+    
+                i++
+            }while(i <radiusPlus1)
+    
+            yi = x;
+            stackIn = stackStart;
+            stackOut = this.stackEnd;
+            y=0
+            do{
+                
+                pixels[yi]   = (sum * this.mul_sum) >> this.shg_sum;
+    
+    
+                sum -= out_sum;
+    
+    
+                out_sum -= stackIn.v;
+    
+    
+    
+                sum += ( in_sum += ( stackIn.v = pixels[x + ( this.heightMinus1  + (tmp = (y + radiusPlus1 ) - this.heightMinus1 , tmp & (tmp >> 31)) )*this.width]));
+    
+    
+                stackIn = stackIn.next;
+    
+                out_sum += ( pg = stackOut.v );
+    
+    
+                in_sum -= pg;
+    
+    
+                stackOut = stackOut.next;
+    
+                yi += this.width;
+                y++
+            }while(y < this.height)
+            x++
+        }while(x < this.width)
+
+    }
+}
 function stackBlurGray(buff,width, height, radius )
 {
     radius |= 0;
 
-    var pixels = new Uint8Array(buff)        
+            
     var x, y, i, p, yp, yi, yw, sum,
     out_sum,
     in_sum,
@@ -307,7 +496,7 @@ function BlurStack()
     this.v = 0
     this.next = null;
 }
-return stackBlurGray
+return blurMechineGray
 //===============================
 
 })();
@@ -3795,7 +3984,7 @@ function blur_diff(buff,r1,r2,w,h) {
 }
 
 
-var ended={isEnded:false,count:0,sum:0}
+var ended={isEnded:false,count:0,sum:0,bm:null}
 addEventListener('message', function(e) {
   if(ended.isEnded) return
   var w = e.data.w
@@ -3848,14 +4037,21 @@ addEventListener('message', function(e) {
   var start = new Date();
 
   dat = gray_from_canvas4(e.data.buff,w,h)
-  postMessage(gray_to_canvas_buff(stackBlurGray(dat.g2,w,h,4)))
-  return
-  /*var start = new Date();
+  var bm = ended.bm
+  if(!bm) {
+      bm = new blurMechineGray(w,h,4)
+      ended.bm = bm
+  }
+  
+  //bm.blur(dat.g2)
+  //postMessage(gray_to_canvas_buff(bm.pixels))
+  //return
+  var start = new Date();
   var i = 0
   var b1
-  do{b1 = blur_diff(dat.g2,2,4,w,h);i++}while(i<100)
+  do{b1 = bm.blur(dat.g2);i++}while(i<200)
   console.log(new Date() - start + ' fin')
-  return*/
+  return
   
   var b1 = blur_diff(dat.g2,2,4,w,h)
   
