@@ -3544,10 +3544,8 @@ function gray_from_canvas4(image,w,h)
     var middle_l = numSqrtArea*numSqrtArea
     var image_l = image.length
     var grey1 = new Uint8Array(image_l)
-    var bits1 = new Uint8Array(image_l)
     var middle1 = new middleArea(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
     var grey2 = new Uint8Array(image_l)
-    var bits2 = new Uint8Array(image_l)
     var middle2 = new middleArea(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
     var middle_point,point
     var r,b,g
@@ -3565,8 +3563,8 @@ function gray_from_canvas4(image,w,h)
     var cur
     var upper_set,upper_other,lower_set,lower_other,upperX,lowerX
     var target
-    var _1per,dark
-
+    var areaPoint1,areaPoint2
+    
     ax=0
     ay=0
     do{
@@ -3580,8 +3578,10 @@ function gray_from_canvas4(image,w,h)
         dx =0
         dy = 0
         middle_point = (ax + ay * numSqrtArea)|0
+        areaPoint1 = (areaWidth * ax)|0
+        areaPoint2 = (areaHeight * ay)|0
         do{
-            point = (areaWidth * ax + dx+(areaHeight * ay + dy)*w)|0
+            point = areaPoint1 + dx+(areaPoint2 + dy)*w
             target = image[point];
             r = (target>>>16)&0xff
             b = (target>>>8)&0xff
@@ -3602,18 +3602,14 @@ function gray_from_canvas4(image,w,h)
             
             grey1[point]= target
             count[target]++
-            tmp  = _max - target            //_______________________________
-            _max = _max - (tmp & (tmp >> 31)) //----Max for a int of 32 bits or less
+
+            _max = _max - (tmp  = _max - target,tmp & (tmp >> 31)) //----Max for a int of 32 bits or less
             
-            tmp = _min - target  //____________________________________
-            _min = target + (tmp & (tmp >> 31)) //----min for a int of 32 bits or less
+            _min = target + (tmp = _min - target, tmp & (tmp >> 31)) //----min for a int of 32 bits or less
             
-            tmp  = (_max1 - target)>>31            // note will trigger if the diff dose not floor to 0
-            _max1 = (_max1 * (3+((tmp^1)&1))  + (target^((target ^ tmp)&target))  )*0.25   //----Max for float  weighted in
             
-            tmp = (target -_min1)>>31           // note will trigger if the diff dose not floor to 0
-            _min1 = (_min1 * (3+((tmp^1)&1))  + (target^((target ^ tmp)&target))  )*0.25   //----Min for float  weighted in
-            
+            _max1 = (_max1<target) ? (_max1*3+target)*0.25:_max1
+            _min1 = (_min1>target)? (_min1*3+target)*0.25:_min1
             
             /*
             this code will increment dx and dy to loop x y blocks 
@@ -3623,7 +3619,8 @@ function gray_from_canvas4(image,w,h)
             dx ^= (tmp^dx)&dx
             dy += (tmp^1)&1
             //-----------------
-        }while(dy < areaHeight)
+        }while((dy-areaHeight)>>31)
+        //}while(dy < areaHeight)
         middle1.buff[middle_point] = (_min1<<8) | _max1
         
         _mid = (_max - _min)>>1
@@ -3639,19 +3636,17 @@ function gray_from_canvas4(image,w,h)
             tmp = upper1 - cur
             tmp2 = tmp>>31
             upper1 = upper1 - (tmp & tmp2) //----max for a int of 32 bits or less 
-            tmp = tmp2^-1
-            upper_val1 = (upper_val1 ^((tmp ^ upper_val1) & upper_val1)) | (i^((i^tmp2)&i)) // if(upper1 < cur) upper_val1 
-            
-            cur ^= (cur ^ tmp)&cur // if the first passed make sure the 2nd fails 
+            upper_val1 = tmp2? i:upper_val1
+            cur ^= (cur ^ (tmp2^-1))&cur // if the first passed make sure the 2nd fails 
                
                
             tmp = upper2 - cur
             tmp2 = tmp>>31
             upper2 = upper2 - (tmp & tmp2) //----max for a int of 32 bits or less 
-            tmp = tmp2^-1
-        	upper_val2 = (upper_val2 ^((tmp ^ upper_val2) & upper_val2)) | (i^((i^tmp2)&i)) // if(upper1 < cur) upper_val1 
+        	upper_val2 = tmp2?i:upper_val2 
             i++
-        }while(i<_mid)
+        }while((i-_mid)>>31)
+        //}while(i<_mid)
         
         i = _mid
         l = _max+1
@@ -3660,44 +3655,41 @@ function gray_from_canvas4(image,w,h)
             tmp = lower1 - cur
             tmp2 = tmp>>31
             lower1 = lower1 - (tmp & tmp2) //----max for a int of 32 bits or less 
-            tmp = tmp2^-1
-            lower_val1 = (lower_val1 ^((tmp ^ lower_val1) & lower_val1)) | (i^((i^tmp2)&i)) // if(upper1 < cur) upper_val1 
-            cur ^= (cur ^ tmp)&cur // if the first passed make sure the 2nd fails 
+            lower_val1 = tmp2? i:lower_val1
+            cur ^= (cur ^ (tmp2^-1))&cur // if the first passed make sure the 2nd fails 
                
             tmp = lower2  - cur
             tmp2 = tmp>>31
             lower2 = lower2 - (tmp & tmp2) //----max for a int of 32 bits or less 
-            tmp = tmp2^-1	
-        	lower_val2 = (lower_val2 ^((tmp ^ lower_val2) & lower_val2)) | (i^((i^tmp2)&i)) // if(upper1 < cur) upper_val1 
+
+        	lower_val2 = tmp2? i:lower_val2
               
             
             i++
-        }while(i<l)
+        }while((i-l)>>31)        
+        //}while(i<l)
 
-        tmp  = upper_val2 - upper_val1
-        tmp = (tmp & (tmp >> 31))
+        
+        tmp = (tmp  = upper_val2 - upper_val1,tmp & (tmp >> 31))
         upper_set = upper_val1 + tmp  //----min for a int of 32 bits or less   
         upper_other = upper_val2 - tmp
         
-        tmp = lower_val1-lower_val2
-        lower_other = lower_val2 + (tmp & (tmp >> 31))
+        
+        lower_other = lower_val2 + (tmp = lower_val1-lower_val2,tmp & (tmp >> 31))
         
         upperX = upper_set/upper_other
         lowerX = 254/lower_other 
         
         dx=0
         dy=0
-        _1per = 1/((_max1-_min1)*0.01)
+
           
         do{
-            point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
+            point = areaPoint1 + dx+(areaPoint2 + dy)*w
             cur = grey1[point]
             dark = _min1-cur
             tmp = dark >>31
-            dark = ((tmp+dark)^tmp)*_1per // abs for int
-            if(dark <= 40 || cur <= _min1){
-                bits1[point] = 1
-            }
+
             if(cur >= upper_set && cur <= upper_other){
                 cur = upper_set
             } else if(cur <= _mid){
@@ -3708,16 +3700,12 @@ function gray_from_canvas4(image,w,h)
                 cur = (cur * lowerX)|0
             }
 
-
+           
             
-            tmp = (_min2 - cur)>>>31             //____________________________________
-            _min2 = ( _min2 * (3+tmp) +  cur * (tmp^1))*0.25  //----min for a float weighted in
+             
+            _max2 = (_max2<cur) ? (_max2*3+cur)*0.25:_max2
+            _min1 = (_min2>cur)? (_min2*3+cur)*0.25:_min2
             
-            tmp  = (_max2 - cur)>>31                       // note will trigger if the diff dose not floor to 0
-            _max2 = (_max2 * (3+((tmp^1)&1))  + (cur^((cur ^ tmp)&cur))  )*0.25   //----Max for float  weighted in
-            
-            tmp = (cur -_min2)>>31           // note will trigger if the diff dose not floor to 0
-            _min2 = (_min2 * (3+((tmp^1)&1))  + (cur^((cur ^ tmp)&cur))  )*0.25   //----Max for float  weighted in
             grey2[point] = cur
 
             /*
@@ -3728,29 +3716,10 @@ function gray_from_canvas4(image,w,h)
             dx ^= (tmp^dx)&dx
             dy += (tmp^1)&1
             //----------------- 
-        }while(dy<areaHeight)
+        }while((dy-areaHeight)>>31)
+        //}while(dy<areaHeight)
         middle2.buff[middle_point] = (_min2<<8) | _max2
-        dx=0
-        dy=0
-        _1per = 1/((_max2-_min2)*0.01)
-        do{
-            point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
-            cur = grey2[point]
-            dark = _min2-cur
-            tmp = dark >>31
-            dark = ((tmp+dark)^tmp)*_1per // abs for int
-            if(dark <= 40 || cur <= _min2){
-                bits2[point] = 1
-            }
-            /*
-            this code will increment dx and dy to loop x y blocks 
-            */
-            dx++
-            tmp = (dx-areaWidth)>>31
-            dx ^= (tmp^dx)&dx
-            dy += (tmp^1)&1
-            //----------------- 
-        }while(dy<areaHeight) 
+  
         
         /*
         this code will increment ax and ay to loop x y blocks 
@@ -3760,11 +3729,12 @@ function gray_from_canvas4(image,w,h)
         ax ^= (tmp^ax)&ax
         ay += (tmp^1)&1
         //-----------------
-    }while(ay < numSqrtArea)
+    }while((ay-numSqrtArea)>>31)
+    //}while(ay < numSqrtArea)
 
     
     
-    return {g1:grey1,g2:grey2,b1:bits1,b2:bits2,m1:middle1,m2:middle2}
+    return {g1:grey1,g2:grey2,m1:middle1,m2:middle2}
 }
 gray_from_canvas4.zero_count = new Uint32Array(256)
 
@@ -3876,7 +3846,10 @@ addEventListener('message', function(e) {
   var dat
   
   var start = new Date();
-  dat = gray_from_canvas4(e.data.buff,w,h)
+  var i = 0
+  do{dat = gray_from_canvas4(e.data.buff,w,h);i++}while(i<100)
+  console.log(new Date() - start + ' fin')
+  return
   var b1 = blur_diff(dat.g2,2,4,w,h)
   var bits = dat.m2.blur_guided_binary(dat.g2,b1)
   //postMessage(gray_to_canvas_buff(dat.g1))
