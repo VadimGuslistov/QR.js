@@ -3469,6 +3469,7 @@ function middleArea(l, numSqrtArea,areaWidth,areaHeight,w,h){
     this.width = w
     this.height = h
     this.buff = new Uint16Array(l)
+    this.bits = new Uint8Array(w*h)
 }
 middleArea.prototype = {
     blur_guided_binary: function(buff,diff){
@@ -3482,7 +3483,7 @@ middleArea.prototype = {
         var point
         var cur,pix
         var dark,light
-        var bits = new Uint8Array(buff.length)
+        var bits = this.bits
         var ax=0
         var ay=0
         var numSqrtArea = this.numSqrtArea
@@ -3490,6 +3491,7 @@ middleArea.prototype = {
         var areaHeight = this.areaHeight
         var areaWidth = this.areaWidth
         var middle = this.buff
+        var areaPoint1,areaPoint2
         do{
             dx =0
             dy = 0
@@ -3498,8 +3500,10 @@ middleArea.prototype = {
             _max = _max & 0xff
    
             _1per = 1/((_max-_min)*0.01)
+            areaPoint1 = (areaWidth * ax)|0
+            areaPoint2 = (areaHeight * ay)|0
             do{
-                point = (areaWidth * ax + dx+(areaHeight * ay + dy)*w)|0
+                point = (areaPoint1 + dx+(areaPoint2 + dy)*w)|0
                 cur = diff[point]
                 pix = buff[point]
                 dark = Math.abs(_min - pix)*_1per
@@ -3515,20 +3519,21 @@ middleArea.prototype = {
                 }
                 
                 dx++
-                tmp = (dx-areaWidth)>>>31
-                dx *= tmp
-                dy += tmp^1
+ 
+                tmp = (dx-areaWidth)>>31
+                dx ^= (tmp^dx)&dx
+                dy += (tmp^1)&1
                 //-----------------
-            }while((dy-areaHeight)>>>31) // (dy < areaHeight)
+            }while((dy-areaHeight)>>31) // (dy < areaHeight)
              /*
             this code will increment ax and ay to loop x y blocks 
             */
             ax++
-            tmp = (ax-numSqrtArea)>>>31
-            ax *= tmp
-            ay += tmp^1
+            tmp = (ax-numSqrtArea)>>31
+            ax ^= (tmp^ax)&ax
+            ay += (tmp^1)&1
             //-----------------
-        }while(ay < numSqrtArea)
+        }while((ay-numSqrtArea)>>31)
         return bits
        
     }
@@ -3541,7 +3546,7 @@ function gray_from_canvas4(image,w,h)
     var numSqrtAreaX = 1/numSqrtArea
     var areaWidth = (w * numSqrtAreaX)|0;
     var areaHeight = (h * numSqrtAreaX)|0;
-    var middle_l = numSqrtArea*numSqrtArea
+    var middle_l = numSqrtArea*numSqrtArea|0
     var image_l = image.length
     var grey1 = new Uint8Array(image_l)
     var middle1 = new middleArea(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
@@ -3581,7 +3586,7 @@ function gray_from_canvas4(image,w,h)
         areaPoint1 = (areaWidth * ax)|0
         areaPoint2 = (areaHeight * ay)|0
         do{
-            point = areaPoint1 + dx+(areaPoint2 + dy)*w
+            point = (areaPoint1 + dx+(areaPoint2 + dy)*w)|0
             target = image[point];
             r = (target>>>16)&0xff
             b = (target>>>8)&0xff
@@ -3685,10 +3690,9 @@ function gray_from_canvas4(image,w,h)
 
           
         do{
-            point = areaPoint1 + dx+(areaPoint2 + dy)*w
+            point = (areaPoint1 + dx+(areaPoint2 + dy)*w)|0
             cur = grey1[point]
-            dark = _min1-cur
-            tmp = dark >>31
+
 
             if(cur >= upper_set && cur <= upper_other){
                 cur = upper_set
@@ -3846,11 +3850,17 @@ addEventListener('message', function(e) {
   var dat
   
   var start = new Date();
+
+  dat = gray_from_canvas4(e.data.buff,w,h)
+
+
+  var b1 = blur_diff(dat.g2,2,4,w,h)
+  var start = new Date();
   var i = 0
-  do{dat = gray_from_canvas4(e.data.buff,w,h);i++}while(i<100)
+  var bits
+  do{bits = dat.m2.blur_guided_binary(dat.g2,b1);i++}while(i<100)
   console.log(new Date() - start + ' fin')
   return
-  var b1 = blur_diff(dat.g2,2,4,w,h)
   var bits = dat.m2.blur_guided_binary(dat.g2,b1)
   //postMessage(gray_to_canvas_buff(dat.g1))
   
