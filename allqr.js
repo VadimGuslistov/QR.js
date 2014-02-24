@@ -2238,7 +2238,7 @@ function Detector(image)
                 //do{
                     //try
                     //{
-                        alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+                        //alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
                         
                     //}
                     //catch (re)
@@ -3453,18 +3453,10 @@ function numBitsDiffering(a,b){
 
     // Count bits with ultra fast method
     // see http://graphics.stanford.edu/~seander/bithacks.html
-    // this needs to be done in half’s as JavaScript will jam unsigned data into singed data making life hard
-    // fix me - my reasoning for splitting in half is anecdotal and i am not sure if it is truly necessary
-    var _a,c
-    _a = (a>>>16) ^ (b>>>16) // now first half has 1 bit exactly where its bit differs with b's
-    _a = _a - ((_a >> 1) & 0x55555555); 
-    _a = (_a & 0x33333333) + ((_a >> 2) & 0x33333333); 
-    c = ((_a + (_a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
-    
-    _a = (a&0xFFFF) ^ (b&0xFFFF) // now 2nd half has 1 bit exactly where its bit differs with b's
-    _a = _a - ((_a >> 1) & 0x55555555); 
-    _a = (_a & 0x33333333) + ((_a >> 2) & 0x33333333); 
-    return c+ (((_a + (_a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24)
+    a = a ^ b // now 2nd half has 1 bit exactly where its bit differs with b's
+    a = a - ((a >> 1) & 0x55555555); 
+    a = (a & 0x33333333) + ((a >> 2) & 0x33333333); 
+    return (((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24)
     
 }
 
@@ -3610,73 +3602,77 @@ function gray_from_canvas4(image,w,h)
             
             grey1[point]= target
             count[target]++
-            tmp  = _max - target            //____________________________________
+            tmp  = _max - target            //_______________________________
             _max = _max - (tmp & (tmp >> 31)) //----Max for a int of 32 bits or less
             
             tmp = _min - target  //____________________________________
             _min = target + (tmp & (tmp >> 31)) //----min for a int of 32 bits or less
             
-            tmp  = (_max1 - target)>>>31            //____________________________________
-            _max1 = (_max1 * (3+(tmp^1))  + target * tmp  )*0.25   //----Max for float  weighted in
+            tmp  = (_max1 - target)>>31            // note will trigger if the diff dose not floor to 0
+            _max1 = (_max1 * (3+((tmp^1)&1))  + (target^((target ^ tmp)&target))  )*0.25   //----Max for float  weighted in
             
-            tmp = (_min1 - target)>>>31             //____________________________________
-            _min1 = ( _min1 * (3+tmp) +  target * (tmp^1))*0.25  //----min for a float weighted in
+            tmp = (target -_min1)>>31           // note will trigger if the diff dose not floor to 0
+            _min1 = (_min1 * (3+((tmp^1)&1))  + (target^((target ^ tmp)&target))  )*0.25   //----Min for float  weighted in
             
             
             /*
             this code will increment dx and dy to loop x y blocks 
             */
             dx++
-            tmp = (dx-areaWidth)>>>31
-            dx *= tmp
-            dy += tmp^1
+            tmp = (dx-areaWidth)>>31
+            dx ^= (tmp^dx)&dx
+            dy += (tmp^1)&1
             //-----------------
-        }while((dy-areaHeight)>>>31) // (dy < areaHeight)
+        }while(dy < areaHeight)
         middle1.buff[middle_point] = (_min1<<8) | _max1
         
         _mid = (_max - _min)>>1
         
         upper1=upper2=lower1=lower2=0
         upper_val1=upper_val2=0
+        
         i = _min
       
         
         do{
             cur = count[i]
             tmp = upper1 - cur
-            tmp2 = tmp>>>31
-            upper1 = upper1 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less 
-            upper_val1 = (upper_val1 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1 
+            tmp2 = tmp>>31
+            upper1 = upper1 - (tmp & tmp2) //----max for a int of 32 bits or less 
+            tmp = tmp2^-1
+            upper_val1 = (upper_val1 ^((tmp ^ upper_val1) & upper_val1)) | (i^((i^tmp2)&i)) // if(upper1 < cur) upper_val1 
             
-            cur *= tmp2^1 // if the first passed make sure the 2nd fails 
+            cur ^= (cur ^ tmp)&cur // if the first passed make sure the 2nd fails 
                
                
             tmp = upper2 - cur
-            tmp2 = tmp>>>31
-            upper2 = upper2 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less 
-            upper_val2 = (upper_val2 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1 
+            tmp2 = tmp>>31
+            upper2 = upper2 - (tmp & tmp2) //----max for a int of 32 bits or less 
+            tmp = tmp2^-1
+        	upper_val2 = (upper_val2 ^((tmp ^ upper_val2) & upper_val2)) | (i^((i^tmp2)&i)) // if(upper1 < cur) upper_val1 
             i++
-        }while((i-_mid)>>>31) // (i<_mid) 
+        }while(i<_mid)
         
         i = _mid
         l = _max+1
         do{
             cur = count[i]
             tmp = lower1 - cur
-            tmp2 = tmp>>>31
-            lower1 = lower1 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less 
-            lower_val1 = (lower_val1 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1 
-               
-            cur *= tmp2^1 // if the first passed make sure the 2nd fails 
+            tmp2 = tmp>>31
+            lower1 = lower1 - (tmp & tmp2) //----max for a int of 32 bits or less 
+            tmp = tmp2^-1
+            lower_val1 = (lower_val1 ^((tmp ^ lower_val1) & lower_val1)) | (i^((i^tmp2)&i)) // if(upper1 < cur) upper_val1 
+            cur ^= (cur ^ tmp)&cur // if the first passed make sure the 2nd fails 
                
             tmp = lower2  - cur
-            tmp2 = tmp>>>31
-            lower2 = lower2 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less 
-            lower_val2 = (lower_val2 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1 
+            tmp2 = tmp>>31
+            lower2 = lower2 - (tmp & tmp2) //----max for a int of 32 bits or less 
+            tmp = tmp2^-1	
+        	lower_val2 = (lower_val2 ^((tmp ^ lower_val2) & lower_val2)) | (i^((i^tmp2)&i)) // if(upper1 < cur) upper_val1 
               
             
             i++
-        }while((i-l)>>>31)
+        }while(i<l)
 
         tmp  = upper_val2 - upper_val1
         tmp = (tmp & (tmp >> 31))
@@ -3711,20 +3707,26 @@ function gray_from_canvas4(image,w,h)
             } else{
                 cur = (cur * lowerX)|0
             }
-            tmp  = (_max2 - cur)>>>31            //____________________________________
-            _max2 = (_max2 * (3+(tmp^1))  + cur * tmp  )*0.25   //----Max for float  weighted in
+
+
             
             tmp = (_min2 - cur)>>>31             //____________________________________
             _min2 = ( _min2 * (3+tmp) +  cur * (tmp^1))*0.25  //----min for a float weighted in
+            
+            tmp  = (_max2 - cur)>>31                       // note will trigger if the diff dose not floor to 0
+            _max2 = (_max2 * (3+((tmp^1)&1))  + (cur^((cur ^ tmp)&cur))  )*0.25   //----Max for float  weighted in
+            
+            tmp = (cur -_min2)>>31           // note will trigger if the diff dose not floor to 0
+            _min2 = (_min2 * (3+((tmp^1)&1))  + (cur^((cur ^ tmp)&cur))  )*0.25   //----Max for float  weighted in
             grey2[point] = cur
 
             /*
             this code will increment dx and dy to loop x y blocks 
             */
             dx++
-            tmp = (dx-areaWidth)>>>31
-            dx *= tmp
-            dy += tmp^1
+            tmp = (dx-areaWidth)>>31
+            dx ^= (tmp^dx)&dx
+            dy += (tmp^1)&1
             //----------------- 
         }while(dy<areaHeight)
         middle2.buff[middle_point] = (_min2<<8) | _max2
@@ -3744,9 +3746,9 @@ function gray_from_canvas4(image,w,h)
             this code will increment dx and dy to loop x y blocks 
             */
             dx++
-            tmp = (dx-areaWidth)>>>31
-            dx *= tmp
-            dy += tmp^1
+            tmp = (dx-areaWidth)>>31
+            dx ^= (tmp^dx)&dx
+            dy += (tmp^1)&1
             //----------------- 
         }while(dy<areaHeight) 
         
@@ -3754,9 +3756,9 @@ function gray_from_canvas4(image,w,h)
         this code will increment ax and ay to loop x y blocks 
         */
         ax++
-        tmp = (ax-numSqrtArea)>>>31
-        ax *= tmp
-        ay += tmp^1
+        tmp = (ax-numSqrtArea)>>31
+        ax ^= (tmp^ax)&ax
+        ay += (tmp^1)&1
         //-----------------
     }while(ay < numSqrtArea)
 
@@ -3765,93 +3767,7 @@ function gray_from_canvas4(image,w,h)
     return {g1:grey1,g2:grey2,b1:bits1,b2:bits2,m1:middle1,m2:middle2}
 }
 gray_from_canvas4.zero_count = new Uint32Array(256)
-function strech_grey(grey){
 
-  var l = grey.length
-
-  var grey2 = new Uint8Array(l)
-  var bits = new Uint8Array(l)
-  var count = new Uint32Array(256)
-  var r,b,g,cur,i,_min=255,_max=0,_mid
-  i=0
-  
-  do{
-       cur = grey[i++]
-       if(cur > 245 || cur < 10) continue
-       if(cur < _min){
-           _min = cur
-       }
-       if(cur > _max){
-           _max = cur
-       }
-       count[cur]++
-       
-      
-  }while(i<l)
-   _mid = (_max - _min)>>1
-   var upper1=0,upper2=0,lower1=0,lower2=0
-   var upper_val1=0,upper_val2=0
-   i = _min
-   do{
-       cur = count[i]
-       if(cur >= upper1){
-           upper_val1 = i
-           upper1 = cur
-       } else if(cur >= upper2){
-           upper_val2 = i
-           upper2 = cur
-       }
-       i++
-   }while(i<_mid)
-   var lower_val1=0,lower_val2=0
-   i = _mid
-   l = _max+1
-   do{
-       cur = count[i]
-       if(cur >= lower1){
-           lower_val1 = i
-           lower1 = cur
-       } else if(cur >= lower2){
-           lower_val2 = i
-           lower2 = cur
-       }
-       i++
-   }while(i<l)
-   
-   i = 0
-   l = grey.length
-
-   var upper_set = Math.min(upper_val1,upper_val2)
-   var upper_other = (upper_set == upper_val1) ? upper_val1:upper_val1
-   var upperX = upper_set/upper_other 
-   var lower_set = Math.max(lower_val2,lower_val1)
-   var lower_other = (lower_val1 == lower_set)? lower_val1:lower_val2
-   var lowerX = 254/lower_other 
-   
-   do{
-       cur = grey[i]
-       
-       if(cur <= upper_other){
-           bits[i] =1
-
-       } 
-      if(cur >= upper_set && cur <= upper_other){
-          cur = upper_set
-      }
-      if(cur <= _mid && cur > upper_other){
-           cur = (cur * upperX)|0
-       }else if(cur >= lower_other ){
-           cur = 255
-       } else{
-           cur = (cur * lowerX)|0
-       }
-        grey2[i] = cur
-       i++
-   }while(i<l)
-   
- 
-  return {bits:bits,g1:grey,g2:grey2}
-}
 
 
 
@@ -3873,6 +3789,7 @@ function bits_to_canvas_buff(buff){
     }while(i<l)
     return _c
 }
+
 function gray_to_canvas_buff(buff){
     var _c = new Uint8Array(buff.length*4)
     var c = new Int32Array(_c.buffer)
@@ -3893,46 +3810,6 @@ function gray_to_canvas_buff(buff){
 
 
 
-function blur_enhanced_binary(g1,g2,bits){
-    var l = bits.length
-    var ret = new Uint8Array(l)
-    var i = 0
-    var diff
-    var pix1,pix2,pix3,pix4,pix5,pix6,
-        pix7,pix8,pix9,pix10,pix11,pix12,x,y
-    do{
-        diff = g1[i] - g2[i]
-        if(diff < 3){
-           
-            pix1 = i+1
-            pix2 = i+2
-            pix3 = i+3
-            pix4 = i-1
-            pix5 = i-2
-            pix6 = i-3
-            
-            if(
-                
-                bits[i] ||
-                (pix1 < l && bits[pix1]) ||
-                (pix2 < l && bits[pix2]) ||
-                (pix3 < l && bits[pix3]) ||
-                
-                (pix4 > -1 && bits[pix4]) ||
-                (pix5 > -1 && bits[pix5]) ||
-                (pix6 > -1 && bits[pix6]) 
-
-
-            ) {
-                ret[i] = 1
-            } 
-        } 
-        i++
-    }while(i<l)
-    return ret
-}
-
-
 function blur_diff(buff,r1,r2,w,h) {
     var g1 = stackBlurGray(buff,w,h,r1)
     var g2 = stackBlurGray(buff,w,h,r2)
@@ -3948,7 +3825,7 @@ function blur_diff(buff,r1,r2,w,h) {
 }
 
 
-var ended={isEnded:false}
+var ended={isEnded:false,count:0,sum:0}
 addEventListener('message', function(e) {
   if(ended.isEnded) return
   var w = e.data.w
@@ -3964,8 +3841,11 @@ addEventListener('message', function(e) {
       try{
 
           ret = qrcode.process(bits,w,h)
+          ended.count++
+          ended.sum+= new Date() - start1
           console.log(new Date() - start2 + ' fin')
           console.log(new Date() - start1 + ' fin all')
+          console.log((ended.sum/ended.count) + ' avg')
           ended.isEnded = true
           postMessage(ret)
           //var test1 = (ret == "6JKeKYJ4SGrK4h1xwT3MJ6TfyGfn1kK57QuMJED5ap5NmDqViqaEZwGrRqhimZuXAFKUrM6vrKvNR4pRCicmCwBXo7AC2DWeWrNPCJGpTKzuCYZUHVvhX62aYpYWGLAABmJRGc97M6RQHsonR4fn2y7J2fHtEybAVevX")
@@ -3984,6 +3864,8 @@ addEventListener('message', function(e) {
           
           //self.close()
         } catch(e){
+            ended.count++
+            ended.sum+= new Date() - start1
             //console.log(new Date() - start2 + ' 2')
             //console.log(e)
             //console.log(e.stack)
@@ -3995,15 +3877,16 @@ addEventListener('message', function(e) {
   
   var start = new Date();
   dat = gray_from_canvas4(e.data.buff,w,h)
-  var b1 = blur_diff(dat.g2,3,6,w,h)
+  var b1 = blur_diff(dat.g2,2,4,w,h)
   var bits = dat.m2.blur_guided_binary(dat.g2,b1)
   //postMessage(gray_to_canvas_buff(dat.g1))
-  //postMessage(bits_to_canvas_buff(bits))
+  
   post(bits)
   //post(dat.b2)
   //post(dat.b1)
-  var b2 = blur_diff(dat.g1,3,6,w,h)
+  var b2 = blur_diff(dat.g1,2,4,w,h)
   bits = dat.m1.blur_guided_binary(dat.g1,b2)
+  postMessage(bits_to_canvas_buff(bits))
   post(bits)
   
 

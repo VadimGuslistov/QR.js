@@ -369,3 +369,54 @@ tmp = 1 - 2
 min = 2 + (tmp & (tmp >> 31))
 max = 1 - (tmp & (tmp >> 31))
 r = x - ((x - y) & ((x - y) >> (sizeof(int) * CHAR_BIT - 1))); // max(x, y
+
+
+function numBitsDifferingOver32(a,b){
+    
+    // Count bits with ultra fast method
+    // see http://graphics.stanford.edu/~seander/bithacks.html
+    var c
+    var a2 = (a/4294967296)|0 // floor(x div 2^32) == x>>32 -- the or by zero casts the result into a singed int and can not be replaced with Math.floor
+    var b2 = (b/4294967296)|0
+    a &=0xffffffff // mask off the first 32 bits
+    b &=0xffffffff // -------------------------------
+    a = a ^ b // now 2nd half has 1 bit exactly where its bit differs with b's
+    a = a - ((a >> 1) & 0x55555555); 
+    a = (a & 0x33333333) + ((a >> 2) & 0x33333333)
+    c = (((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24)
+    // now count the first half
+    a = a2 ^ b2 // now 2nd half has 1 bit exactly where its bit differs with b's
+    a = a - ((a >> 1) & 0x55555555); 
+    a = (a & 0x33333333) + ((a >> 2) & 0x33333333)
+    return c + (((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24) 
+    
+}
+
+function numBitsDifferingOver32(a,b){
+    
+    // Count bits with ultra fast method
+    // see http://graphics.stanford.edu/~seander/bithacks.html
+    var c
+    var a2 = (a/4294967296)|0 // floor(x div 2^32) == x>>32 -- the or by zero casts the result into a singed int and can not be replaced with Math.floor
+    var b2 = (b/4294967296)|0
+    a &=0xffffffff // mask off the first 32 bits
+    b &=0xffffffff // -------------------------------
+    a = a ^ b // now 2nd half has 1 bit exactly where its bit differs with b's
+    a = a - ((a >> 1) & 0x55555555); 
+    a = (a & 0x33333333) + ((a >> 2) & 0x33333333)
+    c = (((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24)
+    // now count the first half
+    a = a2 ^ b2 // now 2nd half has 1 bit exactly where its bit differs with b's
+    a = a - ((a >> 1) & 0x55555555); 
+    a = (a & 0x33333333) + ((a >> 2) & 0x33333333)
+    return c + (((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24) 
+    
+}
+
+   function castInt32ToUint(x) {
+        return x - Math.floor(x/4294967296)*4294967296;
+    }
+    
+  
+    
+    
