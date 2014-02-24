@@ -79,7 +79,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 /-----------------------------------------------------
 */
 
-;var blurMechineGray=(function (){
+;var blurMachineGray=(function (){
 //===============================
 
 var mul_table = new Uint16Array([
@@ -121,7 +121,7 @@ var shg_table = new Uint8Array([
 
 
 
-function blurMechineGray(width, height, radius){
+function blurMachineGray(width, height, radius){
     var div = radius + radius + 1
     var radiusPlus1  = radius + 1
     var stackStart = new BlurStack()
@@ -145,18 +145,10 @@ function blurMechineGray(width, height, radius){
     this.height = height
     this.pixels = new Uint8Array(width*height)
 }
-blurMechineGray.prototype = {
+blurMachineGray.prototype = {
     blur:function(buff){
-        var pixels = this.pixels
-        var radiusPlus1 = this.radiusPlus1
-        var sumFactor = this.sumFactor
-        var stackStart = this.stackStart
-        var widthMinus1 = this.widthMinus1
-        var mul_sum = this.mul_sum
-        var stackEnd = this.stackEnd
-        var shg_sum = this.shg_sum
-        pixels.set(buff)
-        var x, y, i, p, yp, yi, yw, sum,
+        this.pixels.set(buff)
+        var x, y, i,  yp, yi, yw, sum,
         out_sum,
         in_sum,
         pg, bs,tmp;
@@ -174,37 +166,37 @@ blurMechineGray.prototype = {
         do{
             i = in_sum = sum = 0;
     
-            out_sum = radiusPlus1 * ( pg = pixels[yi] );
+            out_sum = this.radiusPlus1 * ( pg = this.pixels[yi] );
     
     
-            sum += sumFactor * pg;
+            sum += this.sumFactor * pg;
     
     
-            stack = stackStart;
+            stack = this.stackStart;
 
             do{
                 stack.v = pg;
                 stack = stack.next;
                 i++
-            }while(i < radiusPlus1)
+            }while(i < this.radiusPlus1)
             i = 1
             do{
     
-                sum += ( stack.v = ( pg = pixels[yi + ( widthMinus1  + (tmp = i - widthMinus1 , tmp & (tmp >> 31)) )])) * ( bs = radiusPlus1 - i );
+                sum += ( stack.v = ( pg = this.pixels[yi + ( this.widthMinus1  + ((tmp = i - this.widthMinus1) & (tmp >> 31)) )])) * ( bs = this.radiusPlus1 - i );
     
                 in_sum += pg;
     
                 stack = stack.next;
                 i++
-            }while(i < radiusPlus1)
+            }while(i < this.radiusPlus1)
     
     
-            stackIn = stackStart;
-            stackOut = stackEnd;
+            stackIn = this.stackStart;
+            stackOut = this.stackEnd;
             x=0
     
             do{
-                pixels[yi]  = (sum * mul_sum) >> shg_sum;
+                this.pixels[yi]  = (sum * this.mul_sum) >> this.shg_sum;
     
     
                 sum -= out_sum;
@@ -214,7 +206,7 @@ blurMechineGray.prototype = {
     
     
     
-                in_sum += ( stackIn.v = pixels[yw + ( widthMinus1  + (tmp = (x + radiusPlus1 ) - widthMinus1 , tmp & (tmp >> 31)) )]);
+                in_sum += ( stackIn.v = this.pixels[yw + ( this.widthMinus1  + ((tmp = (x + this.radiusPlus1 ) - this.widthMinus1) & (tmp >> 31)) )]);
     
     
                 sum += in_sum;
@@ -243,19 +235,19 @@ blurMechineGray.prototype = {
             in_sum = sum = 0;
     
             yi = x;
-            out_sum = radiusPlus1 * ( pg = pixels[yi]);
+            out_sum = this.radiusPlus1 * ( pg = this.pixels[yi]);
     
     
-            sum += sumFactor * pg;
+            sum += this.sumFactor * pg;
     
     
-            stack = stackStart;
+            stack = this.stackStart;
             i=0
             do{
                 stack.v = pg;
                 stack = stack.next;
                 i++
-            }while(i<radiusPlus1)
+            }while(i<this.radiusPlus1)
             
     
             yp = this.width;
@@ -264,7 +256,7 @@ blurMechineGray.prototype = {
     
             do{
     
-                sum += ( stack.v = ( pg = pixels[yp + x])) * ( bs = radiusPlus1 - i );
+                sum += ( stack.v = ( pg = this.pixels[yp + x])) * ( bs = this.radiusPlus1 - i );
     
     
                 in_sum += pg;
@@ -276,15 +268,15 @@ blurMechineGray.prototype = {
                 yp += this.width^(this.width ^ (i-this.heightMinus1))&this.width;
     
                 i++
-            }while(i <radiusPlus1)
+            }while(i <this.radiusPlus1)
     
             yi = x;
-            stackIn = stackStart;
-            stackOut = stackEnd;
+            stackIn = this.stackStart;
+            stackOut = this.stackEnd;
             y=0
             do{
                 
-                pixels[yi]   = (sum * mul_sum) >> shg_sum;
+                this.pixels[yi]   = (sum * this.mul_sum) >> this.shg_sum;
     
     
                 sum -= out_sum;
@@ -294,7 +286,7 @@ blurMechineGray.prototype = {
     
     
     
-                sum += ( in_sum += ( stackIn.v = pixels[x + ( this.heightMinus1  + (tmp = (y + radiusPlus1 ) - this.heightMinus1 , tmp & (tmp >> 31)) )*this.width]));
+                sum += ( in_sum += ( stackIn.v = this.pixels[x + ( this.heightMinus1  + ((tmp = (y + this.radiusPlus1 ) - this.heightMinus1) & (tmp >> 31)) )*this.width]));
     
     
                 stackIn = stackIn.next;
@@ -4042,7 +4034,7 @@ addEventListener('message', function(e) {
   dat = gray_from_canvas4(e.data.buff,w,h)
   var bm = ended.bm
   if(!bm) {
-      bm = new blurMechineGray(w,h,4)
+      bm = new blurMachineGray(w,h,4)
       ended.bm = bm
   }
   
