@@ -125,14 +125,13 @@ var shg_table = new Uint8Array([
 
 function stackBlurGray(buff,width, height, radius )
 {
-    if ( isNaN(radius) || radius < 1 ) return;
     radius |= 0;
 
     var pixels = new Uint8Array(buff)        
     var x, y, i, p, yp, yi, yw, sum,
     out_sum,
     in_sum,
-    pg, bs;
+    pg, bs,tmp;
 
     var div = radius + radius + 1;
     var widthMinus1  = width - 1;
@@ -146,11 +145,11 @@ function stackBlurGray(buff,width, height, radius )
     i = 1
     do{
         stack = stack.next = new BlurStack();
-        if ( i++ == radiusPlus1 ) stackEnd = stack;
+        stackEnd = ( i++ == radiusPlus1 )? stack:stackEnd;
     }while(i < div)
     stack.next = stackStart;
-    var stackIn = null;
-    var stackOut = null;
+    var stackIn ;
+    var stackOut ;
 
     yw = yi = 0;
 
@@ -175,8 +174,8 @@ function stackBlurGray(buff,width, height, radius )
         }while(i < radiusPlus1)
         i = 1
         do{
-            p = yi + ( widthMinus1 < i ? widthMinus1 : i );
-            sum += ( stack.v = ( pg = pixels[p])) * ( bs = radiusPlus1 - i );
+
+            sum += ( stack.v = ( pg = pixels[yi + ( widthMinus1  + (tmp = i - widthMinus1 , tmp & (tmp >> 31)) )])) * ( bs = radiusPlus1 - i );
 
             in_sum += pg;
 
@@ -199,9 +198,8 @@ function stackBlurGray(buff,width, height, radius )
             out_sum -= stackIn.v;
 
 
-            p =  ( yw + ( ( p = x + radius + 1 ) < widthMinus1 ? p : widthMinus1 ) );
 
-            in_sum += ( stackIn.v = pixels[p]);
+            in_sum += ( stackIn.v = pixels[yw + ( widthMinus1  + (tmp = (x + radiusPlus1 ) - widthMinus1 , tmp & (tmp >> 31)) )]);
 
 
             sum += in_sum;
@@ -237,21 +235,21 @@ function stackBlurGray(buff,width, height, radius )
 
 
         stack = stackStart;
-
-        for( i = 0; i < radiusPlus1; i++ )
-        {
+        i=0
+        do{
             stack.v = pg;
             stack = stack.next;
-        }
+            i++
+        }while(i<radiusPlus1)
+        
 
         yp = width;
 
         i=1
 
         do{
-            yi = ( yp + x );
 
-            sum += ( stack.v = ( pg = pixels[yi])) * ( bs = radiusPlus1 - i );
+            sum += ( stack.v = ( pg = pixels[yp + x])) * ( bs = radiusPlus1 - i );
 
 
             in_sum += pg;
@@ -259,20 +257,19 @@ function stackBlurGray(buff,width, height, radius )
 
             stack = stack.next;
 
-            if( i < heightMinus1 )
-            {
-                yp += width;
-            }
+    
+            yp += width^(width ^ (i-heightMinus1))&width;
+
             i++
-        }while(i <= radius)
+        }while(i <radiusPlus1)
 
         yi = x;
         stackIn = stackStart;
         stackOut = stackEnd;
         y=0
         do{
-            p = yi;
-            pixels[p]   = (sum * mul_sum) >> shg_sum;
+            
+            pixels[yi]   = (sum * mul_sum) >> shg_sum;
 
 
             sum -= out_sum;
@@ -281,9 +278,8 @@ function stackBlurGray(buff,width, height, radius )
             out_sum -= stackIn.v;
 
 
-            p = ( x + (( ( p = y + radiusPlus1) < heightMinus1 ? p : heightMinus1 ) * width ));
 
-            sum += ( in_sum += ( stackIn.v = pixels[p]));
+            sum += ( in_sum += ( stackIn.v = pixels[x + ( heightMinus1  + (tmp = (y + radiusPlus1 ) - heightMinus1 , tmp & (tmp >> 31)) )*width]));
 
 
             stackIn = stackIn.next;
@@ -3852,15 +3848,17 @@ addEventListener('message', function(e) {
   var start = new Date();
 
   dat = gray_from_canvas4(e.data.buff,w,h)
-
-
-  var b1 = blur_diff(dat.g2,2,4,w,h)
-  var start = new Date();
-  var i = 0
-  var bits
-  do{bits = dat.m2.blur_guided_binary(dat.g2,b1);i++}while(i<100)
-  console.log(new Date() - start + ' fin')
+  postMessage(gray_to_canvas_buff(stackBlurGray(dat.g2,w,h,4)))
   return
+  /*var start = new Date();
+  var i = 0
+  var b1
+  do{b1 = blur_diff(dat.g2,2,4,w,h);i++}while(i<100)
+  console.log(new Date() - start + ' fin')
+  return*/
+  
+  var b1 = blur_diff(dat.g2,2,4,w,h)
+  
   var bits = dat.m2.blur_guided_binary(dat.g2,b1)
   //postMessage(gray_to_canvas_buff(dat.g1))
   
