@@ -79,7 +79,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 /-----------------------------------------------------
 */
 
-;var blurMechineGray=(function (){
+;var blurMachineGray=(function (){
 //===============================
 
 var mul_table = new Uint16Array([
@@ -121,7 +121,7 @@ var shg_table = new Uint8Array([
 
 
 
-function blurMechineGray(width, height, radius){
+function blurMachineGray(width, height, radius){
     var div = radius + radius + 1
     var radiusPlus1  = radius + 1
     var stackStart = new BlurStack()
@@ -145,7 +145,7 @@ function blurMechineGray(width, height, radius){
     this.height = height
     this.pixels = new Uint8Array(width*height)
 }
-blurMechineGray.prototype = {
+blurMachineGray.prototype = {
     blur:function(buff){
         this.pixels.set(buff)
         var x, y, i,  yp, yi, yw, sum,
@@ -307,191 +307,14 @@ blurMechineGray.prototype = {
 
     }
 }
-function stackBlurGray(buff,width, height, radius )
-{
-    radius |= 0;
 
-            
-    var x, y, i, p, yp, yi, yw, sum,
-    out_sum,
-    in_sum,
-    pg, bs,tmp;
-
-    var div = radius + radius + 1;
-    var widthMinus1  = width - 1;
-    var heightMinus1 = height - 1;
-    var radiusPlus1  = radius + 1;
-    var sumFactor = radiusPlus1 * ( radiusPlus1 + 1 ) * 0.5;
-
-    var stackStart = new BlurStack();
-    var stack = stackStart;
-    var stackEnd
-    i = 1
-    do{
-        stack = stack.next = new BlurStack();
-        stackEnd = ( i++ == radiusPlus1 )? stack:stackEnd;
-    }while(i < div)
-    stack.next = stackStart;
-    var stackIn ;
-    var stackOut ;
-
-    yw = yi = 0;
-
-    var mul_sum = mul_table[radius];
-    var shg_sum = shg_table[radius];
-    y=0
-    do{
-        in_sum = sum = 0;
-
-        out_sum = radiusPlus1 * ( pg = pixels[yi] );
-
-
-        sum += sumFactor * pg;
-
-
-        stack = stackStart;
-        i = 0
-        do{
-            stack.v = pg;
-            stack = stack.next;
-            i++
-        }while(i < radiusPlus1)
-        i = 1
-        do{
-
-            sum += ( stack.v = ( pg = pixels[yi + ( widthMinus1  + (tmp = i - widthMinus1 , tmp & (tmp >> 31)) )])) * ( bs = radiusPlus1 - i );
-
-            in_sum += pg;
-
-            stack = stack.next;
-            i++
-        }while(i < radiusPlus1)
-
-
-        stackIn = stackStart;
-        stackOut = stackEnd;
-        x=0
-
-        do{
-            pixels[yi]   = (sum * mul_sum) >> shg_sum;
-
-
-            sum -= out_sum;
-
-
-            out_sum -= stackIn.v;
-
-
-
-            in_sum += ( stackIn.v = pixels[yw + ( widthMinus1  + (tmp = (x + radiusPlus1 ) - widthMinus1 , tmp & (tmp >> 31)) )]);
-
-
-            sum += in_sum;
-
-
-            stackIn = stackIn.next;
-
-            out_sum += ( pg = stackOut.v );
-
-
-            in_sum -= pg;
-
-
-            stackOut = stackOut.next;
-
-            yi++;
-            x++
-        }while(x < width)
-        yw += width;
-        y++
-    }while(y < height)
-
-    x=0
-
-    do{
-        in_sum = sum = 0;
-
-        yi = x;
-        out_sum = radiusPlus1 * ( pg = pixels[yi]);
-
-
-        sum += sumFactor * pg;
-
-
-        stack = stackStart;
-        i=0
-        do{
-            stack.v = pg;
-            stack = stack.next;
-            i++
-        }while(i<radiusPlus1)
-        
-
-        yp = width;
-
-        i=1
-
-        do{
-
-            sum += ( stack.v = ( pg = pixels[yp + x])) * ( bs = radiusPlus1 - i );
-
-
-            in_sum += pg;
-
-
-            stack = stack.next;
-
-    
-            yp += width^(width ^ (i-heightMinus1))&width;
-
-            i++
-        }while(i <radiusPlus1)
-
-        yi = x;
-        stackIn = stackStart;
-        stackOut = stackEnd;
-        y=0
-        do{
-            
-            pixels[yi]   = (sum * mul_sum) >> shg_sum;
-
-
-            sum -= out_sum;
-
-
-            out_sum -= stackIn.v;
-
-
-
-            sum += ( in_sum += ( stackIn.v = pixels[x + ( heightMinus1  + (tmp = (y + radiusPlus1 ) - heightMinus1 , tmp & (tmp >> 31)) )*width]));
-
-
-            stackIn = stackIn.next;
-
-            out_sum += ( pg = stackOut.v );
-
-
-            in_sum -= pg;
-
-
-            stackOut = stackOut.next;
-
-            yi += width;
-            y++
-        }while(y < height)
-        x++
-    }while(x < width)
-    return pixels
-
-
-}
 
 function BlurStack()
 {
     this.v = 0
     this.next = null;
 }
-return blurMechineGray
+return blurMachineGray
 //===============================
 
 })();
@@ -3640,8 +3463,87 @@ function numBitsDiffering(a,b){
     
 }
 
+function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
+    var length = w*h
+    var img = new Uint8Array(length)
+    this.middleLength = middleLength
+    this.length = length
+    this.width = w
+    this.height = h
+    this.numSqrtArea= numSqrtArea
+    this.areaWidth=areaWidth
+    this.areaHeight = areaHeight
+    this.image = img
+    this.bits =  new Uint8Array(length)
+    this.middle = new Uint16Array(middleLength)
+    this.blurDiffMachine = new blurDiffMachine(img,2,4,w,h)
 
+}
+ECMA_QR_Image.prototype = {
+    doBinary:function(buff,diff){
+        
+        var dx
+        var dy
+        var _min
+        var _max
+        var tmp
+        var _1per
+        var point
+        var cur,pix
+        var dark,light
+        var ax
+        var ay
+        this.blurDiffMachine.doDiff()
 
+        var areaPoint1,areaPoint2
+        ax = ay = 0
+        do{
+            dx = dy = 0
+            _max = this.middle[ax + ay * this.numSqrtArea]
+            _min = _max >>> 8
+            _max = _max & 0xff
+   
+            _1per = 1/((_max-_min)*0.01)
+            areaPoint1 = (this.areaWidth * ax)|0
+            areaPoint2 = (this.areaHeight * ay)|0
+            do{
+                point = (areaPoint1 + dx+(areaPoint2 + dy)*this.width)|0
+                cur = this.blurDiffMachine.diff[point]
+                pix = this.image[point]
+                dark = Math.abs(_min - pix)*_1per
+                light = Math.abs(_max - pix)*_1per
+                if(pix <= _min){
+                    this.bits[point] = 1
+                }  else if(cur <0) {
+                    if(light > 30){
+                       this.bits[point] = 1 
+                    }
+                }else if( dark <= 40){
+                    this.bits[point] = 1 
+                } else{
+                    this.bits[point] = 0
+                }
+                
+                dx++
+ 
+                tmp = (dx-this.areaWidth)>>31
+                dx ^= (tmp^dx)&dx
+                dy += (tmp^1)&1
+                //-----------------
+            }while(dy<this.areaHeight)
+             /*
+            this code will increment ax and ay to loop x y blocks 
+            */
+            ax++
+            tmp = (ax-this.numSqrtArea)>>31
+            ax ^= (tmp^ax)&ax
+            ay += (tmp^1)&1
+            //-----------------
+        }while(ay<this.numSqrtArea)
+
+       
+    }
+}
 function middleArea(l, numSqrtArea,areaWidth,areaHeight,w,h){
     this.areaWidth = areaWidth
     this.areaHeight = areaHeight
@@ -3888,7 +3790,7 @@ function gray_from_canvas4(image,w,h)
             
              
             _max2 = (_max2<cur) ? (_max2*3+cur)*0.25:_max2
-            _min1 = (_min2>cur)? (_min2*3+cur)*0.25:_min2
+            _min2 = (_min2>cur)? (_min2*3+cur)*0.25:_min2
             
             grey2[point] = cur
 
@@ -3963,6 +3865,27 @@ function gray_to_canvas_buff(buff){
 
 
 
+function blurDiffMachine(img,r1,r2,w,h){
+    var l = img.length
+   
+    this.l = l
+    this.diff = new Int16Array(l)
+    this.img = img
+    this.g1 =  new blurMachineGray(w,h,r1)
+    this.g2 = new blurMachineGray(w,h,r2)
+    
+}
+blurDiffMachine.prototype = {
+    doDiff:function(){
+        var i = 0
+        this.g1.blur(this.img)
+        this.g2.blur(this.img)
+        do{
+            this.diff[i] = this.g1.pixels[i] - this.g2.pixels[i]
+            i++
+        }while(i<this.l)
+    }
+}
 
 function blur_diff(buff,r1,r2,w,h) {
     var g1 = stackBlurGray(buff,w,h,r1)
@@ -3979,7 +3902,7 @@ function blur_diff(buff,r1,r2,w,h) {
 }
 
 
-var ended={isEnded:false,count:0,sum:0,bm:null}
+var ended={isEnded:false,count:0,sum:0,bd:null}
 addEventListener('message', function(e) {
   if(ended.isEnded) return
   var w = e.data.w
@@ -4032,11 +3955,18 @@ addEventListener('message', function(e) {
   var start = new Date();
 
   dat = gray_from_canvas4(e.data.buff,w,h)
-  var bm = ended.bm
-  if(!bm) {
-      bm = new blurMechineGray(w,h,4)
-      ended.bm = bm
+  var img = new ECMA_QR_Image(dat.m1.buff.length,dat.m1.numSqrtArea,dat.m1.areaWidth,dat.m1.areaHeight,w,h)
+  img.middle.set(dat.m1.buff)
+  img.image.set(dat.g1)
+  img.doBinary()
+  postMessage(bits_to_canvas_buff(img.bits))
+  return
+  var bd = ended.bd
+  if(!bd) {
+      bd = new blurDiffMachine(new Uint8Array(w*h),2,4,w,h)
+      ended.bd = bd
   }
+  bd.img.set(dat.g2)
   
   //bm.blur(dat.g2)
   //postMessage(gray_to_canvas_buff(bm.pixels))
@@ -4044,7 +3974,7 @@ addEventListener('message', function(e) {
   var start = new Date();
   var i = 0
   var b1
-  do{b1 = bm.blur(dat.g2);i++}while(i<200)
+  do{bd.doDiff();i++}while(i<100)
   console.log(new Date() - start + ' fin')
   return
   
