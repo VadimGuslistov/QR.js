@@ -3464,15 +3464,21 @@ function numBitsDiffering(a,b){
 }
 
 function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
-    var length = w*h
+    var length = (w*h)|0
     var img = new Uint8Array(length)
-    this.middleLength = middleLength
-    this.length = length
-    this.width = w
-    this.height = h
-    this.numSqrtArea= numSqrtArea
-    this.areaWidth=areaWidth
-    this.areaHeight = areaHeight
+    this.middleLength = middleLength|0
+    this.length = length|0
+    this.width = w|0
+    var widthPlus1 = (w+1)|0
+    this.widthPlus1 = widthPlus1 
+    this.height = h|0
+    this.endX = (areaWidth*numSqrtArea)|0
+    this.yLen =  (widthPlus1*areaHeight)|0
+    this.areaHeightXWidth = (areaHeight*w)|0
+    this.numSqrtArea= numSqrtArea|0
+    this.numSqrtAreaPlus1 = (numSqrtArea+1)|0
+    this.areaWidth=areaWidth|0
+    this.areaHeight = areaHeight|0
     this.image = img
     this.bits =  new Uint8Array(length)
     this.middle = new Uint16Array(middleLength)
@@ -3483,63 +3489,55 @@ ECMA_QR_Image.prototype = {
     doBinary:function(buff,diff){
         
         var dx
-        var dy
-        var _min
+        var _min,_minPlus1
         var _max
         var tmp
         var _1per
         var point
         var cur,pix
         var dark,light
-        var ax
-        var ay
+        var areaPoint1,areaPoint2,areaPoint3
+        var numSqrtAreaPoint 
+        var yEnd
         this.blurDiffMachine.doDiff()
-
-        var areaPoint1,areaPoint2
-        ax = ay = 0
+        areaPoint2 = areaPoint1 = numSqrtAreaPoint = 0
         do{
-            dx = dy = 0
-            _max = this.middle[ax + ay * this.numSqrtArea]
+             dx  = 0
+            _max = this.middle[numSqrtAreaPoint]
             _min = _max >>> 8
             _max = _max & 0xff
-   
+            _minPlus1 = _min+1
             _1per = 1/((_max-_min)*0.01)
-            areaPoint1 = (this.areaWidth * ax)|0
-            areaPoint2 = (this.areaHeight * ay)|0
+
+            areaPoint3 = areaPoint2
+            yEnd = this.yLen + areaPoint2
             do{
-                point = (areaPoint1 + dx+(areaPoint2 + dy)*this.width)|0
+                point = areaPoint1 + dx + areaPoint3
                 cur = this.blurDiffMachine.diff[point]
                 pix = this.image[point]
-                dark = Math.abs(_min - pix)*_1per
-                light = Math.abs(_max - pix)*_1per
-                if(pix <= _min){
-                    this.bits[point] = 1
-                }  else if(cur <0) {
-                    if(light > 30){
-                       this.bits[point] = 1 
-                    }
-                }else if( dark <= 40){
-                    this.bits[point] = 1 
-                } else{
-                    this.bits[point] = 0
-                }
-                
+
+                dark = (dark=_min-pix,(dark+(tmp=dark>>31) ^ tmp))*_1per|0
+                light = (light=_max-pix,(light+(tmp=light>>31) ^ tmp))*_1per|0
+                tmp = cur>>31
+                this.bits[point] = ( (pix-_minPlus1)>>31 | ((30-light)>>31 & tmp ) | (dark-41)>>31 &  (tmp^-1) )&1
+              
                 dx++
- 
                 tmp = (dx-this.areaWidth)>>31
-                dx ^= (tmp^dx)&dx
-                dy += (tmp^1)&1
+                dx &= tmp
+                areaPoint3 += this.widthPlus1&(tmp^-1)
                 //-----------------
-            }while(dy<this.areaHeight)
+            }while(areaPoint3<yEnd)
              /*
             this code will increment ax and ay to loop x y blocks 
             */
-            ax++
-            tmp = (ax-this.numSqrtArea)>>31
-            ax ^= (tmp^ax)&ax
-            ay += (tmp^1)&1
+            areaPoint1 += this.areaWidth
+            tmp = (areaPoint1-this.endX)>>31
+            areaPoint1 &= tmp
+            tmp ^= -1
+            numSqrtAreaPoint += this.numSqrtAreaPlus1&tmp
+            areaPoint2 += this.areaHeightXWidth&tmp
             //-----------------
-        }while(ay<this.numSqrtArea)
+        }while(numSqrtAreaPoint<this.middleLength)
 
        
     }
@@ -3866,7 +3864,7 @@ function gray_to_canvas_buff(buff){
 
 
 function blurDiffMachine(img,r1,r2,w,h){
-    var l = img.length
+    var l = img.length|0
    
     this.l = l
     this.diff = new Int16Array(l)
