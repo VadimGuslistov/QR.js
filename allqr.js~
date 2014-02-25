@@ -518,7 +518,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
     this.dimensionForVersion = (17 + 4 * versionNumber)|0
     this.alignmentPatternCenters = alignmentPatternCenters;
     this.ecBlocks = [ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4]
-    this.functionPattern = null
+    this.functionPattern = {pattren:false} // wrap this in a obj so the hidden class dose not change when a pattern is made
 
     var total = 0;
     var ecCodewords = ecBlocks1.ECCodewordsPerBlock;
@@ -697,8 +697,8 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
 
     this.buildFunctionPattern=function()
         {
-            if(this.functionPattern !== null){
-                return this.functionPattern
+            if(this.functionPattern.pattren !== false){
+                return this.functionPattern.pattren
             }
             var dimension = this.dimensionForVersion;
             var bitMatrix = new BitMatrix(dimension);
@@ -738,11 +738,219 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
                 // Version info, bottom left
                 bitMatrix.setRegion(0, dimension - 11, 6, 3);
             }
-            this.functionPattern = bitMatrix
+            this.functionPattern.pattren = bitMatrix
             return bitMatrix
         }
     this.getECBlocksForLevel=function( ecLevel)
     {
+        return this.ecBlocks[ecLevel.ordinal];
+    }
+}
+
+Version.prototype = {
+    getMask:function (maskNum){
+        var mask = this.masks[maskNum]
+        if(mask) return mask
+        this['buildDataMask'+maskNum]()
+        return this.masks[maskNum]
+    },
+    setMask:function(maskNum,mask){
+        // this seemingly unnecessary function is here due to the fact js objects in hash mode will force a function to de-optimise
+        // therefore putting the setting in a separate function will isolate the de-optimization to a small point 
+        this.masks[maskNum] = mask
+    },
+    buildDataMask0:function (){
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
+        var i = 0
+        var j = 0
+        var tmp
+
+        //(i + j) mod 2 == 0
+        do{
+            if( -((i + j) & 0x01)>>31^-1 )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
+        this.setMask(0,bitMatrix)
+       
+    },
+    buildDataMask1:function (){
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
+        var i = 0
+        var j = 0
+        var tmp
+        //(i + j) mod 2 == 0
+        do{
+            if( (-(i & 0x01)>>31^-1) )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
+        
+        this.setMask(1,bitMatrix)
+    },
+    buildDataMask2:function (){
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
+        var i = 0
+        var j = 0
+        var tmp
+        // j % 3 == 0;
+        do{
+            if( (-(j % 3)>>31^-1) )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
+        
+        this.setMask(2,bitMatrix)
+    },
+    buildDataMask3:function (){
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
+        var i = 0
+        var j = 0
+        var tmp
+        //  (i + j) % 3 == 0
+        do{
+            if( (-((i + j) % 3)>>31^-1) )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
+        
+        this.setMask(3,bitMatrix)
+    },
+    buildDataMask4:function (){
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
+        var i = 0
+        var j = 0
+        var tmp
+        //(i/2 + j/3) % 2 == 0
+        do{ // bit shift short-cuts can not be taken here ! X 0.3333333333 short-cuts can not be taken here 
+            if( -(( (i>>1) + (j/3)|0) &0x01)>>31^-1 )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
+        
+        this.setMask(4,bitMatrix)
+    },
+    buildDataMask5:function (){
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
+        var i = 0
+        var j = 0
+        var tmp
+        var tmp2
+        // xy % 2 + xy % 3 == 0
+        do{
+            tmp2 = i*j
+            if( (-((tmp2 & 0x01) + (tmp2 %3))>>31^-1) )bitMatrix.set_Renamed(j,i)
+            
+            j++
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
+        
+        this.setMask(5,bitMatrix)
+    },
+    buildDataMask6:function (){
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
+        var i = 0
+        var j = 0
+        var tmp
+        var tmp2
+        // (xy % 2 + xy % 3) % 2 == 0
+        do{
+            tmp2 = i*j
+
+
+            if( (-((((tmp2 & 0x01) + (tmp2 % 3)) & 0x01))>>31^-1) )bitMatrix.set_Renamed(j,i)  //  
+            
+            j++
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
+        
+        this.setMask(6,bitMatrix)
+    },
+    buildDataMask7:function (){
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
+        var i = 0
+        var j = 0
+        var tmp
+        //  ((x+y) % 2 + xy % 3) % 2 == 0
+        do{
+
+
+
+            if( (-( (( ((i+j) & 0x01) + ((i*j) % 3) ) & 0x01) )>>31^-1) )bitMatrix.set_Renamed(j,i)  
+            
+            j++
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
+        
+        this.setMask(7,bitMatrix)
+    },
+    buildFunctionPattern:function(){
+        if(this.functionPattern.pattren !== false){
+            return this.functionPattern.pattren
+        }
+        var dimension = this.dimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+
+        // Top left finder pattern + separator + format
+        bitMatrix.setRegion(0, 0, 9, 9);
+        // Top right finder pattern + separator + format
+        bitMatrix.setRegion(dimension - 8, 0, 8, 9);
+        // Bottom left finder pattern + separator + format
+        bitMatrix.setRegion(0, dimension - 8, 9, 8);
+
+        // Alignment patterns
+        var max = this.alignmentPatternCenters.length;
+        for (var x = 0; x < max; x++)
+        {
+            var i = this.alignmentPatternCenters[x] - 2;
+            for (var y = 0; y < max; y++)
+            {
+                if ((x == 0 && (y == 0 || y == max - 1)) || (x == max - 1 && y == 0))
+                {
+                    // No alignment patterns near the three finder paterns
+                    continue;
+                }
+                bitMatrix.setRegion(this.alignmentPatternCenters[y] - 2, i, 5, 5);
+            }
+        }
+
+        // Vertical timing pattern
+        bitMatrix.setRegion(6, 9, 1, dimension - 17);
+        // Horizontal timing pattern
+        bitMatrix.setRegion(9, 6, dimension - 17, 1);
+
+        if (this.versionNumber > 6)
+        {
+            // Version info, top right
+            bitMatrix.setRegion(dimension - 11, 0, 3, 6);
+            // Version info, bottom left
+            bitMatrix.setRegion(0, dimension - 11, 6, 3);
+        }
+        this.functionPattern.pattren = bitMatrix
+        return bitMatrix
+    },
+    getECBlocksForLevel:function( ecLevel){
         return this.ecBlocks[ecLevel.ordinal];
     }
 }

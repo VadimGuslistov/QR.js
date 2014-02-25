@@ -518,7 +518,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
     this.dimensionForVersion = (17 + 4 * versionNumber)|0
     this.alignmentPatternCenters = alignmentPatternCenters;
     this.ecBlocks = [ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4]
-    this.functionPattern = null
+    this.functionPattern = {pattren:false} // wrap this in a obj so the hidden class dose not change when a pattern is made
 
     var total = 0;
     var ecCodewords = ecBlocks1.ECCodewordsPerBlock;
@@ -530,18 +530,21 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
     }
     this.totalCodewords = total;
     this.masks = {}
-    this.getMask= function (maskNum){
+}
+
+Version.prototype = {
+    getMask:function (maskNum){
         var mask = this.masks[maskNum]
         if(mask) return mask
         this['buildDataMask'+maskNum]()
         return this.masks[maskNum]
-    }
-    this.setMask = function(maskNum,mask){
+    },
+    setMask:function(maskNum,mask){
         // this seemingly unnecessary function is here due to the fact js objects in hash mode will force a function to de-optimise
         // therefore putting the setting in a separate function will isolate the de-optimization to a small point 
         this.masks[maskNum] = mask
-    }
-    this.buildDataMask0 = function (){
+    },
+    buildDataMask0:function (){
         var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
@@ -558,8 +561,8 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         }while(i<this.dimensionForVersion)
         this.setMask(0,bitMatrix)
        
-    }
-    this.buildDataMask1 = function (){
+    },
+    buildDataMask1:function (){
         var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
@@ -575,9 +578,8 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         }while(i<this.dimensionForVersion)
         
         this.setMask(1,bitMatrix)
-    }
-    
-    this.buildDataMask2 = function (){
+    },
+    buildDataMask2:function (){
         var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
@@ -593,8 +595,8 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         }while(i<this.dimensionForVersion)
         
         this.setMask(2,bitMatrix)
-    }
-    this.buildDataMask3 = function (){
+    },
+    buildDataMask3:function (){
         var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
@@ -610,8 +612,8 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         }while(i<this.dimensionForVersion)
         
         this.setMask(3,bitMatrix)
-    }
-    this.buildDataMask4 = function (){
+    },
+    buildDataMask4:function (){
         var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
@@ -627,8 +629,8 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         }while(i<this.dimensionForVersion)
         
         this.setMask(4,bitMatrix)
-    }
-    this.buildDataMask5 = function (){
+    },
+    buildDataMask5:function (){
         var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
@@ -646,8 +648,8 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         }while(i<this.dimensionForVersion)
         
         this.setMask(5,bitMatrix)
-    }
-    this.buildDataMask6 = function (){
+    },
+    buildDataMask6:function (){
         var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
@@ -667,8 +669,8 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         }while(i<this.dimensionForVersion)
         
         this.setMask(6,bitMatrix)
-    }
-    this.buildDataMask7 = function (){
+    },
+    buildDataMask7:function (){
         var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
@@ -687,62 +689,53 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         }while(i<this.dimensionForVersion)
         
         this.setMask(7,bitMatrix)
-    }
-
-
-
-
-
-  
-
-    this.buildFunctionPattern=function()
-        {
-            if(this.functionPattern !== null){
-                return this.functionPattern
-            }
-            var dimension = this.dimensionForVersion;
-            var bitMatrix = new BitMatrix(dimension);
-
-            // Top left finder pattern + separator + format
-            bitMatrix.setRegion(0, 0, 9, 9);
-            // Top right finder pattern + separator + format
-            bitMatrix.setRegion(dimension - 8, 0, 8, 9);
-            // Bottom left finder pattern + separator + format
-            bitMatrix.setRegion(0, dimension - 8, 9, 8);
-
-            // Alignment patterns
-            var max = this.alignmentPatternCenters.length;
-            for (var x = 0; x < max; x++)
-            {
-                var i = this.alignmentPatternCenters[x] - 2;
-                for (var y = 0; y < max; y++)
-                {
-                    if ((x == 0 && (y == 0 || y == max - 1)) || (x == max - 1 && y == 0))
-                    {
-                        // No alignment patterns near the three finder paterns
-                        continue;
-                    }
-                    bitMatrix.setRegion(this.alignmentPatternCenters[y] - 2, i, 5, 5);
-                }
-            }
-
-            // Vertical timing pattern
-            bitMatrix.setRegion(6, 9, 1, dimension - 17);
-            // Horizontal timing pattern
-            bitMatrix.setRegion(9, 6, dimension - 17, 1);
-
-            if (this.versionNumber > 6)
-            {
-                // Version info, top right
-                bitMatrix.setRegion(dimension - 11, 0, 3, 6);
-                // Version info, bottom left
-                bitMatrix.setRegion(0, dimension - 11, 6, 3);
-            }
-            this.functionPattern = bitMatrix
-            return bitMatrix
+    },
+    buildFunctionPattern:function(){
+        if(this.functionPattern.pattren !== false){
+            return this.functionPattern.pattren
         }
-    this.getECBlocksForLevel=function( ecLevel)
-    {
+        var dimension = this.dimensionForVersion;
+        var bitMatrix = new BitMatrix(dimension);
+
+        // Top left finder pattern + separator + format
+        bitMatrix.setRegion(0, 0, 9, 9);
+        // Top right finder pattern + separator + format
+        bitMatrix.setRegion(dimension - 8, 0, 8, 9);
+        // Bottom left finder pattern + separator + format
+        bitMatrix.setRegion(0, dimension - 8, 9, 8);
+
+        // Alignment patterns
+        var max = this.alignmentPatternCenters.length;
+        for (var x = 0; x < max; x++)
+        {
+            var i = this.alignmentPatternCenters[x] - 2;
+            for (var y = 0; y < max; y++)
+            {
+                if ((x == 0 && (y == 0 || y == max - 1)) || (x == max - 1 && y == 0))
+                {
+                    // No alignment patterns near the three finder paterns
+                    continue;
+                }
+                bitMatrix.setRegion(this.alignmentPatternCenters[y] - 2, i, 5, 5);
+            }
+        }
+
+        // Vertical timing pattern
+        bitMatrix.setRegion(6, 9, 1, dimension - 17);
+        // Horizontal timing pattern
+        bitMatrix.setRegion(9, 6, dimension - 17, 1);
+
+        if (this.versionNumber > 6)
+        {
+            // Version info, top right
+            bitMatrix.setRegion(dimension - 11, 0, 3, 6);
+            // Version info, bottom left
+            bitMatrix.setRegion(0, dimension - 11, 6, 3);
+        }
+        this.functionPattern.pattren = bitMatrix
+        return bitMatrix
+    },
+    getECBlocksForLevel:function( ecLevel){
         return this.ecBlocks[ecLevel.ordinal];
     }
 }
