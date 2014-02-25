@@ -1,4 +1,4 @@
-(function (){
+var non_webworker = (function (){
 
 //=============================
 
@@ -514,10 +514,12 @@ function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
 
 function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks2,  ecBlocks3,  ecBlocks4)
 {
-    this.versionNumber = versionNumber;
+    this.versionNumber = versionNumber|0;
+    this.dimensionForVersion = (17 + 4 * versionNumber)|0
     this.alignmentPatternCenters = alignmentPatternCenters;
     this.ecBlocks = [ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4]
     this.functionPattern = null
+
     var total = 0;
     var ecCodewords = ecBlocks1.ECCodewordsPerBlock;
     var ecbArray = ecBlocks1.getECBlocks();
@@ -540,100 +542,94 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         this.masks[maskNum] = mask
     }
     this.buildDataMask0 = function (){
-        var dimension = this.DimensionForVersion;
-        var bitMatrix = new BitMatrix(dimension);
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
         var tmp
 
         //(i + j) mod 2 == 0
         do{
-            if( -((i + j) & 0x01)>>>31^1 )bitMatrix.set_Renamed(j,i)
+            if( -((i + j) & 0x01)>>31^-1 )bitMatrix.set_Renamed(j,i)
             
             j++
-            tmp = (j-dimension)>>>31
-            j ^= ((j^-tmp) & j)
-            i += tmp^1
-        }while(i<dimension)
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
         this.setMask(0,bitMatrix)
        
     }
     this.buildDataMask1 = function (){
-        var dimension = this.DimensionForVersion;
-        var bitMatrix = new BitMatrix(dimension);
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
         var tmp
         //(i + j) mod 2 == 0
         do{
-            if( (-(i & 0x01)>>>31^1) )bitMatrix.set_Renamed(j,i)
+            if( (-(i & 0x01)>>31^-1) )bitMatrix.set_Renamed(j,i)
             
             j++
-            tmp = (j-dimension)>>>31
-            j ^= ((j^-tmp) & j)
-            i += tmp^1
-        }while(i<dimension)
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
         
         this.setMask(1,bitMatrix)
     }
     
     this.buildDataMask2 = function (){
-        var dimension = this.DimensionForVersion;
-        var bitMatrix = new BitMatrix(dimension);
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
         var tmp
         // j % 3 == 0;
         do{
-            if( (-(j % 3)>>>31^1) )bitMatrix.set_Renamed(j,i)
+            if( (-(j % 3)>>31^-1) )bitMatrix.set_Renamed(j,i)
             
             j++
-            tmp = (j-dimension)>>>31
-            j ^= ((j^-tmp) & j)
-            i += tmp^1
-        }while(i<dimension)
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
         
         this.setMask(2,bitMatrix)
     }
     this.buildDataMask3 = function (){
-        var dimension = this.DimensionForVersion;
-        var bitMatrix = new BitMatrix(dimension);
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
         var tmp
         //  (i + j) % 3 == 0
         do{
-            if( (-((i + j) % 3)>>>31^1) )bitMatrix.set_Renamed(j,i)
+            if( (-((i + j) % 3)>>31^-1) )bitMatrix.set_Renamed(j,i)
             
             j++
-            tmp = (j-dimension)>>>31
-            j ^= ((j^-tmp) & j)
-            i += tmp^1
-        }while(i<dimension)
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
         
         this.setMask(3,bitMatrix)
     }
     this.buildDataMask4 = function (){
-        var dimension = this.DimensionForVersion;
-        var bitMatrix = new BitMatrix(dimension);
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
         var tmp
         //(i/2 + j/3) % 2 == 0
         do{ // bit shift short-cuts can not be taken here ! X 0.3333333333 short-cuts can not be taken here 
-            if( -(( (i>>1) + (j/3)|0) &0x01)>>>31^1 )bitMatrix.set_Renamed(j,i)
+            if( -(( (i>>1) + (j/3)|0) &0x01)>>31^-1 )bitMatrix.set_Renamed(j,i)
             
             j++
-            tmp = (j-dimension)>>>31
-            j ^= ((j^-tmp) & j)
-            i += tmp^1
-        }while(i<dimension)
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
         
         this.setMask(4,bitMatrix)
     }
     this.buildDataMask5 = function (){
-        var dimension = this.DimensionForVersion;
-        var bitMatrix = new BitMatrix(dimension);
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
         var tmp
@@ -641,19 +637,18 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
         // xy % 2 + xy % 3 == 0
         do{
             tmp2 = i*j
-            if( (-((tmp2 & 0x01) + (tmp2 %3))>>>31^1) )bitMatrix.set_Renamed(j,i)
+            if( (-((tmp2 & 0x01) + (tmp2 %3))>>31^-1) )bitMatrix.set_Renamed(j,i)
             
             j++
-            tmp = (j-dimension)>>>31
-            j ^= ((j^-tmp) & j)
-            i += tmp^1
-        }while(i<dimension)
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
         
         this.setMask(5,bitMatrix)
     }
     this.buildDataMask6 = function (){
-        var dimension = this.DimensionForVersion;
-        var bitMatrix = new BitMatrix(dimension);
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
         var tmp
@@ -663,19 +658,18 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
             tmp2 = i*j
 
 
-            if( (-((((tmp2 & 0x01) + (tmp2 % 3)) & 0x01))>>>31^1) )bitMatrix.set_Renamed(j,i)  //  
+            if( (-((((tmp2 & 0x01) + (tmp2 % 3)) & 0x01))>>31^-1) )bitMatrix.set_Renamed(j,i)  //  
             
             j++
-            tmp = (j-dimension)>>>31
-            j ^= ((j^-tmp) & j)
-            i += tmp^1
-        }while(i<dimension)
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
         
         this.setMask(6,bitMatrix)
     }
     this.buildDataMask7 = function (){
-        var dimension = this.DimensionForVersion;
-        var bitMatrix = new BitMatrix(dimension);
+        var bitMatrix = new BitMatrix(this.dimensionForVersion);
         var i = 0
         var j = 0
         var tmp
@@ -684,42 +678,29 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
 
 
 
-            if( (-( (( ((i+j) & 0x01) + ((i*j) % 3) ) & 0x01) )>>>31^1) )bitMatrix.set_Renamed(j,i)  
+            if( (-( (( ((i+j) & 0x01) + ((i*j) % 3) ) & 0x01) )>>31^-1) )bitMatrix.set_Renamed(j,i)  
             
             j++
-            tmp = (j-dimension)>>>31
-            j ^= ((j^-tmp) & j)
-            i += tmp^1
-        }while(i<dimension)
+            tmp = (j-this.dimensionForVersion)>>31
+            j &= tmp
+            i += 1&(tmp^1)
+        }while(i<this.dimensionForVersion)
         
         this.setMask(7,bitMatrix)
     }
 
 
-   this.__defineGetter__("VersionNumber", function()
-    {
-        return  this.versionNumber;
-    });
 
-    this.__defineGetter__("AlignmentPatternCenters", function()
-    {
-        return  this.alignmentPatternCenters;
-    });
-    this.__defineGetter__("TotalCodewords", function()
-    {
-        return  this.totalCodewords;
-    });
-    this.__defineGetter__("DimensionForVersion", function()
-    {
-        return  17 + 4 * this.versionNumber;
-    });
+
+
+  
 
     this.buildFunctionPattern=function()
         {
             if(this.functionPattern !== null){
                 return this.functionPattern
             }
-            var dimension = this.DimensionForVersion;
+            var dimension = this.dimensionForVersion;
             var bitMatrix = new BitMatrix(dimension);
 
             // Top left finder pattern + separator + format
@@ -758,7 +739,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
                 bitMatrix.setRegion(0, dimension - 11, 6, 3);
             }
             this.functionPattern = bitMatrix
-            return bitMatrix;
+            return bitMatrix
         }
     this.getECBlocksForLevel=function( ecLevel)
     {
@@ -792,7 +773,7 @@ Version.getProvisionalVersionForDimension=function(dimension)
 
 Version.decodeVersionInformation=function( versionBits)
 {
-    var bestDifference = 0xffffffff;
+    var bestDifference = 32;
     var bestVersion = 0;
     for (var i = 0; i < Version.VERSION_DECODE_INFO.length; i++)
     {
@@ -1551,7 +1532,7 @@ function DataBlocks(rawCodewords,  version,  ecLevel){
 DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 {
 
-    if (rawCodewords.length != version.TotalCodewords)
+    if (rawCodewords.length != version.totalCodewords)
     {
         throw "ArgumentException"; // fix me can this happen -- investigate 
     }
@@ -1741,7 +1722,7 @@ BitMatrixParser.readVersion=function(bits){
     }
 
     var parsedVersion = Version.decodeVersionInformation(versionBits);
-    if (parsedVersion != null && parsedVersion.DimensionForVersion == dimension)
+    if (parsedVersion != null && parsedVersion.dimensionForVersion == dimension)
     {
         return parsedVersion;
     }
@@ -1757,7 +1738,7 @@ BitMatrixParser.readVersion=function(bits){
     }
 
     parsedVersion = Version.decodeVersionInformation(versionBits);
-    if (parsedVersion != null && parsedVersion.DimensionForVersion == dimension)
+    if (parsedVersion != null && parsedVersion.dimensionForVersion == dimension)
     {
         return parsedVersion;
     }
@@ -1777,7 +1758,7 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
     var functionPattern = version.buildFunctionPattern();
 
     var readingUp = 1;
-    var result = new Uint8Array(version.TotalCodewords);
+    var result = new Uint8Array(version.totalCodewords);
     var resultOffset = 0;
     var currentByte = 0;
     var bitsRead = 0;
@@ -1816,7 +1797,7 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
         }
         readingUp ^= 1; // readingUp = !readingUp; // switch directions
     }
-    if (resultOffset != version.TotalCodewords)
+    if (resultOffset != version.totalCodewords)
     {
         throw "Error readCodewords";
     }
@@ -1847,7 +1828,7 @@ function Decoder(bits){
         totalBytes += cur.numDataCodewords;
     }while(i<l)
 
-    this.versionNumber = version.VersionNumber
+    this.versionNumber = version.versionNumber
     this.ecBits = ecLevel.bits
     this.totalBytes = totalBytes
     this.dataBlocks = dataBlocks
@@ -2214,11 +2195,11 @@ function Detector(image)
             }
             var dimension = this.computeDimension(topLeft, topRight, bottomLeft, moduleSize);
             var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
-            var modulesBetweenFPCenters = provisionalVersion.DimensionForVersion - 7;
+            var modulesBetweenFPCenters = provisionalVersion.dimensionForVersion - 7;
 
             var alignmentPattern;
             // Anything above version 1 has an alignment pattern
-            if (provisionalVersion.AlignmentPatternCenters.length > 0)
+            if (provisionalVersion.alignmentPatternCenters.length > 0)
             {
 
                 // Guess where a "bottom right" finder pattern would have been
@@ -3467,13 +3448,11 @@ function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
     var length = (w*h)|0
     var img = new Uint8Array(length)
     this.middleLength = middleLength|0
-    this.length = length|0
+    this.length = length
     this.width = w|0
-    var widthPlus1 = (w+1)|0
-    this.widthPlus1 = widthPlus1 
     this.height = h|0
     this.endX = (areaWidth*numSqrtArea)|0
-    this.yLen =  (widthPlus1*areaHeight)|0
+    this.yLen =  (w*areaHeight)|0
     this.areaHeightXWidth = (areaHeight*w)|0
     this.numSqrtArea= numSqrtArea|0
     this.numSqrtAreaPlus1 = (numSqrtArea+1)|0
@@ -3519,12 +3498,13 @@ ECMA_QR_Image.prototype = {
                 dark = (dark=_min-pix,(dark+(tmp=dark>>31) ^ tmp))*_1per|0
                 light = (light=_max-pix,(light+(tmp=light>>31) ^ tmp))*_1per|0
                 tmp = cur>>31
+                this.bits[point] = 1
                 this.bits[point] = ( (pix-_minPlus1)>>31 | ((30-light)>>31 & tmp ) | (dark-41)>>31 &  (tmp^-1) )&1
               
                 dx++
                 tmp = (dx-this.areaWidth)>>31
                 dx &= tmp
-                areaPoint3 += this.widthPlus1&(tmp^-1)
+                areaPoint3 += this.width&(tmp^-1)
                 //-----------------
             }while(areaPoint3<yEnd)
              /*
@@ -3542,285 +3522,222 @@ ECMA_QR_Image.prototype = {
        
     }
 }
-function middleArea(l, numSqrtArea,areaWidth,areaHeight,w,h){
-    this.areaWidth = areaWidth
-    this.areaHeight = areaHeight
-    this.numSqrtArea = numSqrtArea
-    this.width = w
-    this.height = h
-    this.buff = new Uint16Array(l)
-    this.bits = new Uint8Array(w*h)
-}
-middleArea.prototype = {
-    blur_guided_binary: function(buff,diff){
-        
-        var dx
-        var dy
-        var _min
-        var _max
-        var tmp
-        var _1per
-        var point
-        var cur,pix
-        var dark,light
-        var bits = this.bits
-        var ax=0
-        var ay=0
-        var numSqrtArea = this.numSqrtArea
-        var w = this.width
-        var areaHeight = this.areaHeight
-        var areaWidth = this.areaWidth
-        var middle = this.buff
-        var areaPoint1,areaPoint2
-        do{
-            dx =0
-            dy = 0
-            _max = middle[ax + ay * numSqrtArea]
-            _min = _max >>> 8
-            _max = _max & 0xff
-   
-            _1per = 1/((_max-_min)*0.01)
-            areaPoint1 = (areaWidth * ax)|0
-            areaPoint2 = (areaHeight * ay)|0
-            do{
-                point = (areaPoint1 + dx+(areaPoint2 + dy)*w)|0
-                cur = diff[point]
-                pix = buff[point]
-                dark = Math.abs(_min - pix)*_1per
-                light = Math.abs(_max - pix)*_1per
-                if(pix <= _min){
-                    bits[point] = 1
-                }  else if(cur <0) {
-                    if(light > 30){
-                       bits[point] = 1 
-                    }
-                }else if( dark <= 40){
-                    bits[point] = 1 
-                }
-                
-                dx++
- 
-                tmp = (dx-areaWidth)>>31
-                dx ^= (tmp^dx)&dx
-                dy += (tmp^1)&1
-                //-----------------
-            }while((dy-areaHeight)>>31) // (dy < areaHeight)
-             /*
-            this code will increment ax and ay to loop x y blocks 
-            */
-            ax++
-            tmp = (ax-numSqrtArea)>>31
-            ax ^= (tmp^ax)&ax
-            ay += (tmp^1)&1
-            //-----------------
-        }while((ay-numSqrtArea)>>31)
-        return bits
-       
-    }
-}
-function gray_from_canvas4(image,w,h)
-{
-    // about the same xy to middle box as org code everything else is quite a bit different
-    image = new Uint32Array(image.buffer)
+
+function ECMA_QR(w,h){
     var numSqrtArea = 6;
     var numSqrtAreaX = 1/numSqrtArea
-    var areaWidth = (w * numSqrtAreaX)|0;
-    var areaHeight = (h * numSqrtAreaX)|0;
+    var areaWidth = (w * numSqrtAreaX)|0
+    var areaHeight = (h * numSqrtAreaX)|0
     var middle_l = numSqrtArea*numSqrtArea|0
-    var image_l = image.length
-    var grey1 = new Uint8Array(image_l)
-    var middle1 = new middleArea(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
-    var grey2 = new Uint8Array(image_l)
-    var middle2 = new middleArea(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
-    var middle_point,point
-    var r,b,g
-    var _min,_max,_min1,_max1,_min2,_max2
-    var max_c
-    var min_c
-    var tmp,tmp2,tmp3
-    var ax,ay,dx,dy
-    var count = new Uint32Array(256)
-    var _mid
-    var upper1,upper2,lower1,lower2
-    var upper_val1,upper_val2
-    var lower_val1,lower_val2
-    var i,l
-    var cur
-    var upper_set,upper_other,lower_set,lower_other,upperX,lowerX
-    var target
-    var areaPoint1,areaPoint2
-    
-    ax=0
-    ay=0
-    do{
-        
-        _min= _min1= _min2 = 0xFF
-        _max = _max1 = _max2 = 0
-        // zero out count with a static empty array
-        // this is faster than making a new  one and faster then zeroing it out in js
-        count.set(gray_from_canvas4.zero_count) 
-           
-        dx =0
-        dy = 0
-        middle_point = (ax + ay * numSqrtArea)|0
-        areaPoint1 = (areaWidth * ax)|0
-        areaPoint2 = (areaHeight * ay)|0
-        do{
-            point = (areaPoint1 + dx+(areaPoint2 + dy)*w)|0
-            target = image[point];
-            r = (target>>>16)&0xff
-            b = (target>>>8)&0xff
-            g = target&0xff
-            ///------------------------
-            tmp  = r - b                    //____________________________________
-            tmp = (tmp & (tmp >> 31))
-            max_c = r - tmp                 //----Max for a int of 32 bits or less
-            min_c = b + tmp                 //----min for a int of 32 bits or less
-            tmp = max_c - g                 //____________________________________
-            max_c = max_c - (tmp & (tmp >> 31))             //----Max for a int of 32 bits or less
-            tmp = min_c - g                 
-            min_c = g + (tmp & (tmp >> 31))                //----min for a int of 32 bits or less
-            /// max and min  of r g and b ^^^^^^^^^^^^^^^^^^
-            ///------------------------ 
-               
-            target = (max_c+min_c)>>1
-            
-            grey1[point]= target
-            count[target]++
-
-            _max = _max - (tmp  = _max - target,tmp & (tmp >> 31)) //----Max for a int of 32 bits or less
-            
-            _min = target + (tmp = _min - target, tmp & (tmp >> 31)) //----min for a int of 32 bits or less
-            
-            
-            _max1 = (_max1<target) ? (_max1*3+target)*0.25:_max1
-            _min1 = (_min1>target)? (_min1*3+target)*0.25:_min1
-            
-            /*
-            this code will increment dx and dy to loop x y blocks 
-            */
-            dx++
-            tmp = (dx-areaWidth)>>31
-            dx ^= (tmp^dx)&dx
-            dy += (tmp^1)&1
-            //-----------------
-        }while((dy-areaHeight)>>31)
-        //}while(dy < areaHeight)
-        middle1.buff[middle_point] = (_min1<<8) | _max1
-        
-        _mid = (_max - _min)>>1
-        
-        upper1=upper2=lower1=lower2=0
-        upper_val1=upper_val2=0
-        
-        i = _min
-      
-        
-        do{
-            cur = count[i]
-            tmp = upper1 - cur
-            tmp2 = tmp>>31
-            upper1 = upper1 - (tmp & tmp2) //----max for a int of 32 bits or less 
-            upper_val1 = tmp2? i:upper_val1
-            cur ^= (cur ^ (tmp2^-1))&cur // if the first passed make sure the 2nd fails 
-               
-               
-            tmp = upper2 - cur
-            tmp2 = tmp>>31
-            upper2 = upper2 - (tmp & tmp2) //----max for a int of 32 bits or less 
-        	upper_val2 = tmp2?i:upper_val2 
-            i++
-        }while((i-_mid)>>31)
-        //}while(i<_mid)
-        
-        i = _mid
-        l = _max+1
-        do{
-            cur = count[i]
-            tmp = lower1 - cur
-            tmp2 = tmp>>31
-            lower1 = lower1 - (tmp & tmp2) //----max for a int of 32 bits or less 
-            lower_val1 = tmp2? i:lower_val1
-            cur ^= (cur ^ (tmp2^-1))&cur // if the first passed make sure the 2nd fails 
-               
-            tmp = lower2  - cur
-            tmp2 = tmp>>31
-            lower2 = lower2 - (tmp & tmp2) //----max for a int of 32 bits or less 
-
-        	lower_val2 = tmp2? i:lower_val2
-              
-            
-            i++
-        }while((i-l)>>31)        
-        //}while(i<l)
-
-        
-        tmp = (tmp  = upper_val2 - upper_val1,tmp & (tmp >> 31))
-        upper_set = upper_val1 + tmp  //----min for a int of 32 bits or less   
-        upper_other = upper_val2 - tmp
-        
-        
-        lower_other = lower_val2 + (tmp = lower_val1-lower_val2,tmp & (tmp >> 31))
-        
-        upperX = upper_set/upper_other
-        lowerX = 254/lower_other 
-        
-        dx=0
-        dy=0
-
-          
-        do{
-            point = (areaPoint1 + dx+(areaPoint2 + dy)*w)|0
-            cur = grey1[point]
-
-
-            if(cur >= upper_set && cur <= upper_other){
-                cur = upper_set
-            } else if(cur <= _mid){
-                cur = (cur * upperX)|0
-            }else if(cur >= lower_other ){
-                cur = 255
-            } else{
-                cur = (cur * lowerX)|0
-            }
-
-           
-            
-             
-            _max2 = (_max2<cur) ? (_max2*3+cur)*0.25:_max2
-            _min2 = (_min2>cur)? (_min2*3+cur)*0.25:_min2
-            
-            grey2[point] = cur
-
-            /*
-            this code will increment dx and dy to loop x y blocks 
-            */
-            dx++
-            tmp = (dx-areaWidth)>>31
-            dx ^= (tmp^dx)&dx
-            dy += (tmp^1)&1
-            //----------------- 
-        }while((dy-areaHeight)>>31)
-        //}while(dy<areaHeight)
-        middle2.buff[middle_point] = (_min2<<8) | _max2
-  
-        
-        /*
-        this code will increment ax and ay to loop x y blocks 
-        */
-        ax++
-        tmp = (ax-numSqrtArea)>>31
-        ax ^= (tmp^ax)&ax
-        ay += (tmp^1)&1
-        //-----------------
-    }while((ay-numSqrtArea)>>31)
-    //}while(ay < numSqrtArea)
-
-    
-    
-    return {g1:grey1,g2:grey2,m1:middle1,m2:middle2}
+    var length = (w*h)|0
+    this.middleLength = middle_l
+    this.length = length
+    this.width = w|0
+    this.height = h|0
+    this.endX = (areaWidth*numSqrtArea)|0
+    this.yLen =  (w*areaHeight)|0
+    this.areaHeightXWidth = (areaHeight*w)|0
+    this.numSqrtArea= numSqrtArea|0
+    this.numSqrtAreaPlus1 = (numSqrtArea+1)|0
+    this.areaWidth = areaWidth|0
+    this.areaHeight = areaHeight|0
+    this.image1 = new ECMA_QR_Image(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
+    this.image2 = new ECMA_QR_Image(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
+    this.count = new Int32Array(256)
+    this.zeroCount = new Int32Array(256)
 }
-gray_from_canvas4.zero_count = new Uint32Array(256)
+ECMA_QR.prototype = {
+    processCanvasRGB:function (imageData){
+        var image = new Uint32Array(imageData.buffer)
+        var point
+        var r,b,g
+        var _min,_max,_min1,_max1,_min2,_max2
+        var max_c
+        var min_c
+        var tmp,tmp2,tmp3
+        var _mid
+        var upper1,upper2,lower1,lower2
+        var upper_val1,upper_val2
+        var lower_val1,lower_val2
+        var i,l
+        var cur
+        var upper_set,upper_other,lower_set,lower_other,upperX,lowerX
+
+        var areaPoint1,areaPoint2,areaPoint3,dx
+        var numSqrtAreaPoint 
+        var yEnd
+
+        
+        areaPoint2 = areaPoint1 = numSqrtAreaPoint = 0
+        do{
+            
+            _min = 0xFF
+            _max = 0
+            _min1= _min2 = 255.01
+            _max1 = _max2 = 0.01
+            // zero out count with a static empty array
+            // this is faster than making a new  one and faster then zeroing it out in js
+            this.count.set(this.zeroCount) 
+            dx  = 0
+
+            areaPoint3 = areaPoint2
+            yEnd = this.yLen + areaPoint2
+            do{
+                point = areaPoint1 + dx + areaPoint3
+                cur = image[point];
+                r = (cur>>>16)&0xff
+                b = (cur>>>8)&0xff
+                g = cur&0xff
+                ///------------------------
+                tmp = (tmp=r-b) & (tmp >> 31)
+                max_c = r - tmp                 //----Max for a int of 32 bits or less
+                min_c = b + tmp                 //----min for a int of 32 bits or less
+                max_c = max_c - ((tmp=max_c - g) & (tmp >> 31))             //----Max for a int of 32 bits or less
+                min_c = g + ((tmp=min_c - g ) & (tmp >> 31))                //----min for a int of 32 bits or less
+                /// max and min  of r g and b ^^^^^^^^^^^^^^^^^^
+                ///------------------------ 
+                   
+                cur = (max_c+min_c)>>1 // avg
+                
+                this.image1.image[point]= cur
+                this.count[cur]++
+    
+                _max = _max - ((tmp  = _max - cur) & (tmp >> 31)) //----Max for a int of 32 bits or less
+                
+                _min = cur + ((tmp = _min - cur) & (tmp >> 31)) //----min for a int of 32 bits or less
+                
+                
+                _max1 = (_max1<cur) ? (_max1*3+cur)*0.25:_max1
+                _min1 = (_min1>cur) ? (_min1*3+cur)*0.25:_min1
+                
+                /*
+                this code will increment dx and dy to loop x y blocks 
+                */
+                dx++
+                tmp = (dx-this.areaWidth)>>31
+                dx &= tmp
+                areaPoint3 += this.width&(tmp^-1)
+                //-----------------
+            }while(areaPoint3<yEnd)
+            this.image1.middle[numSqrtAreaPoint] =  (_min1<<8) | _max1
+            
+            _mid = (_max - _min)>>1
+            
+            upper_val1=upper_val2=upper1=upper2=lower1=lower2=0
+            
+            i = _min
+            
+            do{
+                cur = this.count[i]
+                tmp = upper1 - cur
+                tmp2 = tmp>>31
+                upper1 = upper1 - (tmp & tmp2) //----max for a int of 32 bits or less 
+                tmp = tmp2^-1
+                upper_val1 = (i&tmp2) | (upper_val1&tmp)
+                cur &= tmp // if the first passed make sure the 2nd fails 
+                   
+                   
+                tmp = upper2 - cur
+                tmp2 = tmp>>31
+                upper2 = upper2 - (tmp & tmp2) //----max for a int of 32 bits or less 
+            	upper_val2 = (i&tmp2) | (upper_val2&(tmp2^-1))
+                i++
+            }while(i<_mid)
+            
+            i = _mid
+            l = _max+1
+            do{
+                cur = this.count[i]
+                tmp = lower1 - cur
+                tmp2 = tmp>>31
+                lower1 = lower1 - (tmp & tmp2) //----max for a int of 32 bits or less 
+                tmp = tmp2^-1
+                lower_val1 = (i&tmp2)|(lower_val1&tmp)
+                cur &=tmp // if the first passed make sure the 2nd fails 
+                   
+                tmp = lower2  - cur
+                tmp2 = tmp>>31
+                lower2 = lower2 - (tmp & tmp2) //----max for a int of 32 bits or less 
+            	lower_val2 = (i&tmp2)|(lower_val2&(tmp2^-1))
+                  
+                
+                i++
+            }while(i<l)
+    
+            
+            tmp = ((tmp  = upper_val2 - upper_val1) & (tmp >> 31))
+            upper_set = upper_val1 + tmp  //----min for a int of 32 bits or less   
+            upper_other = upper_val2 - tmp
+            
+            
+            lower_other = lower_val2 + ((tmp = lower_val1-lower_val2) & (tmp >> 31))
+            
+            upperX = upper_set/upper_other
+            lowerX = 254/lower_other 
+            
+            areaPoint3 = areaPoint2
+            dx  = 0
+              
+            do{
+                point = areaPoint1 + dx + areaPoint3
+                cur = this.image1.image[point]
+    
+    
+                if(cur >= upper_set && cur <= upper_other){
+                    cur = upper_set
+                } else if(cur <= _mid){
+                    cur = (cur * upperX)|0
+                }else if(cur >= lower_other ){
+                    cur = 255
+                } else{
+                    cur = (cur * lowerX)|0
+                }
+    
+               
+                
+                 
+                _max2 = (_max2<cur) ? (_max2*3+cur)*0.25:_max2
+                _min2 = (_min2>cur) ? (_min2*3+cur)*0.25:_min2
+                
+                this.image2.image[point] = cur
+    
+                /*
+                this code will increment dx and dy to loop x y blocks 
+                */
+                dx++
+                tmp = (dx-this.areaWidth)>>31
+                dx &= tmp
+                areaPoint3 += this.width&(tmp^-1)
+                //-----------------
+            }while(areaPoint3<yEnd)
+            this.image2.middle[numSqrtAreaPoint] = (_min2<<8) | _max2
+      
+            
+            /*
+            this code will increment ax and ay to loop x y blocks 
+            */
+            areaPoint1 += this.areaWidth
+            tmp = (areaPoint1-this.endX)>>31
+            areaPoint1 &= tmp
+            tmp ^= -1
+            numSqrtAreaPoint += this.numSqrtAreaPlus1&tmp
+            areaPoint2 += this.areaHeightXWidth&tmp
+            //-----------------
+        }while(numSqrtAreaPoint<this.middleLength)
+
+    }
+}
+ECMA_QR.items = {}
+ECMA_QR.forWidthHeight= function(w,h){
+    var k = (w<<16|h).toString(16)
+    var qr = this.items[k]
+    if(!qr){
+        qr = new ECMA_QR(w,h)
+        this.items[k] = qr
+    }
+    return qr
+}
+
 
 
 
@@ -3864,7 +3781,7 @@ function gray_to_canvas_buff(buff){
 
 
 function blurDiffMachine(img,r1,r2,w,h){
-    var l = img.length
+    var l = img.length|0
    
     this.l = l
     this.diff = new Int16Array(l)
@@ -3885,20 +3802,22 @@ blurDiffMachine.prototype = {
     }
 }
 
-function blur_diff(buff,r1,r2,w,h) {
-    var g1 = stackBlurGray(buff,w,h,r1)
-    var g2 = stackBlurGray(buff,w,h,r2)
-    var l = buff.length
-    var diff = new Int16Array(l)
-    var i=0
-    do{
-        diff[i] =  g1[i] - g2[i]
-        i++
-    }while(i<l)
-    return diff
-    
-}
 
+
+function non_webworker(dat,w,h){
+  var qr = ECMA_QR.forWidthHeight(w,h)
+  var dat
+  var start = new Date();
+  var i = 0
+  do{
+      qr.processCanvasRGB(dat)
+      qr.image1.doBinary()
+      qr.image2.doBinary()
+      i++
+  }while(i<30)
+  console.log(new Date() - start + ' fin')
+  return
+}
 
 var ended={isEnded:false,count:0,sum:0,bd:null}
 addEventListener('message', function(e) {
@@ -3942,52 +3861,29 @@ addEventListener('message', function(e) {
             ended.count++
             ended.sum+= new Date() - start1
             //console.log(new Date() - start2 + ' 2')
-            //console.log(e)
-            //console.log(e.stack)
+            console.log(e)
+            console.log(e.stack)
             
         }
        // console.log(Object.keys(self))
   }
-  var dat
-  
-  var start = new Date();
 
-  dat = gray_from_canvas4(e.data.buff,w,h)
-  var img = new ECMA_QR_Image(dat.m2.buff.length,dat.m2.numSqrtArea,dat.m2.areaWidth,dat.m2.areaHeight,w,h)
-  img.middle.set(dat.m2.buff)
-  img.image.set(dat.g2)
-  img.doBinary()
-  postMessage(bits_to_canvas_buff(img.bits))
+  
+
+  var qr = ECMA_QR.forWidthHeight(w,h)
+
+
+
+  qr.processCanvasRGB(e.data.buff)
+  qr.image1.doBinary()
+  qr.image2.doBinary()
+  post(qr.image1.bits)
+  post(qr.image2.bits)
+  postMessage(bits_to_canvas_buff(qr.image2.bits))
+
+
   return
-  var bd = ended.bd
-  if(!bd) {
-      bd = new blurDiffMachine(new Uint8Array(w*h),2,4,w,h)
-      ended.bd = bd
-  }
-  bd.img.set(dat.g2)
-  
-  //bm.blur(dat.g2)
-  //postMessage(gray_to_canvas_buff(bm.pixels))
-  //return
-  var start = new Date();
-  var i = 0
-  var b1
-  do{bd.doDiff();i++}while(i<100)
-  console.log(new Date() - start + ' fin')
-  return
-  
-  var b1 = blur_diff(dat.g2,2,4,w,h)
-  
-  var bits = dat.m2.blur_guided_binary(dat.g2,b1)
-  //postMessage(gray_to_canvas_buff(dat.g1))
-  
-  post(bits)
-  //post(dat.b2)
-  //post(dat.b1)
-  var b2 = blur_diff(dat.g1,2,4,w,h)
-  bits = dat.m1.blur_guided_binary(dat.g1,b2)
-  postMessage(bits_to_canvas_buff(bits))
-  post(bits)
+ 
   
 
  
@@ -3996,5 +3892,5 @@ addEventListener('message', function(e) {
 }, false);
 
 //=============================
-
+return non_webworker
 })();
