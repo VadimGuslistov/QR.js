@@ -1,4 +1,4 @@
-var non_webworker = (function (){
+(function (){
 
 //=============================
 
@@ -136,18 +136,24 @@ function blurMachineGray(width, height, radius){
     this.sumFactor = radiusPlus1 * ( radiusPlus1 + 1 ) * 0.5
     this.mul_sum = mul_table[radius];
     this.shg_sum = shg_table[radius];
-    this.radiusPlus1 = radiusPlus1
+    this.radiusPlus1 = radiusPlus1|0
     this.stackStart= stackStart
     this.stackEnd = stackEnd
-    this.widthMinus1 = width-1
-    this.heightMinus1 = height -1
-    this.width = width
-    this.height = height
+    this.widthMinus1 = (width-1)|0
+    this.heightMinus1 = (height -1)|0
+    this.width = width|0
+    this.height = height|0
     this.pixels = new Uint8Array(width*height)
+    //this.length = (width*height)|0
 }
 blurMachineGray.prototype = {
     blur:function(buff){
+        var i =0
+        //do{this.pixels[i]=buff[i];i++}while(i<this.length)
         this.pixels.set(buff)
+        this.doBlur()
+    },    
+    doBlur:function(){
         var x, y, i,  yp, yi, yw, sum,
         out_sum,
         in_sum,
@@ -156,7 +162,7 @@ blurMachineGray.prototype = {
 
     
     
-        
+        var stack
         var stackIn ;
         var stackOut ;
     
@@ -2706,7 +2712,7 @@ FinderPatternFinder.prototype = {
             var currentState = 0;
             for (var j = 0; j < maxJ; j++)
             {
-                if (image[j+i*this.width] )
+                if (this.image[j+i*this.width] )
                 {
                     // Black pixel
                     if ((currentState & 1) == 1)
@@ -2763,7 +2769,7 @@ FinderPatternFinder.prototype = {
                                     {
                                         j++;
                                     }
-                                    while (j < maxJ && !image[j + i*this.width]);
+                                    while (j < maxJ && !this.image[j + i*this.width]);
                                     j--; // back up to that last white pixel
                                 }
                                 // Clear state to start looking again
@@ -3443,12 +3449,13 @@ function ECMA_QR(w,h){
     this.areaHeight = areaHeight|0
     this.image1 = new ECMA_QR_Image(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
     this.image2 = new ECMA_QR_Image(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
+    this.baseImage = new Int32Array(length)
     this.count = new Int32Array(256)
     this.zeroCount = new Int32Array(256)
 }
 ECMA_QR.prototype = {
     processCanvasRGB:function (imageData){
-        var image = new Uint32Array(imageData.buffer)
+        this.baseImage.set(new Int32Array(imageData.buffer))
         var point
         var r,b,g
         var _min,_max,_min1,_max1,_min2,_max2
@@ -3477,14 +3484,14 @@ ECMA_QR.prototype = {
             _max1 = _max2 = 0.01
             // zero out count with a static empty array
             // this is faster than making a new  one and faster then zeroing it out in js
-            this.count.set(this.zeroCount) 
+            
             dx  = 0
 
             areaPoint3 = areaPoint2
             yEnd = this.yLen + areaPoint2
             do{
                 point = areaPoint1 + dx + areaPoint3
-                cur = image[point];
+                cur = this.baseImage[point];
                 r = (cur>>>16)&0xff
                 b = (cur>>>8)&0xff
                 g = cur&0xff
@@ -3623,6 +3630,7 @@ ECMA_QR.prototype = {
             numSqrtAreaPoint += this.numSqrtAreaPlus1&tmp
             areaPoint2 += this.areaHeightXWidth&tmp
             //-----------------
+            this.count.set(this.zeroCount) 
         }while(numSqrtAreaPoint<this.middleLength)
 
     }
@@ -3738,8 +3746,8 @@ addEventListener('message', function(e) {
           console.log(new Date() - start2 + ' fin')
           console.log(new Date() - start1 + ' fin all')
           console.log((ended.sum/ended.count) + ' avg')
-          //ended.isEnded = true
-          //postMessage(ret)
+          ended.isEnded = true
+          postMessage(ret)
           //var test1 = (ret == "6JKeKYJ4SGrK4h1xwT3MJ6TfyGfn1kK57QuMJED5ap5NmDqViqaEZwGrRqhimZuXAFKUrM6vrKvNR4pRCicmCwBXo7AC2DWeWrNPCJGpTKzuCYZUHVvhX62aYpYWGLAABmJRGc97M6RQHsonR4fn2y7J2fHtEybAVevX")
           //var test2 = (ret == "MXp8FodxoKZcLsQt9NpG94nUWoQk133Qo6cyNPTzjtq7udUP563u9VoKV9VAjH88fGbVZfjNimg5DHpAQwCGZCkbsrdFvnRguYsL7KveEf9tyx6UPaU3gk3pYUMgPWmzNTEqCN8MPsajrr8pxSfvWAfz5uLRtiqNpgQV3ayWguDw2Yc2UsAvA6sadhL55KQzVzS43WRYqMShNy47wv4v6UwYa3qhT3QRCMqrf3AobW3av5EzpvyWzq4FFJkSvGH7nCBptSgXTBvgdL12qmAez6iPkiFtDT2pdVpE4qSi5TEGcDpRttWXRH4ZFX3uUntJrgLBmTAE")          
           /*if(test1 || test2){
@@ -3759,11 +3767,11 @@ addEventListener('message', function(e) {
             ended.count++
             ended.sum+= new Date() - start1
             //console.log(new Date() - start2 + ' 2')
-            console.log(e)
-            console.log(e.stack)
+            //console.log(e)
+            //console.log(e.stack)
             
         }
-       // console.log(Object.keys(self))
+        //console.log(Object.keys(self))
   }
 
   
