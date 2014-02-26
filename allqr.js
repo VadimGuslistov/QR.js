@@ -468,14 +468,8 @@ GridSampler.sampleGridx=function( image,  dimension,  p1ToX,  p1ToY,  p2ToX,  p2
 
 function ECB(count,  dataCodewords)
 {
-    this.count = count;
-    this.dataCodewords = dataCodewords;
-
-  
-    this.__defineGetter__("DataCodewords", function()
-    {
-        return this.dataCodewords;
-    });
+    this.count = count
+    this.dataCodewords = dataCodewords
 }
 
 function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
@@ -872,7 +866,7 @@ function ErrorCorrectionLevel(ordinal,  bits)
 
 ErrorCorrectionLevel.forBits=function( bits)
 {
-    var ret = ErrorCorrectionLevel.lvls[bits]
+    var ret = this.lvls[bits]
     if(!ret){
         throw "Invalid Error Correction Level"
     }
@@ -1438,7 +1432,7 @@ function DataBlocks(rawCodewords,  version,  ecLevel){
         var ecBlock = ecBlockArray[j];
         for (var i = 0; i < ecBlock.count; i++)
         {
-            var numDataCodewords = ecBlock.DataCodewords;
+            var numDataCodewords = ecBlock.dataCodewords;
             var numBlockCodewords = ecBlocks.ecCodewordsPerBlock + numDataCodewords;
             result[numResultBlocks++] = new DataBlock(numDataCodewords, new Array(numBlockCodewords));
         }
@@ -1522,7 +1516,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
         i=0
         do{
             i++
-            numDataCodewords = ecBlock.DataCodewords;
+            numDataCodewords = ecBlock.dataCodewords;
             numBlockCodewords = ecBlocks.ecCodewordsPerBlock + numDataCodewords;
             result.push(new DataBlock(numDataCodewords,numBlockCodewords))
         }while(i<count)
@@ -1577,29 +1571,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
     return result;
 }
     
-/*
-  Ported to JavaScript by Lazar Laszlo 2011 
-  
-  lazarsoft@gmail.com, www.lazarsoft.info
-  
-*/
 
-/*
-*
-* Copyright 2007 ZXing authors
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-*      http://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
 
 // fix me maybe bitMatrix could grab more than one bit at a time? 
 
@@ -1635,7 +1607,7 @@ BitMatrixParser.readFormatInformation = function(bits){
         formatInfoBits = bits.copyBit(8, j, formatInfoBits);
     }
 
-    var parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
+    var parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits,false);
     if (parsedFormatInfo != null)
     {
         return parsedFormatInfo;
@@ -1655,7 +1627,7 @@ BitMatrixParser.readFormatInformation = function(bits){
     }
 
     parsedFormatInfo = FormatInformation.fromMaskedFormatInfo(formatInfoBits);
-    if (parsedFormatInfo != null)
+    if (parsedFormatInfo !== null)
     {
         return parsedFormatInfo;
     }
@@ -1931,7 +1903,6 @@ function DetectorResult(bits,  points)
 function Detector(image)
 {
     this.image=image;
-    this.resultPointCallback = null;
 
     this.sizeOfBlackWhiteBlackRun=function( fromX,  fromY,  toX,  toY)
         {
@@ -2105,7 +2076,7 @@ function Detector(image)
             var alignmentAreaTopY = Math.max(0, estAlignmentY - allowance);
             var alignmentAreaBottomY = Math.min(qrcode.height - 1, estAlignmentY + allowance);
 
-            var alignmentFinder = new AlignmentPatternFinder(this.image, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize, this.resultPointCallback);
+            var alignmentFinder = new AlignmentPatternFinder(this.image, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize);
             return alignmentFinder.find();
         }
 
@@ -2294,7 +2265,6 @@ qrcode.process = function(image,w,h){
 var MIN_SKIP = 3;
 var MAX_MODULES = 57;
 var INVERSE_MAX_MODULESx4 = 0.004385965
-var INTEGER_MATH_SHIFT = 8;
 var CENTER_QUORUM = 2;
 
 qrcode.orderBestPatterns=function(patterns){
@@ -2388,17 +2358,7 @@ function FinderPatternFinder()
     this.possibleCenters = [];
     this.hasSkipped = false;
     this.crossCheckStateCount = new Uint16Array(5);
-    this.resultPointCallback = null;
 
-    this.__defineGetter__("CrossCheckStateCount", function()
-    {
-        this.crossCheckStateCount[0] = 0;
-        this.crossCheckStateCount[1] = 0;
-        this.crossCheckStateCount[2] = 0;
-        this.crossCheckStateCount[3] = 0;
-        this.crossCheckStateCount[4] = 0;
-        return this.crossCheckStateCount;
-    }); 
 
     this.foundPatternCross=function( stateCount)
         {
@@ -2416,10 +2376,10 @@ function FinderPatternFinder()
             {
                 return false;
             }
-            var moduleSize = Math.floor((totalModuleSize << INTEGER_MATH_SHIFT) *0.142857143); // div by 7
-            var maxVariance = Math.floor(moduleSize >>1); // div by 2
+            var moduleSize = Math.floor((totalModuleSize << 8) *0.142857143); // div by 7
+            var maxVariance = moduleSize >>1 // div by 2
             // Allow less than 50% variance from 1-1-3-1-1 proportions
-            return Math.abs(moduleSize - (stateCount[0] << INTEGER_MATH_SHIFT)) < maxVariance && Math.abs(moduleSize - (stateCount[1] << INTEGER_MATH_SHIFT)) < maxVariance && Math.abs(3 * moduleSize - (stateCount[2] << INTEGER_MATH_SHIFT)) < 3 * maxVariance && Math.abs(moduleSize - (stateCount[3] << INTEGER_MATH_SHIFT)) < maxVariance && Math.abs(moduleSize - (stateCount[4] << INTEGER_MATH_SHIFT)) < maxVariance;
+            return Math.abs(moduleSize - (stateCount[0] << 8)) < maxVariance && Math.abs(moduleSize - (stateCount[1] << 8)) < maxVariance && Math.abs(3 * moduleSize - (stateCount[2] << 8)) < 3 * maxVariance && Math.abs(moduleSize - (stateCount[3] << 8)) < maxVariance && Math.abs(moduleSize - (stateCount[4] << 8)) < maxVariance;
         }
     this.centerFromEnd=function( stateCount,  end)
         {
@@ -2430,7 +2390,12 @@ function FinderPatternFinder()
             var image = this.image;
 
             var maxI = qrcode.height;
-            var stateCount = this.CrossCheckStateCount;
+            var stateCount = this.crossCheckStateCount;
+            stateCount[0] = 0;
+            stateCount[1] = 0;
+            stateCount[2] = 0;
+            stateCount[3] = 0;
+            stateCount[4] = 0;
 
             // Start counting up from center
             var i = startI;
@@ -2508,7 +2473,12 @@ function FinderPatternFinder()
             var image = this.image;
 
             var maxJ = qrcode.width;
-            var stateCount = this.CrossCheckStateCount;
+            var stateCount = this.crossCheckStateCount;
+            stateCount[0] = 0;
+            stateCount[1] = 0;
+            stateCount[2] = 0;
+            stateCount[3] = 0;
+            stateCount[4] = 0;
 
             var j = startJ;
             while (j >= 0 && image[j+ centerI*qrcode.width])
@@ -2875,7 +2845,7 @@ function FinderPatternFinder()
 
 
 
-function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  moduleSize,  resultPointCallback)
+function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  moduleSize)
 {
     this.image = image;
     this.possibleCenters = new Array();
@@ -2885,7 +2855,7 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
     this.height = height;
     this.moduleSize = moduleSize;
     this.crossCheckStateCount = new Uint16Array(3);
-    this.resultPointCallback = resultPointCallback;
+
 
     this.centerFromEnd=function(stateCount,  end)
         {
