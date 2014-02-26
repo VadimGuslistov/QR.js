@@ -502,8 +502,10 @@ function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
 
 function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks2,  ecBlocks3,  ecBlocks4)
 {
+    var dimensionForVersion = (17 + 4 * versionNumber)
     this.versionNumber = versionNumber|0;
-    this.dimensionForVersion = (17 + 4 * versionNumber)|0
+    this.dimensionForVersion = dimensionForVersion|0
+    this.correctionToTopLeft = 1.0 - 3.0 /  (dimensionForVersion - 7)
     this.alignmentPatternCenters = alignmentPatternCenters;
     this.ecBlocks = [ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4]
     this.functionPattern = {pattren:false} // wrap this in a obj so the hidden class dose not change when a pattern is made
@@ -723,54 +725,41 @@ Version.VERSION_DECODE_INFO = new Uint32Array([0x07C94, 0x085BC, 0x09A99, 0x0A4D
 
 Version.VERSIONS = buildVersions();
 
-Version.getVersionForNumber=function( versionNumber)
-{
-    if (versionNumber < 1 || versionNumber > 40)
-    {
-        throw "ArgumentException";
-    }
-    return Version.VERSIONS[versionNumber - 1];
+Version.getVersionForNumber=function( versionNumber){
+    var ret = this.VERSIONS[versionNumber-1]
+    if(ret) return ret
+    throw "Error Version.getVersionForNumber"
 }
 
-Version.getProvisionalVersionForDimension=function(dimension)
-{
-    if (dimension % 4 != 1)
-    {
-        throw "Error getProvisionalVersionForDimension";
-    }
-    
-        return Version.getVersionForNumber((dimension - 17) >> 2);
-   
+Version.getProvisionalVersionForDimension=function(dimension){
+    var ret = this.VERSIONS[((dimension - 17) >> 2)-1]
+    if(ret && dimension % 4 == 1) return ret   
+    throw "Error Version.getProvisionalVersionForDimension";
 }
 
 Version.decodeVersionInformation=function( versionBits)
 {
     var bestDifference = 32;
     var bestVersion = 0;
-    for (var i = 0; i < Version.VERSION_DECODE_INFO.length; i++)
-    {
-        var targetVersion = Version.VERSION_DECODE_INFO[i];
+    var l = this.VERSION_DECODE_INFO.length
+    var i = 0
+    var targetVersion 
+    do{
+        targetVersion = Version.VERSION_DECODE_INFO[i];
         // Do the version info bits match exactly? done.
-        if (targetVersion == versionBits)
-        {
-            return this.getVersionForNumber(i + 7);
-        }
+        if (targetVersion == versionBits)  return this.getVersionForNumber(i + 7)
         // Otherwise see if this is the closest to a real version info bit string
         // we have seen so far
-        //var bitsDifference = FormatInformation.numBitsDiffering(versionBits, targetVersion);
         var bitsDifference = numBitsDiffering(versionBits, targetVersion);
-        if (bitsDifference < bestDifference)
-        {
+        if (bitsDifference < bestDifference){
             bestVersion = i + 7;
             bestDifference = bitsDifference;
         }
-    }
+        i++
+    }while(i<l)
     // We can tolerate up to 3 bits of error since no two version info codewords will
     // differ in less than 4 bits.
-    if (bestDifference <= 3)
-    {
-        return this.getVersionForNumber(bestVersion);
-    }
+    if (bestDifference < 4) return this.getVersionForNumber(bestVersion)
     // If we didn't find a close enough match, fail
     return null;
 }
@@ -2167,7 +2156,7 @@ function Detector(image)
             }
             var dimension = this.computeDimension(topLeft, topRight, bottomLeft, moduleSize);
             var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
-            var modulesBetweenFPCenters = provisionalVersion.dimensionForVersion - 7;
+
 
             var alignmentPattern;
             // Anything above version 1 has an alignment pattern
@@ -2180,9 +2169,8 @@ function Detector(image)
 
                 // Estimate that alignment pattern is closer by 3 modules
                 // from "bottom right" to known top left location
-                var correctionToTopLeft = 1.0 - 3.0 /  modulesBetweenFPCenters;
-                var estAlignmentX = Math.floor (topLeft.X + correctionToTopLeft * (bottomRightX - topLeft.X));
-                var estAlignmentY = Math.floor (topLeft.Y + correctionToTopLeft * (bottomRightY - topLeft.Y));
+                var estAlignmentX = Math.floor (topLeft.X + provisionalVersion.correctionToTopLeft * (bottomRightX - topLeft.X));
+                var estAlignmentY = Math.floor (topLeft.Y + provisionalVersion.correctionToTopLeft * (bottomRightY - topLeft.Y));
 
                 // Kind of arbitrary -- expand search radius before giving up
 

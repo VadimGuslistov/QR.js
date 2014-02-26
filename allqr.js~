@@ -502,21 +502,14 @@ function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
 
 function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks2,  ecBlocks3,  ecBlocks4)
 {
+    var dimensionForVersion = (17 + 4 * versionNumber)
     this.versionNumber = versionNumber|0;
-    this.dimensionForVersion = (17 + 4 * versionNumber)|0
+    this.dimensionForVersion = dimensionForVersion|0
+    this.correctionToTopLeft = 1.0 - 3.0 /  (dimensionForVersion - 7)
     this.alignmentPatternCenters = alignmentPatternCenters;
     this.ecBlocks = [ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4]
     this.functionPattern = {pattren:false} // wrap this in a obj so the hidden class dose not change when a pattern is made
-
-    var total = 0;
-    var ecCodewords = ecBlocks1.ecCodewordsPerBlock;
-    var ecbArray = ecBlocks1.ecBlocks;
-    for (var i = 0; i < ecbArray.length; i++)
-    {
-        var ecBlock = ecbArray[i];
-        total += ecBlock.count * (ecBlock.DataCodewords + ecCodewords);
-    }
-    this.totalCodewords = total;
+    this.totalCodewords = ecBlocks1.totalCodewords;
     this.masks = {}
 }
 
@@ -732,24 +725,16 @@ Version.VERSION_DECODE_INFO = new Uint32Array([0x07C94, 0x085BC, 0x09A99, 0x0A4D
 
 Version.VERSIONS = buildVersions();
 
-Version.getVersionForNumber=function( versionNumber)
-{
-    if (versionNumber < 1 || versionNumber > 40)
-    {
-        throw "ArgumentException";
-    }
-    return Version.VERSIONS[versionNumber - 1];
+Version.getVersionForNumber=function( versionNumber){
+    var ret = this.VERSIONS[versionNumber-1]
+    if(ret) return ret
+    throw "Error Version.getVersionForNumber"
 }
 
-Version.getProvisionalVersionForDimension=function(dimension)
-{
-    if (dimension % 4 != 1)
-    {
-        throw "Error getProvisionalVersionForDimension";
-    }
-    
-        return Version.getVersionForNumber((dimension - 17) >> 2);
-   
+Version.getProvisionalVersionForDimension=function(dimension){
+    var ret = this.VERSIONS[((dimension - 17) >> 2)-1]
+    if(ret && dimension % 4 == 1) return ret   
+    throw "Error Version.getProvisionalVersionForDimension";
 }
 
 Version.decodeVersionInformation=function( versionBits)
@@ -2176,7 +2161,7 @@ function Detector(image)
             }
             var dimension = this.computeDimension(topLeft, topRight, bottomLeft, moduleSize);
             var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
-            var modulesBetweenFPCenters = provisionalVersion.dimensionForVersion - 7;
+
 
             var alignmentPattern;
             // Anything above version 1 has an alignment pattern
@@ -2189,9 +2174,8 @@ function Detector(image)
 
                 // Estimate that alignment pattern is closer by 3 modules
                 // from "bottom right" to known top left location
-                var correctionToTopLeft = 1.0 - 3.0 /  modulesBetweenFPCenters;
-                var estAlignmentX = Math.floor (topLeft.X + correctionToTopLeft * (bottomRightX - topLeft.X));
-                var estAlignmentY = Math.floor (topLeft.Y + correctionToTopLeft * (bottomRightY - topLeft.Y));
+                var estAlignmentX = Math.floor (topLeft.X + provisionalVersion.correctionToTopLeft * (bottomRightX - topLeft.X));
+                var estAlignmentY = Math.floor (topLeft.Y + provisionalVersion.correctionToTopLeft * (bottomRightY - topLeft.Y));
 
                 // Kind of arbitrary -- expand search radius before giving up
 
