@@ -724,7 +724,26 @@ Version.prototype = {
 
 
 Version.VERSIONS = buildVersions();
+Version.getVersionForNumber=function( versionNumber)
+{
+    if (versionNumber < 1 || versionNumber > 40)
+    {
+        throw "ArgumentException";
+    }
+    return Version.VERSIONS[versionNumber - 1];
+}
 
+Version.getProvisionalVersionForDimension=function(dimension)
+{
+    if (dimension % 4 != 1)
+    {
+        throw "Error getProvisionalVersionForDimension";
+    }
+    
+        return Version.getVersionForNumber((dimension - 17) >> 2);
+   
+}
+/*
 Version.getVersionForNumber=function( versionNumber){
     var ret = this.VERSIONS[versionNumber-1]
     if(ret) return ret
@@ -736,8 +755,44 @@ Version.getProvisionalVersionForDimension=function(dimension){
     if(ret && dimension % 4 == 1) return ret   
     throw "Error Version.getProvisionalVersionForDimension";
 }
+*/
 Version.VERSION_DECODE_INFO = new Uint32Array([0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78, 0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EC, 0x18EC4, 0x191E1, 0x1AFAB, 0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B, 0x2542E, 0x26A64, 0x27541, 0x28C69]);
 Version.VERSION_DECODE_INFO_LENGTH = Version.VERSION_DECODE_INFO.length|0
+
+
+Version.decodeVersionInformation=function( versionBits)
+{
+    var bestDifference = 32;
+    var bestVersion = 0;
+    for (var i = 0; i < Version.VERSION_DECODE_INFO.length; i++)
+    {
+        var targetVersion = Version.VERSION_DECODE_INFO[i];
+        // Do the version info bits match exactly? done.
+        if (targetVersion == versionBits)
+        {
+            return this.getVersionForNumber(i + 7);
+        }
+        // Otherwise see if this is the closest to a real version info bit string
+        // we have seen so far
+        //var bitsDifference = FormatInformation.numBitsDiffering(versionBits, targetVersion);
+        var bitsDifference = numBitsDiffering(versionBits, targetVersion);
+        if (bitsDifference < bestDifference)
+        {
+            bestVersion = i + 7;
+            bestDifference = bitsDifference;
+        }
+    }
+    // We can tolerate up to 3 bits of error since no two version info codewords will
+    // differ in less than 4 bits.
+    if (bestDifference <= 3)
+    {
+        return this.getVersionForNumber(bestVersion);
+    }
+    // If we didn't find a close enough match, fail
+    return null;
+}
+
+/*
 Version.decodeVersionInformation=function( versionBits){
     var bestDifference = 32;
     var bestVersion = 0;
@@ -765,7 +820,7 @@ Version.decodeVersionInformation=function( versionBits){
     // If we didn't find a close enough match, fail
     return null;
 }
-
+*/
 function buildVersions()
 {
     return [
@@ -823,8 +878,43 @@ function FormatInformation(formatInfo)
 }
 
 
+FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail)
+{
+   // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
+	var bestDifference = 0xffffffff;
+	var bestFormatInfo = 0;
+	var decodeInfo,targetInfo
+	var l = this.FORMAT_INFO_DECODE_LOOKUP.length
+	var bitsDifference
+	var i = 0
+	do{
+	   decodeInfo = targetInfo =  this.FORMAT_INFO_DECODE_LOOKUP[i++]
+	   targetInfo = targetInfo >>> 8
+	   decodeInfo = decodeInfo & 0xff
+	   if (targetInfo == maskedFormatInfo){
+			// Found an exact match
+			return new FormatInformation(decodeInfo);
+	   }
+       bitsDifference = numBitsDiffering(maskedFormatInfo, targetInfo);
+       if (bitsDifference < bestDifference){
+			bestFormatInfo = decodeInfo;
+			bestDifference = bitsDifference;
+		}
+	}while(i<l)
+    // Hamming distance of the 32 masked codes is 7, by construction, so <= 3 bits
+    // differing means we found a match
+    if (bestDifference <= 3)
+    {
+        return new FormatInformation(bestFormatInfo);
+    }
+    if(fail){
+        return null;
+    }
+    return FormatInformation.fromMaskedFormatInfo(maskedFormatInfo ^ this.FORMAT_INFO_MASK_QR,true)
+    
+}
 
-
+/*
 FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail){
    // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
    // fix me maybe a singe MaskedFormatInfo decoder object would be a little faster
@@ -851,6 +941,7 @@ FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail){
     return FormatInformation.fromMaskedFormatInfo(maskedFormatInfo ^ this.FORMAT_INFO_MASK_QR,true)
     
 }
+*/
 FormatInformation.FORMAT_INFO_MASK_QR = 0x5412;
 FormatInformation.FORMAT_INFO_DECODE_LOOKUP = new Uint32Array([0x541200, 0x512501, 0x5E7C02, 0x5B4B03, 0x45F904, 0x40CE05, 0x4F9706, 0x4AA007, 0x77C408, 0x72F309, 0x7DAA0A, 0x789D0B, 0x662F0C, 0x63180D, 0x6C410E, 0x69760F, 0x168910, 0x13BE11, 0x1CE712, 0x19D013, 0x076214, 0x025515, 0x0D0C16, 0x083B17, 0x355F18, 0x306819, 0x3F311A, 0x3A061B, 0x24B41C, 0x21831D, 0x2EDA1E, 0x2BED1F])
 FormatInformation.FORMAT_INFO_DECODE_LOOKUP_LENGTH = FormatInformation.FORMAT_INFO_DECODE_LOOKUP.length|0
@@ -1895,6 +1986,7 @@ function Detector(image,w,h)
     this.image=image;
     this.width = w
     this.height = h
+    this.finderPatternFinder = new FinderPatternFinder(image,w,h)
     this.sizeOfBlackWhiteBlackRun=function( fromX,  fromY,  toX,  toY)
         {
             // Mild variant of Bresenham's algorithm;
@@ -2179,9 +2271,9 @@ function Detector(image,w,h)
 
     this.detect=function()
     {
-        var info =  new FinderPatternFinder(this.image,this.width,this.height).findFinderPattern();
-
-        return this.processFinderPatternInfo(info); 
+        //var info =  new FinderPatternFinder(this.image,this.width,this.height).findFinderPattern();
+        this.finderPatternFinder.reset()
+        return this.processFinderPatternInfo(this.finderPatternFinder.findFinderPattern()); 
     }
 }
 
@@ -2357,6 +2449,10 @@ function FinderPatternFinder(image,width,height)
     
 }
 FinderPatternFinder.prototype = {
+    reset:function(){
+        this.possibleCenters.splice(0)
+        this.mutatable.hasSkipped=false
+    },
     foundPatternCross:function( stateCount){
         var totalModuleSize = 0;
         for (var i = 0; i < 5; i++)
@@ -2812,7 +2908,7 @@ FinderPatternFinder.prototype = {
                     if (this.mutatable.hasSkipped)
                     {
                         // Found a third one
-                        done = haveMultiplyConfirmedCenters();
+                        done = this.haveMultiplyConfirmedCenters();
                     }
                 }
             }
@@ -3403,7 +3499,7 @@ ECMA_QR_Image.prototype = {
 
                 dark = (dark=_min-pix,(dark+(tmp=dark>>31) ^ tmp))*_1per|0
                 light = (light=_max-pix,(light+(tmp=light>>31) ^ tmp))*_1per|0
-                tmp = cur>>31
+                tmp = 
                 //this.bits[point] = 1
                 this.bits[point] = ( (pix-_minPlus1)>>31 | ((15-light)>>31 & tmp ) | (dark-41)>>31 &  (tmp^-1) )&1
               
@@ -3430,7 +3526,7 @@ ECMA_QR_Image.prototype = {
 }
 
 function ECMA_QR(w,h){
-    var numSqrtArea = 6;
+    var numSqrtArea = 2;
     var numSqrtAreaX = 1/numSqrtArea
     var areaWidth = (w * numSqrtAreaX)|0
     var areaHeight = (h * numSqrtAreaX)|0
@@ -3579,18 +3675,18 @@ ECMA_QR.prototype = {
             
             lower_other = lower_val2 + ((tmp = lower_val1-lower_val2) & (tmp >> 31))
             
-            upperX = upper_set/upper_other
+            upperX = 1/upper_set
             lowerX = 254/lower_other 
             
             areaPoint3 = areaPoint2
             dx  = 0
-              
+
             do{
                 point = areaPoint1 + dx + areaPoint3
                 cur = this.image1.image[point]
     
     
-                if(cur >= upper_set && cur <= upper_other){
+                if(cur >=upper_set && cur <= upper_other){
                     cur = upper_set
                 } else if(cur <= _mid){
                     cur = (cur * upperX)|0
@@ -3746,8 +3842,8 @@ addEventListener('message', function(e) {
           console.log(new Date() - start2 + ' fin')
           console.log(new Date() - start1 + ' fin all')
           console.log((ended.sum/ended.count) + ' avg')
-          ended.isEnded = true
-          postMessage(ret)
+          //ended.isEnded = true
+          //postMessage(ret)
           //var test1 = (ret == "6JKeKYJ4SGrK4h1xwT3MJ6TfyGfn1kK57QuMJED5ap5NmDqViqaEZwGrRqhimZuXAFKUrM6vrKvNR4pRCicmCwBXo7AC2DWeWrNPCJGpTKzuCYZUHVvhX62aYpYWGLAABmJRGc97M6RQHsonR4fn2y7J2fHtEybAVevX")
           //var test2 = (ret == "MXp8FodxoKZcLsQt9NpG94nUWoQk133Qo6cyNPTzjtq7udUP563u9VoKV9VAjH88fGbVZfjNimg5DHpAQwCGZCkbsrdFvnRguYsL7KveEf9tyx6UPaU3gk3pYUMgPWmzNTEqCN8MPsajrr8pxSfvWAfz5uLRtiqNpgQV3ayWguDw2Yc2UsAvA6sadhL55KQzVzS43WRYqMShNy47wv4v6UwYa3qhT3QRCMqrf3AobW3av5EzpvyWzq4FFJkSvGH7nCBptSgXTBvgdL12qmAez6iPkiFtDT2pdVpE4qSi5TEGcDpRttWXRH4ZFX3uUntJrgLBmTAE")          
           /*if(test1 || test2){
@@ -3767,7 +3863,7 @@ addEventListener('message', function(e) {
             ended.count++
             ended.sum+= new Date() - start1
             //console.log(new Date() - start2 + ' 2')
-            //console.log(e)
+            console.log(e)
             //console.log(e.stack)
             
         }
