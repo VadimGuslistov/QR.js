@@ -480,36 +480,24 @@ function ECB(count,  dataCodewords)
 
 function ECBlocks( ecCodewordsPerBlock,  ecBlocks1,  ecBlocks2)
 {
-    this.ecCodewordsPerBlock = ecCodewordsPerBlock;
-    if(ecBlocks2)
-        this.ecBlocks = [ecBlocks1, ecBlocks2]
-    else
-        this.ecBlocks = [ecBlocks1];
+    var ecbArray
+    var totalCodewords
+    
+    if(ecBlocks2){
+        ecbArray = [ecBlocks1, ecBlocks2]
+        totalCodewords = ecBlocks1.count * (ecBlocks1.dataCodewords + ecCodewordsPerBlock) + ecBlocks2.count * (ecBlocks2.dataCodewords + ecCodewordsPerBlock)
+    }else{
+        ecbArray = [ecBlocks1]
+        totalCodewords = ecBlocks1.count * (ecBlocks1.dataCodewords + ecCodewordsPerBlock)
+    }
+        
 
-    this.__defineGetter__("ECCodewordsPerBlock", function()
-    {
-        return this.ecCodewordsPerBlock;
-    });
 
-    this.__defineGetter__("TotalECCodewords", function()
-    {
-        return  this.ecCodewordsPerBlock * this.NumBlocks;
-    });
+    this.ecCodewordsPerBlock = ecCodewordsPerBlock|0;
+    this.totalCodewords = totalCodewords|0
+    this.ecBlocks = ecbArray
+    
 
-    this.__defineGetter__("NumBlocks", function()
-    {
-        var total = 0;
-        for (var i = 0; i < this.ecBlocks.length; i++)
-        {
-            total += this.ecBlocks[i].length;
-        }
-        return total;
-    });
-
-    this.getECBlocks=function()
-            {
-                return this.ecBlocks;
-            }
 }
 
 function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks2,  ecBlocks3,  ecBlocks4)
@@ -519,16 +507,7 @@ function Version( versionNumber,  alignmentPatternCenters,  ecBlocks1,  ecBlocks
     this.alignmentPatternCenters = alignmentPatternCenters;
     this.ecBlocks = [ecBlocks1, ecBlocks2, ecBlocks3, ecBlocks4]
     this.functionPattern = {pattren:false} // wrap this in a obj so the hidden class dose not change when a pattern is made
-
-    var total = 0;
-    var ecCodewords = ecBlocks1.ECCodewordsPerBlock;
-    var ecbArray = ecBlocks1.getECBlocks();
-    for (var i = 0; i < ecbArray.length; i++)
-    {
-        var ecBlock = ecbArray[i];
-        total += ecBlock.count * (ecBlock.DataCodewords + ecCodewords);
-    }
-    this.totalCodewords = total;
+    this.totalCodewords = ecBlocks1.totalCodewords;
     this.masks = {}
 }
 
@@ -1450,7 +1429,7 @@ function DataBlocks(rawCodewords,  version,  ecLevel){
     // First count the total number of data blocks
     var totalBlocks = 0;
     var result = new Array();
-    var ecBlockArray = ecBlocks.getECBlocks();
+    var ecBlockArray = ecBlocks.ecBlocks;
     var l = ecBlockArray.length
     var i = 0
     do{
@@ -1471,7 +1450,7 @@ function DataBlocks(rawCodewords,  version,  ecLevel){
         for (var i = 0; i < ecBlock.count; i++)
         {
             var numDataCodewords = ecBlock.DataCodewords;
-            var numBlockCodewords = ecBlocks.ECCodewordsPerBlock + numDataCodewords;
+            var numBlockCodewords = ecBlocks.ecCodewordsPerBlock + numDataCodewords;
             result[numResultBlocks++] = new DataBlock(numDataCodewords, new Array(numBlockCodewords));
         }
     }
@@ -1491,7 +1470,7 @@ function DataBlocks(rawCodewords,  version,  ecLevel){
     }
     longerBlocksStartAt++;
 
-    var shorterBlocksNumDataCodewords = shorterBlocksTotalCodewords - ecBlocks.ECCodewordsPerBlock;
+    var shorterBlocksNumDataCodewords = shorterBlocksTotalCodewords - ecBlocks.ecCodewordsPerBlock;
     // The last elements of result may be 1 element longer;
     // first fill out as many elements as all of them have
     var rawCodewordsOffset = 0;
@@ -1536,7 +1515,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 
     // First count the total number of data blocks
 
-    var ecBlockArray = ecBlocks.getECBlocks()
+    var ecBlockArray = ecBlocks.ecBlocks
 
 
     // Now establish DataBlocks of the appropriate size and number of data codewords
@@ -1555,7 +1534,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
         do{
             i++
             numDataCodewords = ecBlock.DataCodewords;
-            numBlockCodewords = ecBlocks.ECCodewordsPerBlock + numDataCodewords;
+            numBlockCodewords = ecBlocks.ecCodewordsPerBlock + numDataCodewords;
             result.push(new DataBlock(numDataCodewords,numBlockCodewords))
         }while(i<count)
     }while(j<l)
@@ -1575,7 +1554,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
     }
     longerBlocksStartAt++;
 
-    var shorterBlocksNumDataCodewords = shorterBlocksTotalCodewords - ecBlocks.ECCodewordsPerBlock;
+    var shorterBlocksNumDataCodewords = shorterBlocksTotalCodewords - ecBlocks.ecCodewordsPerBlock;
     // The last elements of result may be 1 element longer;
     // first fill out as many elements as all of them have
     var rawCodewordsOffset = 0
