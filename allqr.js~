@@ -923,20 +923,23 @@ BitMatrix.prototype = {
         var bottom = top + height;
         var y = top
         var x = left
+        var yEnd = this.rowSize * bottom
+        var yPoint = top*this.rowSize
         var offset,tmp,tmp2
         do{
-            offset = y * this.rowSize + (x >> 5)
+            offset = yPoint + (x >> 5)
             if(offset != this.offset) this.load(offset)
             this.loaded |= 1 << (x & 31)
             // this avoids a nested loop - fix me - know if it was worth it
             x++
-            tmp = (x-right)>>>31
-            tmp2 = tmp^1
-            x = (x ^ ((-tmp ^ x) & x)) | (left ^ ((-tmp2 ^ left) & left))
-            y += tmp2
+            tmp = (x-right)>>31
+            tmp2 = tmp^-1
+            x = x&tmp | left&tmp2
+            y += 1&tmp2
+            yPoint += this.rowSize&tmp2
             ///////
             
-        }while(y < bottom)
+        }while(yPoint < yEnd)
         
     },
     copyBit:function(x, y,  input) // it is assumed that a integer so large that it will get it sign bit set will not be passed here
