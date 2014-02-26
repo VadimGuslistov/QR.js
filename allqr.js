@@ -724,26 +724,7 @@ Version.prototype = {
 
 
 Version.VERSIONS = buildVersions();
-Version.getVersionForNumber=function( versionNumber)
-{
-    if (versionNumber < 1 || versionNumber > 40)
-    {
-        throw "ArgumentException";
-    }
-    return Version.VERSIONS[versionNumber - 1];
-}
 
-Version.getProvisionalVersionForDimension=function(dimension)
-{
-    if (dimension % 4 != 1)
-    {
-        throw "Error getProvisionalVersionForDimension";
-    }
-    
-        return Version.getVersionForNumber((dimension - 17) >> 2);
-   
-}
-/*
 Version.getVersionForNumber=function( versionNumber){
     var ret = this.VERSIONS[versionNumber-1]
     if(ret) return ret
@@ -755,44 +736,13 @@ Version.getProvisionalVersionForDimension=function(dimension){
     if(ret && dimension % 4 == 1) return ret   
     throw "Error Version.getProvisionalVersionForDimension";
 }
-*/
+
 Version.VERSION_DECODE_INFO = new Uint32Array([0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78, 0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EC, 0x18EC4, 0x191E1, 0x1AFAB, 0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B, 0x2542E, 0x26A64, 0x27541, 0x28C69]);
 Version.VERSION_DECODE_INFO_LENGTH = Version.VERSION_DECODE_INFO.length|0
 
 
-Version.decodeVersionInformation=function( versionBits)
-{
-    var bestDifference = 32;
-    var bestVersion = 0;
-    for (var i = 0; i < Version.VERSION_DECODE_INFO.length; i++)
-    {
-        var targetVersion = Version.VERSION_DECODE_INFO[i];
-        // Do the version info bits match exactly? done.
-        if (targetVersion == versionBits)
-        {
-            return this.getVersionForNumber(i + 7);
-        }
-        // Otherwise see if this is the closest to a real version info bit string
-        // we have seen so far
-        //var bitsDifference = FormatInformation.numBitsDiffering(versionBits, targetVersion);
-        var bitsDifference = numBitsDiffering(versionBits, targetVersion);
-        if (bitsDifference < bestDifference)
-        {
-            bestVersion = i + 7;
-            bestDifference = bitsDifference;
-        }
-    }
-    // We can tolerate up to 3 bits of error since no two version info codewords will
-    // differ in less than 4 bits.
-    if (bestDifference <= 3)
-    {
-        return this.getVersionForNumber(bestVersion);
-    }
-    // If we didn't find a close enough match, fail
-    return null;
-}
 
-/*
+
 Version.decodeVersionInformation=function( versionBits){
     var bestDifference = 32;
     var bestVersion = 0;
@@ -807,11 +757,7 @@ Version.decodeVersionInformation=function( versionBits){
         // we have seen so far
         bestDifference += ((tmp=numBitsDiffering(versionBits, targetVersion) - bestDifference ) & (tmp >>= 31))                //----min for a int of 32 bits or less
         bestVersion = ((i+7)&tmp)|(bestVersion&(tmp^-1))   
-        var bitsDifference = numBitsDiffering(versionBits, targetVersion);
-        if (bitsDifference < bestDifference){
-            bestVersion = i + 7;
-            bestDifference = bitsDifference;
-        }
+
         i++
     }while(i<this.VERSION_DECODE_INFO_LENGTH)
     // We can tolerate up to 3 bits of error since no two version info codewords will
@@ -820,7 +766,7 @@ Version.decodeVersionInformation=function( versionBits){
     // If we didn't find a close enough match, fail
     return null;
 }
-*/
+
 function buildVersions()
 {
     return [
@@ -878,43 +824,8 @@ function FormatInformation(formatInfo)
 }
 
 
-FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail)
-{
-   // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
-	var bestDifference = 0xffffffff;
-	var bestFormatInfo = 0;
-	var decodeInfo,targetInfo
-	var l = this.FORMAT_INFO_DECODE_LOOKUP.length
-	var bitsDifference
-	var i = 0
-	do{
-	   decodeInfo = targetInfo =  this.FORMAT_INFO_DECODE_LOOKUP[i++]
-	   targetInfo = targetInfo >>> 8
-	   decodeInfo = decodeInfo & 0xff
-	   if (targetInfo == maskedFormatInfo){
-			// Found an exact match
-			return new FormatInformation(decodeInfo);
-	   }
-       bitsDifference = numBitsDiffering(maskedFormatInfo, targetInfo);
-       if (bitsDifference < bestDifference){
-			bestFormatInfo = decodeInfo;
-			bestDifference = bitsDifference;
-		}
-	}while(i<l)
-    // Hamming distance of the 32 masked codes is 7, by construction, so <= 3 bits
-    // differing means we found a match
-    if (bestDifference <= 3)
-    {
-        return new FormatInformation(bestFormatInfo);
-    }
-    if(fail){
-        return null;
-    }
-    return FormatInformation.fromMaskedFormatInfo(maskedFormatInfo ^ this.FORMAT_INFO_MASK_QR,true)
-    
-}
 
-/*
+
 FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail){
    // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
    // fix me maybe a singe MaskedFormatInfo decoder object would be a little faster
@@ -941,7 +852,7 @@ FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail){
     return FormatInformation.fromMaskedFormatInfo(maskedFormatInfo ^ this.FORMAT_INFO_MASK_QR,true)
     
 }
-*/
+
 FormatInformation.FORMAT_INFO_MASK_QR = 0x5412;
 FormatInformation.FORMAT_INFO_DECODE_LOOKUP = new Uint32Array([0x541200, 0x512501, 0x5E7C02, 0x5B4B03, 0x45F904, 0x40CE05, 0x4F9706, 0x4AA007, 0x77C408, 0x72F309, 0x7DAA0A, 0x789D0B, 0x662F0C, 0x63180D, 0x6C410E, 0x69760F, 0x168910, 0x13BE11, 0x1CE712, 0x19D013, 0x076214, 0x025515, 0x0D0C16, 0x083B17, 0x355F18, 0x306819, 0x3F311A, 0x3A061B, 0x24B41C, 0x21831D, 0x2EDA1E, 0x2BED1F])
 FormatInformation.FORMAT_INFO_DECODE_LOOKUP_LENGTH = FormatInformation.FORMAT_INFO_DECODE_LOOKUP.length|0
@@ -2300,7 +2211,7 @@ qrcode.decode_utf8 = function ( s )
         return s; // fix me WAT 
 }
 
-qrcode.process = function(image,w,h){
+qrcode.process = function(det,w,h){
 
 
         qrcode.width = w
@@ -2310,7 +2221,7 @@ qrcode.process = function(image,w,h){
        
         
         
-        var d = new Detector(image,w,h).detect()
+        var d = det.detect()
 
         var decoder = new Decoder( d.bits )
         
@@ -3449,6 +3360,7 @@ function numBitsDiffering(a,b){
 function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
     var length = (w*h)|0
     var img = new Uint8Array(length)
+    var bits = new Uint8Array(length)
     this.middleLength = middleLength|0
     this.length = length
     this.width = w|0
@@ -3461,9 +3373,11 @@ function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
     this.areaWidth=areaWidth|0
     this.areaHeight = areaHeight|0
     this.image = img
-    this.bits =  new Uint8Array(length)
+   
+    this.bits =  bits
     this.middle = new Uint16Array(middleLength)
     this.blurDiffMachine = new blurDiffMachine(img,2,4,w,h)
+    this.detector= new Detector(bits,w,h)
 
 }
 ECMA_QR_Image.prototype = {
@@ -3831,12 +3745,12 @@ addEventListener('message', function(e) {
   var start1 = new Date
   
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))
-  function post(bits){
+  function post(det){
       var ret
       var start2 = new Date()
       try{
 
-          ret = qrcode.process(bits,w,h)
+          ret = qrcode.process(det,w,h)
           ended.count++
           ended.sum+= new Date() - start1
           console.log(new Date() - start2 + ' fin')
@@ -3864,7 +3778,7 @@ addEventListener('message', function(e) {
             ended.sum+= new Date() - start1
             //console.log(new Date() - start2 + ' 2')
             console.log(e)
-            //console.log(e.stack)
+            console.log(e.stack)
             
         }
         //console.log(Object.keys(self))
@@ -3879,8 +3793,8 @@ addEventListener('message', function(e) {
   qr.processCanvasRGB(e.data.buff)
   qr.image1.doBinary()
   qr.image2.doBinary()
-  post(qr.image1.bits)
-  post(qr.image2.bits)
+  post(qr.image1.detector)
+  post(qr.image2.detector)
   postMessage(bits_to_canvas_buff(qr.image2.bits))
 
 
