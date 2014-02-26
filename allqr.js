@@ -1884,10 +1884,11 @@ function DetectorResult(bits,  points)
 }
 
 
-function Detector(image)
+function Detector(image,w,h)
 {
     this.image=image;
-
+    this.width = w
+    this.height = h
     this.sizeOfBlackWhiteBlackRun=function( fromX,  fromY,  toX,  toY)
         {
             // Mild variant of Bresenham's algorithm;
@@ -1917,14 +1918,14 @@ function Detector(image)
                 if (state == 1)
                 {
                     // In white pixels, looking for black
-                    if (this.image[realX + realY*qrcode.width])
+                    if (this.image[realX + realY*this.width])
                     {
                         state++;
                     }
                 }
                 else
                 {
-                    if (!this.image[realX + realY*qrcode.width])
+                    if (!this.image[realX + realY*this.width])
                     {
                         state++;
                     }
@@ -1967,10 +1968,10 @@ function Detector(image)
                 scale =  fromX /  (fromX - otherToX);
                 otherToX = 0;
             }
-            else if (otherToX >= qrcode.width)
+            else if (otherToX >= this.width)
             {
-                scale =  (qrcode.width - 1 - fromX) /  (otherToX - fromX);
-                otherToX = qrcode.width - 1;
+                scale =  (this.width - 1 - fromX) /  (otherToX - fromX);
+                otherToX = this.width - 1;
             }
             var otherToY = Math.floor (fromY - (toY - fromY) * scale);
 
@@ -1980,10 +1981,10 @@ function Detector(image)
                 scale =  fromY /  (fromY - otherToY);
                 otherToY = 0;
             }
-            else if (otherToY >= qrcode.height)
+            else if (otherToY >= this.height)
             {
-                scale =  (qrcode.height - 1 - fromY) /  (otherToY - fromY);
-                otherToY = qrcode.height - 1;
+                scale =  (this.height - 1 - fromY) /  (otherToY - fromY);
+                otherToY = this.height - 1;
             }
             otherToX = Math.floor (fromX + (otherToX - fromX) * scale);
 
@@ -2050,7 +2051,7 @@ function Detector(image)
             // should be
             var allowance = Math.floor (allowanceFactor * overallEstModuleSize);
             var alignmentAreaLeftX = Math.max(0, estAlignmentX - allowance);
-            var alignmentAreaRightX = Math.min(qrcode.width - 1, estAlignmentX + allowance);
+            var alignmentAreaRightX = Math.min(this.width - 1, estAlignmentX + allowance);
             
             if (alignmentAreaRightX - alignmentAreaLeftX < overallEstModuleSize * 3)
             {
@@ -2058,7 +2059,7 @@ function Detector(image)
             }
 
             var alignmentAreaTopY = Math.max(0, estAlignmentY - allowance);
-            var alignmentAreaBottomY = Math.min(qrcode.height - 1, estAlignmentY + allowance);
+            var alignmentAreaBottomY = Math.min(this.height - 1, estAlignmentY + allowance);
 
             var alignmentFinder = new AlignmentPatternFinder(this.image, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize);
             return alignmentFinder.find();
@@ -2206,12 +2207,12 @@ qrcode.process = function(image,w,h){
 
         qrcode.width = w
         qrcode.height = h
-        //var image = qrcode.grayScaleToBitmap(qrcode.grayscale(buff));
+
 
        
         
         
-        var d = new Detector(image).detect()
+        var d = new Detector(image,w,h).detect()
 
         var decoder = new Decoder( d.bits )
         
@@ -3722,8 +3723,6 @@ addEventListener('message', function(e) {
   if(ended.isEnded) return
   var w = e.data.w
   var h = e.data.h
-  qrcode.width = w
-  qrcode.height = h
   var start1 = new Date
   
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))

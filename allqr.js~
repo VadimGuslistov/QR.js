@@ -920,10 +920,8 @@ BitMatrix.prototype = {
     setRegion:function( left,  top,  width,  height){
 
         var right = left + width;
-        var bottom = top + height;
-        var y = top
         var x = left
-        var yEnd = this.rowSize * bottom
+        var yEnd = this.rowSize * (top + height)
         var yPoint = top*this.rowSize
         var offset,tmp,tmp2
         do{
@@ -935,7 +933,6 @@ BitMatrix.prototype = {
             tmp = (x-right)>>31
             tmp2 = tmp^-1
             x = x&tmp | left&tmp2
-            y += 1&tmp2
             yPoint += this.rowSize&tmp2
             ///////
             
@@ -3725,8 +3722,6 @@ addEventListener('message', function(e) {
   if(ended.isEnded) return
   var w = e.data.w
   var h = e.data.h
-  qrcode.width = w
-  qrcode.height = h
   var start1 = new Date
   
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))
