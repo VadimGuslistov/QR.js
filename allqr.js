@@ -2158,7 +2158,7 @@ function Detector(image,w,h)
             var bits = this.sampleGrid(this.image, transform, dimension);
 
             var points;
-            if (alignmentPattern == null)
+            if (alignmentPattern === null)
             {
                 points = [bottomLeft, topLeft, topRight];
             }
@@ -2173,7 +2173,7 @@ function Detector(image,w,h)
 
     this.detect=function()
     {
-        var info =  new FinderPatternFinder().findFinderPattern(this.image);
+        var info =  new FinderPatternFinder(this.image,this.width,this.height).findFinderPattern();
 
         return this.processFinderPatternInfo(info); 
     }
@@ -2337,12 +2337,15 @@ function FinderPatternInfo(patternCenters)
     this.topRight = patternCenters[2]; 
 }
 
-function FinderPatternFinder()
+function FinderPatternFinder(image,width,height)
 {
-    this.image=null;
-    this.possibleCenters = [];
-    this.hasSkipped = false;
+    this.width = width
+    this.height = height
+    this.image=image;
     this.crossCheckStateCount = new Uint16Array(5);
+    this.possibleCenters = new Array()
+    this.mutatable = {hasSkipped:false}
+    
 
 
     
@@ -2374,7 +2377,6 @@ FinderPatternFinder.prototype = {
     crossCheckVertical:function( startI,  centerJ,  maxCount,  originalStateCountTotal){
         var image = this.image;
 
-        var maxI = qrcode.height;
         var stateCount = this.crossCheckStateCount;
         stateCount[0] = 0;
         stateCount[1] = 0;
@@ -2384,7 +2386,7 @@ FinderPatternFinder.prototype = {
 
         // Start counting up from center
         var i = startI;
-        while (i >= 0 && image[centerJ + i*qrcode.width])
+        while (i >= 0 && image[centerJ + i*this.width])
         {
             stateCount[2]++;
             i--;
@@ -2393,7 +2395,7 @@ FinderPatternFinder.prototype = {
         {
             return NaN;
         }
-        while (i >= 0 && !image[centerJ +i*qrcode.width] && stateCount[1] <= maxCount)
+        while (i >= 0 && !image[centerJ +i*this.width] && stateCount[1] <= maxCount)
         {
             stateCount[1]++;
             i--;
@@ -2403,7 +2405,7 @@ FinderPatternFinder.prototype = {
         {
             return NaN;
         }
-        while (i >= 0 && image[centerJ + i*qrcode.width] && stateCount[0] <= maxCount)
+        while (i >= 0 && image[centerJ + i*this.width] && stateCount[0] <= maxCount)
         {
             stateCount[0]++;
             i--;
@@ -2415,25 +2417,25 @@ FinderPatternFinder.prototype = {
 
         // Now also count down from center
         i = startI + 1;
-        while (i < maxI && image[centerJ +i*qrcode.width])
+        while (i < this.height && image[centerJ +i*this.width])
         {
             stateCount[2]++;
             i++;
         }
-        if (i == maxI)
+        if (i == this.height)
         {
             return NaN;
         }
-        while (i < maxI && !image[centerJ + i*qrcode.width] && stateCount[3] < maxCount)
+        while (i < this.height && !image[centerJ + i*this.width] && stateCount[3] < maxCount)
         {
             stateCount[3]++;
             i++;
         }
-        if (i == maxI || stateCount[3] >= maxCount)
+        if (i == this.height || stateCount[3] >= maxCount)
         {
             return NaN;
         }
-        while (i < maxI && image[centerJ + i*qrcode.width] && stateCount[4] < maxCount)
+        while (i < this.height && image[centerJ + i*this.width] && stateCount[4] < maxCount)
         {
             stateCount[4]++;
             i++;
@@ -2465,7 +2467,7 @@ FinderPatternFinder.prototype = {
         stateCount[4] = 0;
 
         var j = startJ;
-        while (j >= 0 && image[j+ centerI*qrcode.width])
+        while (j >= 0 && image[j+ centerI*this.width])
         {
             stateCount[2]++;
             j--;
@@ -2474,7 +2476,7 @@ FinderPatternFinder.prototype = {
         {
             return NaN;
         }
-        while (j >= 0 && !image[j+ centerI*qrcode.width] && stateCount[1] <= maxCount)
+        while (j >= 0 && !image[j+ centerI*this.width] && stateCount[1] <= maxCount)
         {
             stateCount[1]++;
             j--;
@@ -2483,7 +2485,7 @@ FinderPatternFinder.prototype = {
         {
             return NaN;
         }
-        while (j >= 0 && image[j+ centerI*qrcode.width] && stateCount[0] <= maxCount)
+        while (j >= 0 && image[j+ centerI*this.width] && stateCount[0] <= maxCount)
         {
             stateCount[0]++;
             j--;
@@ -2494,25 +2496,25 @@ FinderPatternFinder.prototype = {
         }
 
         j = startJ + 1;
-        while (j < maxJ && image[j+ centerI*qrcode.width])
+        while (j < this.width && image[j+ centerI*this.width])
         {
             stateCount[2]++;
             j++;
         }
-        if (j == maxJ)
+        if (j == this.width)
         {
             return NaN;
         }
-        while (j < maxJ && !image[j+ centerI*qrcode.width] && stateCount[3] < maxCount)
+        while (j < this.width && !image[j+ centerI*qrcode.width] && stateCount[3] < maxCount)
         {
             stateCount[3]++;
             j++;
         }
-        if (j == maxJ || stateCount[3] >= maxCount)
+        if (j == this.width || stateCount[3] >= maxCount)
         {
             return NaN;
         }
-        while (j < maxJ && image[j+ centerI*qrcode.width] && stateCount[4] < maxCount)
+        while (j < this.width && image[j+ centerI*this.width] && stateCount[4] < maxCount)
         {
             stateCount[4]++;
             j++;
@@ -2644,7 +2646,7 @@ FinderPatternFinder.prototype = {
                     // pattern? In the worst case, only the difference between the
                     // difference in the x / y coordinates of the two centers.
                     // This is the case where you find top left last.
-                    this.hasSkipped = true;
+                    this.mutatable.hasSkipped = true;
                     return (Math.abs(firstConfirmedCenter.x - center.x) - Math.abs(firstConfirmedCenter.y - center.y)) >>1; // Math.floor(x/2)
                 }
             }
@@ -2681,11 +2683,10 @@ FinderPatternFinder.prototype = {
         }
         return totalDeviation <= 0.05 * totalModuleSize;
     },
-    findFinderPattern:function(image){
+    findFinderPattern:function(){
         var tryHarder = false;
-        this.image=image;
-        var maxI = qrcode.height;
-        var maxJ = qrcode.width;
+        var maxI = this.height;
+        var maxJ = this.width;
         var iSkip = Math.floor((3 * maxI) * INVERSE_MAX_MODULESx4);
         if (iSkip < MIN_SKIP || tryHarder)
         {
@@ -2705,7 +2706,7 @@ FinderPatternFinder.prototype = {
             var currentState = 0;
             for (var j = 0; j < maxJ; j++)
             {
-                if (image[j+i*qrcode.width] )
+                if (this.image[j+i*this.width] )
                 {
                     // Black pixel
                     if ((currentState & 1) == 1)
@@ -2733,7 +2734,7 @@ FinderPatternFinder.prototype = {
                                     // Start examining every other line. Checking each line turned out to be too
                                     // expensive and didn't improve performance.
                                     iSkip = 2;
-                                    if (this.hasSkipped)
+                                    if (this.mutatable.hasSkipped)
                                     {
                                         done = this.haveMultiplyConfirmedCenters();
                                     }
@@ -2762,7 +2763,7 @@ FinderPatternFinder.prototype = {
                                     {
                                         j++;
                                     }
-                                    while (j < maxJ && !image[j + i*qrcode.width]);
+                                    while (j < maxJ && !this.image[j + i*this.width]);
                                     j--; // back up to that last white pixel
                                 }
                                 // Clear state to start looking again
@@ -2802,7 +2803,7 @@ FinderPatternFinder.prototype = {
                 if (confirmed)
                 {
                     iSkip = stateCount[0];
-                    if (this.hasSkipped)
+                    if (this.mutatable.hasSkipped)
                     {
                         // Found a third one
                         done = haveMultiplyConfirmedCenters();
