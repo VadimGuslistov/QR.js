@@ -868,7 +868,6 @@ ErrorCorrectionLevel.lvls = [
     new ErrorCorrectionLevel(0, 0x01), //L 
     new ErrorCorrectionLevel(3, 0x02), //H  
     new ErrorCorrectionLevel(2, 0x03)
-
 ]
 
 function BitMatrix(dimension)
@@ -879,7 +878,7 @@ function BitMatrix(dimension)
     {
         rowSize++;
     }
-    this.dimension = dimension;
+    this.dimension = dimension|0;
     // fix me it is belived that avoiding hitting the Arr will speed things up -- find out if this is actually true
     this.loaded = 0
     this.offset = 0
@@ -887,6 +886,7 @@ function BitMatrix(dimension)
     
     this.rowSize = rowSize;
     this.bits = new Int32Array(rowSize * dimension);
+    this.length = (rowSize * dimension)|0
     
     
 }
@@ -912,9 +912,8 @@ BitMatrix.prototype = {
         this.loaded ^= 1 << (x & 31);
     },
     clear:function(){
-        var l = this.bits.length
         var i = 0
-        do{this.bits[i++]=0}while(i<l)
+        do{this.bits[i++]=0}while(i<this.length)
         this.loaded =0
         this.offset = 0
     },
@@ -948,15 +947,12 @@ BitMatrix.prototype = {
     },
     XOR_Matrix:function (b){
         this.load(0)
-        var a = this.bits
-        b = b.bits
-        var l = a.length
-        if(l != b.length) throw "Masking of a BitMatrix can only happen with a equal sized BitMatrix"
+        if(this.length != b.length) throw "Masking of a BitMatrix can only happen with a equal sized BitMatrix"
         var i = 0
         do{
-            a[i] ^= b[i]
+            this.bits[i] ^= b.bits[i]
             i++
-        }while(i<l)
+        }while(i<this.length)
         this.loaded = this.bits[0]
     }
     

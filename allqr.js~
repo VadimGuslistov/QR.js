@@ -759,35 +759,6 @@ Version.decodeVersionInformation=function( versionBits){
     // If we didn't find a close enough match, fail
     return null;
 }
-FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail){
-   // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
-   // fix me maybe a singe MaskedFormatInfo decoder object would be a little faster
-	var bestDifference = 32;
-	var bestFormatInfo = 0;
-	var decodeInfo,targetInfo
-	var tmp
-	var i = 0
-	do{
-	   decodeInfo =  this.FORMAT_INFO_DECODE_LOOKUP[i++]
-	   targetInfo = decodeInfo >>> 8
-	   decodeInfo &= 0xff
-	   // Found an exact match
-	   if (targetInfo == maskedFormatInfo) return new FormatInformation(decodeInfo)
-       bestDifference += ((tmp=numBitsDiffering(maskedFormatInfo, targetInfo) - bestDifference ) & (tmp >>= 31))                //----min for a int of 32 bits or less
-       bestFormatInfo = (decodeInfo&tmp)|(bestFormatInfo&(tmp^-1))
-	}while(i<this.FORMAT_INFO_DECODE_LOOKUP_LENGTH)
-    // Hamming distance of the 32 masked codes is 7, by construction, so <= 3 bits
-    // differing means we found a match
-    if (bestDifference < 4) return new FormatInformation(bestFormatInfo);
-
-    if(fail)  return null;
-       
-    return FormatInformation.fromMaskedFormatInfo(maskedFormatInfo ^ this.FORMAT_INFO_MASK_QR,true)
-    
-}
-FormatInformation.FORMAT_INFO_MASK_QR = 0x5412;
-FormatInformation.FORMAT_INFO_DECODE_LOOKUP = new Uint32Array([0x541200, 0x512501, 0x5E7C02, 0x5B4B03, 0x45F904, 0x40CE05, 0x4F9706, 0x4AA007, 0x77C408, 0x72F309, 0x7DAA0A, 0x789D0B, 0x662F0C, 0x63180D, 0x6C410E, 0x69760F, 0x168910, 0x13BE11, 0x1CE712, 0x19D013, 0x076214, 0x025515, 0x0D0C16, 0x083B17, 0x355F18, 0x306819, 0x3F311A, 0x3A061B, 0x24B41C, 0x21831D, 0x2EDA1E, 0x2BED1F])
-FormatInformation.FORMAT_INFO_DECODE_LOOKUP_LENGTH = FormatInformation.FORMAT_INFO_DECODE_LOOKUP.length|0
 
 function buildVersions()
 {
@@ -897,7 +868,6 @@ ErrorCorrectionLevel.lvls = [
     new ErrorCorrectionLevel(0, 0x01), //L 
     new ErrorCorrectionLevel(3, 0x02), //H  
     new ErrorCorrectionLevel(2, 0x03)
-
 ]
 
 function BitMatrix(dimension)
@@ -908,7 +878,7 @@ function BitMatrix(dimension)
     {
         rowSize++;
     }
-    this.dimension = dimension;
+    this.dimension = dimension|0;
     // fix me it is belived that avoiding hitting the Arr will speed things up -- find out if this is actually true
     this.loaded = 0
     this.offset = 0
@@ -916,6 +886,7 @@ function BitMatrix(dimension)
     
     this.rowSize = rowSize;
     this.bits = new Int32Array(rowSize * dimension);
+    this.length = (rowSize * dimension)|0
     
     
 }
@@ -941,9 +912,8 @@ BitMatrix.prototype = {
         this.loaded ^= 1 << (x & 31);
     },
     clear:function(){
-        var l = this.bits.length
         var i = 0
-        do{this.bits[i++]=0}while(i<l)
+        do{this.bits[i++]=0}while(i<this.length)
         this.loaded =0
         this.offset = 0
     },
@@ -977,15 +947,12 @@ BitMatrix.prototype = {
     },
     XOR_Matrix:function (b){
         this.load(0)
-        var a = this.bits
-        b = b.bits
-        var l = a.length
-        if(l != b.length) throw "Masking of a BitMatrix can only happen with a equal sized BitMatrix"
+        if(this.length != b.length) throw "Masking of a BitMatrix can only happen with a equal sized BitMatrix"
         var i = 0
         do{
-            a[i] ^= b[i]
+            this.bits[i] ^= b.bits[i]
             i++
-        }while(i<l)
+        }while(i<this.length)
         this.loaded = this.bits[0]
     }
     
