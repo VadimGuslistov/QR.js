@@ -1849,7 +1849,7 @@ PerspectiveTransform.prototype = {
         // Adjoint is the transpose of the cofactor matrix:
         return new PerspectiveTransform(this.a22 * this.a33 - this.a23 * this.a32, this.a23 * this.a31 - this.a21 * this.a33, this.a21 * this.a32 - this.a22 * this.a31, this.a13 * this.a32 - this.a12 * this.a33, this.a11 * this.a33 - this.a13 * this.a31, this.a12 * this.a31 - this.a11 * this.a32, this.a12 * this.a23 - this.a13 * this.a22, this.a13 * this.a21 - this.a11 * this.a23, this.a11 * this.a22 - this.a12 * this.a21);
     },
-    this.times:function( other){
+    times:function( other){
         return new PerspectiveTransform(this.a11 * other.a11 + this.a21 * other.a12 + this.a31 * other.a13, this.a11 * other.a21 + this.a21 * other.a22 + this.a31 * other.a23, this.a11 * other.a31 + this.a21 * other.a32 + this.a31 * other.a33, this.a12 * other.a11 + this.a22 * other.a12 + this.a32 * other.a13, this.a12 * other.a21 + this.a22 * other.a22 + this.a32 * other.a23, this.a12 * other.a31 + this.a22 * other.a32 + this.a32 * other.a33, this.a13 * other.a11 + this.a23 * other.a12 +this.a33 * other.a13, this.a13 * other.a21 + this.a23 * other.a22 + this.a33 * other.a23, this.a13 * other.a31 + this.a23 * other.a32 + this.a33 * other.a33);
     }
 }
@@ -2357,352 +2357,343 @@ function FinderPatternFinder()
     this.crossCheckStateCount = new Uint16Array(5);
 
 
-    this.foundPatternCross=function( stateCount)
+    
+}
+FinderPatternFinder.prototype = {
+    foundPatternCross:function( stateCount){
+        var totalModuleSize = 0;
+        for (var i = 0; i < 5; i++)
         {
-            var totalModuleSize = 0;
-            for (var i = 0; i < 5; i++)
-            {
-                var count = stateCount[i];
-                if (count == 0)
-                {
-                    return false;
-                }
-                totalModuleSize += count;
-            }
-            if (totalModuleSize < 7)
+            var count = stateCount[i];
+            if (count == 0)
             {
                 return false;
             }
-            var moduleSize = Math.floor((totalModuleSize << 8) *0.142857143); // div by 7
-            var maxVariance = moduleSize >>1 // div by 2
-            // Allow less than 50% variance from 1-1-3-1-1 proportions
-            return Math.abs(moduleSize - (stateCount[0] << 8)) < maxVariance && Math.abs(moduleSize - (stateCount[1] << 8)) < maxVariance && Math.abs(3 * moduleSize - (stateCount[2] << 8)) < 3 * maxVariance && Math.abs(moduleSize - (stateCount[3] << 8)) < maxVariance && Math.abs(moduleSize - (stateCount[4] << 8)) < maxVariance;
+            totalModuleSize += count;
         }
-    this.centerFromEnd=function( stateCount,  end)
+        if (totalModuleSize < 7)
         {
-            return  (end - stateCount[4] - stateCount[3]) - stateCount[2] * 0.5; // div by 2
-        }
-    this.crossCheckVertical=function( startI,  centerJ,  maxCount,  originalStateCountTotal)
-        {
-            var image = this.image;
-
-            var maxI = qrcode.height;
-            var stateCount = this.crossCheckStateCount;
-            stateCount[0] = 0;
-            stateCount[1] = 0;
-            stateCount[2] = 0;
-            stateCount[3] = 0;
-            stateCount[4] = 0;
-
-            // Start counting up from center
-            var i = startI;
-            while (i >= 0 && image[centerJ + i*qrcode.width])
-            {
-                stateCount[2]++;
-                i--;
-            }
-            if (i < 0)
-            {
-                return NaN;
-            }
-            while (i >= 0 && !image[centerJ +i*qrcode.width] && stateCount[1] <= maxCount)
-            {
-                stateCount[1]++;
-                i--;
-            }
-            // If already too many modules in this state or ran off the edge:
-            if (i < 0 || stateCount[1] > maxCount)
-            {
-                return NaN;
-            }
-            while (i >= 0 && image[centerJ + i*qrcode.width] && stateCount[0] <= maxCount)
-            {
-                stateCount[0]++;
-                i--;
-            }
-            if (stateCount[0] > maxCount)
-            {
-                return NaN;
-            }
-
-            // Now also count down from center
-            i = startI + 1;
-            while (i < maxI && image[centerJ +i*qrcode.width])
-            {
-                stateCount[2]++;
-                i++;
-            }
-            if (i == maxI)
-            {
-                return NaN;
-            }
-            while (i < maxI && !image[centerJ + i*qrcode.width] && stateCount[3] < maxCount)
-            {
-                stateCount[3]++;
-                i++;
-            }
-            if (i == maxI || stateCount[3] >= maxCount)
-            {
-                return NaN;
-            }
-            while (i < maxI && image[centerJ + i*qrcode.width] && stateCount[4] < maxCount)
-            {
-                stateCount[4]++;
-                i++;
-            }
-            if (stateCount[4] >= maxCount)
-            {
-                return NaN;
-            }
-
-            // If we found a finder-pattern-like section, but its size is more than 40% different than
-            // the original, assume it's a false positive
-            var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2] + stateCount[3] + stateCount[4];
-            if (5 * Math.abs(stateCountTotal - originalStateCountTotal) >= 2 * originalStateCountTotal)
-            {
-                return NaN;
-            }
-
-            return this.foundPatternCross(stateCount)?this.centerFromEnd(stateCount, i):NaN;
-        }
-    this.crossCheckHorizontal=function( startJ,  centerI,  maxCount, originalStateCountTotal)
-        {
-            var image = this.image;
-
-            var maxJ = qrcode.width;
-            var stateCount = this.crossCheckStateCount;
-            stateCount[0] = 0;
-            stateCount[1] = 0;
-            stateCount[2] = 0;
-            stateCount[3] = 0;
-            stateCount[4] = 0;
-
-            var j = startJ;
-            while (j >= 0 && image[j+ centerI*qrcode.width])
-            {
-                stateCount[2]++;
-                j--;
-            }
-            if (j < 0)
-            {
-                return NaN;
-            }
-            while (j >= 0 && !image[j+ centerI*qrcode.width] && stateCount[1] <= maxCount)
-            {
-                stateCount[1]++;
-                j--;
-            }
-            if (j < 0 || stateCount[1] > maxCount)
-            {
-                return NaN;
-            }
-            while (j >= 0 && image[j+ centerI*qrcode.width] && stateCount[0] <= maxCount)
-            {
-                stateCount[0]++;
-                j--;
-            }
-            if (stateCount[0] > maxCount)
-            {
-                return NaN;
-            }
-
-            j = startJ + 1;
-            while (j < maxJ && image[j+ centerI*qrcode.width])
-            {
-                stateCount[2]++;
-                j++;
-            }
-            if (j == maxJ)
-            {
-                return NaN;
-            }
-            while (j < maxJ && !image[j+ centerI*qrcode.width] && stateCount[3] < maxCount)
-            {
-                stateCount[3]++;
-                j++;
-            }
-            if (j == maxJ || stateCount[3] >= maxCount)
-            {
-                return NaN;
-            }
-            while (j < maxJ && image[j+ centerI*qrcode.width] && stateCount[4] < maxCount)
-            {
-                stateCount[4]++;
-                j++;
-            }
-            if (stateCount[4] >= maxCount)
-            {
-                return NaN;
-            }
-
-            // If we found a finder-pattern-like section, but its size is significantly different than
-            // the original, assume it's a false positive
-            var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2] + stateCount[3] + stateCount[4];
-            if (5 * Math.abs(stateCountTotal - originalStateCountTotal) >= originalStateCountTotal)
-            {
-                return NaN;
-            }
-
-            return this.foundPatternCross(stateCount)?this.centerFromEnd(stateCount, j):NaN;
-        }
-    this.handlePossibleCenter=function( stateCount,  i,  j)
-        {
-            var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2] + stateCount[3] + stateCount[4];
-            var centerJ = this.centerFromEnd(stateCount, j); //float
-            var centerI = this.crossCheckVertical(i, Math.floor( centerJ), stateCount[2], stateCountTotal); //float
-            if (!isNaN(centerI))
-            {
-                // Re-cross check
-                centerJ = this.crossCheckHorizontal(Math.floor( centerJ), Math.floor( centerI), stateCount[2], stateCountTotal);
-                if (!isNaN(centerJ))
-                {
-                    var estimatedModuleSize =   stateCountTotal *0.142857143; // div by 7
-                    var found = false;
-                    var max = this.possibleCenters.length;
-                    for (var index = 0; index < max; index++)
-                    {
-                        var center = this.possibleCenters[index];
-                        // Look for about the same center and module size:
-                        if (center.aboutEquals(estimatedModuleSize, centerI, centerJ))
-                        {
-                            center.count++;
-                            found = true;
-                            break;
-                        }
-                    }
-                    if (!found)
-                    {
-                        var point = new qrPattern(centerJ, centerI, estimatedModuleSize);
-                        this.possibleCenters.push(point);
-                    }
-                    return true;
-                }
-            }
             return false;
         }
+        var moduleSize = Math.floor((totalModuleSize << 8) *0.142857143); // div by 7
+        var maxVariance = moduleSize >>1 // div by 2
+        // Allow less than 50% variance from 1-1-3-1-1 proportions
+        return Math.abs(moduleSize - (stateCount[0] << 8)) < maxVariance && Math.abs(moduleSize - (stateCount[1] << 8)) < maxVariance && Math.abs(3 * moduleSize - (stateCount[2] << 8)) < 3 * maxVariance && Math.abs(moduleSize - (stateCount[3] << 8)) < maxVariance && Math.abs(moduleSize - (stateCount[4] << 8)) < maxVariance;
+    },
+    centerFromEnd:function( stateCount,  end){
+        return  (end - stateCount[4] - stateCount[3]) - stateCount[2] * 0.5; // div by 2
+    },
+    crossCheckVertical:function( startI,  centerJ,  maxCount,  originalStateCountTotal){
+        var image = this.image;
 
-    this.selectBestPatterns=function()
+        var maxI = qrcode.height;
+        var stateCount = this.crossCheckStateCount;
+        stateCount[0] = 0;
+        stateCount[1] = 0;
+        stateCount[2] = 0;
+        stateCount[3] = 0;
+        stateCount[4] = 0;
+
+        // Start counting up from center
+        var i = startI;
+        while (i >= 0 && image[centerJ + i*qrcode.width])
         {
-
-            var startSize = this.possibleCenters.length;
-            if (startSize < 3)
-            {
-                // Couldn't find enough finder patterns
-                throw "Couldn't find enough finder patterns";
-            }
-
-            // Filter outlier possibilities whose module size is too different
-            if (startSize > 3)
-            {
-                // But we can only afford to do so if we have at least 4 possibilities to choose from
-                var totalModuleSize = 0.0;
-                var square = 0.0;
-                for (var i = 0; i < startSize; i++)
-                {
-                    var    centerValue=this.possibleCenters[i].estimatedModuleSize;
-                    totalModuleSize += centerValue;
-                    square += (centerValue * centerValue);
-                }
-                var average = totalModuleSize /  startSize;
-                this.possibleCenters.sort(function(center1,center2) {
-                      var a=Math.abs(center2.estimatedModuleSize - average);
-                      var b=Math.abs(center1.estimatedModuleSize - average);
-                      return ((a-b)>>31)^((b-a)>>>31)
-                      
-                    });
-
-                var stdDev = Math.sqrt(square / startSize - average * average);
-                var limit = Math.max(0.2 * average, stdDev);
-                for (var i = 0; i < this.possibleCenters.length && this.possibleCenters.length > 3; i++)
-                {
-                    var pattern =  this.possibleCenters[i];
-
-                    if (Math.abs(pattern.estimatedModuleSize - average) > limit)
-                    {
-                        this.possibleCenters.splice(i,1);
-
-                        i--;
-                    }
-                }
-            }
-
-            if (this.possibleCenters.length > 3)
-            {
-                // Credit for putting a sort function here goes to Jaron Viëtor
-                // https://github.com/Thulinma
-                // Throw away all but those first size candidate points we found.
-                
-                this.possibleCenters.sort(function(a, b){return ((b.count-a.count)>>31)^((a.count-b.count)>>>31)});
-            }
-
-            return [this.possibleCenters[0],  this.possibleCenters[1],  this.possibleCenters[2]]
+            stateCount[2]++;
+            i--;
+        }
+        if (i < 0)
+        {
+            return NaN;
+        }
+        while (i >= 0 && !image[centerJ +i*qrcode.width] && stateCount[1] <= maxCount)
+        {
+            stateCount[1]++;
+            i--;
+        }
+        // If already too many modules in this state or ran off the edge:
+        if (i < 0 || stateCount[1] > maxCount)
+        {
+            return NaN;
+        }
+        while (i >= 0 && image[centerJ + i*qrcode.width] && stateCount[0] <= maxCount)
+        {
+            stateCount[0]++;
+            i--;
+        }
+        if (stateCount[0] > maxCount)
+        {
+            return NaN;
         }
 
-    this.findRowSkip=function()
+        // Now also count down from center
+        i = startI + 1;
+        while (i < maxI && image[centerJ +i*qrcode.width])
         {
-            var max = this.possibleCenters.length;
-            if (max <= 1)
-            {
-                return 0;
-            }
-            var firstConfirmedCenter = null;
-            for (var i = 0; i < max; i++)
-            {
-                var center =  this.possibleCenters[i];
-                if (center.count >= CENTER_QUORUM)
-                {
-                    if (firstConfirmedCenter == null)
-                    {
-                        firstConfirmedCenter = center;
-                    }
-                    else
-                    {
-                        // We have two confirmed centers
-                        // How far down can we skip before resuming looking for the next
-                        // pattern? In the worst case, only the difference between the
-                        // difference in the x / y coordinates of the two centers.
-                        // This is the case where you find top left last.
-                        this.hasSkipped = true;
-                        return (Math.abs(firstConfirmedCenter.x - center.x) - Math.abs(firstConfirmedCenter.y - center.y)) >>1; // Math.floor(x/2)
-                    }
-                }
-            }
-            return 0;
+            stateCount[2]++;
+            i++;
+        }
+        if (i == maxI)
+        {
+            return NaN;
+        }
+        while (i < maxI && !image[centerJ + i*qrcode.width] && stateCount[3] < maxCount)
+        {
+            stateCount[3]++;
+            i++;
+        }
+        if (i == maxI || stateCount[3] >= maxCount)
+        {
+            return NaN;
+        }
+        while (i < maxI && image[centerJ + i*qrcode.width] && stateCount[4] < maxCount)
+        {
+            stateCount[4]++;
+            i++;
+        }
+        if (stateCount[4] >= maxCount)
+        {
+            return NaN;
         }
 
-    this.haveMultiplyConfirmedCenters=function()
+        // If we found a finder-pattern-like section, but its size is more than 40% different than
+        // the original, assume it's a false positive
+        var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2] + stateCount[3] + stateCount[4];
+        if (5 * Math.abs(stateCountTotal - originalStateCountTotal) >= 2 * originalStateCountTotal)
         {
-            var confirmedCount = 0;
+            return NaN;
+        }
+
+        return this.foundPatternCross(stateCount)?this.centerFromEnd(stateCount, i):NaN;
+    },
+    crossCheckHorizontal:function( startJ,  centerI,  maxCount, originalStateCountTotal){
+        var image = this.image;
+
+        var maxJ = qrcode.width;
+        var stateCount = this.crossCheckStateCount;
+        stateCount[0] = 0;
+        stateCount[1] = 0;
+        stateCount[2] = 0;
+        stateCount[3] = 0;
+        stateCount[4] = 0;
+
+        var j = startJ;
+        while (j >= 0 && image[j+ centerI*qrcode.width])
+        {
+            stateCount[2]++;
+            j--;
+        }
+        if (j < 0)
+        {
+            return NaN;
+        }
+        while (j >= 0 && !image[j+ centerI*qrcode.width] && stateCount[1] <= maxCount)
+        {
+            stateCount[1]++;
+            j--;
+        }
+        if (j < 0 || stateCount[1] > maxCount)
+        {
+            return NaN;
+        }
+        while (j >= 0 && image[j+ centerI*qrcode.width] && stateCount[0] <= maxCount)
+        {
+            stateCount[0]++;
+            j--;
+        }
+        if (stateCount[0] > maxCount)
+        {
+            return NaN;
+        }
+
+        j = startJ + 1;
+        while (j < maxJ && image[j+ centerI*qrcode.width])
+        {
+            stateCount[2]++;
+            j++;
+        }
+        if (j == maxJ)
+        {
+            return NaN;
+        }
+        while (j < maxJ && !image[j+ centerI*qrcode.width] && stateCount[3] < maxCount)
+        {
+            stateCount[3]++;
+            j++;
+        }
+        if (j == maxJ || stateCount[3] >= maxCount)
+        {
+            return NaN;
+        }
+        while (j < maxJ && image[j+ centerI*qrcode.width] && stateCount[4] < maxCount)
+        {
+            stateCount[4]++;
+            j++;
+        }
+        if (stateCount[4] >= maxCount)
+        {
+            return NaN;
+        }
+
+        // If we found a finder-pattern-like section, but its size is significantly different than
+        // the original, assume it's a false positive
+        var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2] + stateCount[3] + stateCount[4];
+        if (5 * Math.abs(stateCountTotal - originalStateCountTotal) >= originalStateCountTotal)
+        {
+            return NaN;
+        }
+
+        return this.foundPatternCross(stateCount)?this.centerFromEnd(stateCount, j):NaN;
+    },
+    handlePossibleCenter:function( stateCount,  i,  j){
+        var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2] + stateCount[3] + stateCount[4];
+        var centerJ = this.centerFromEnd(stateCount, j); //float
+        var centerI = this.crossCheckVertical(i, Math.floor( centerJ), stateCount[2], stateCountTotal); //float
+        if (!isNaN(centerI))
+        {
+            // Re-cross check
+            centerJ = this.crossCheckHorizontal(Math.floor( centerJ), Math.floor( centerI), stateCount[2], stateCountTotal);
+            if (!isNaN(centerJ))
+            {
+                var estimatedModuleSize =   stateCountTotal *0.142857143; // div by 7
+                var found = false;
+                var max = this.possibleCenters.length;
+                for (var index = 0; index < max; index++)
+                {
+                    var center = this.possibleCenters[index];
+                    // Look for about the same center and module size:
+                    if (center.aboutEquals(estimatedModuleSize, centerI, centerJ))
+                    {
+                        center.count++;
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found)
+                {
+                    var point = new qrPattern(centerJ, centerI, estimatedModuleSize);
+                    this.possibleCenters.push(point);
+                }
+                return true;
+            }
+        }
+        return false;
+    },
+    selectBestPatterns:function(){
+
+        var startSize = this.possibleCenters.length;
+        if (startSize < 3)
+        {
+            // Couldn't find enough finder patterns
+            throw "Couldn't find enough finder patterns";
+        }
+
+        // Filter outlier possibilities whose module size is too different
+        if (startSize > 3)
+        {
+            // But we can only afford to do so if we have at least 4 possibilities to choose from
             var totalModuleSize = 0.0;
-            var max = this.possibleCenters.length;
-            for (var i = 0; i < max; i++)
+            var square = 0.0;
+            for (var i = 0; i < startSize; i++)
+            {
+                var    centerValue=this.possibleCenters[i].estimatedModuleSize;
+                totalModuleSize += centerValue;
+                square += (centerValue * centerValue);
+            }
+            var average = totalModuleSize /  startSize;
+            this.possibleCenters.sort(function(center1,center2) {
+                  var a=Math.abs(center2.estimatedModuleSize - average);
+                  var b=Math.abs(center1.estimatedModuleSize - average);
+                  return ((a-b)>>31)^((b-a)>>>31)
+                  
+                });
+
+            var stdDev = Math.sqrt(square / startSize - average * average);
+            var limit = Math.max(0.2 * average, stdDev);
+            for (var i = 0; i < this.possibleCenters.length && this.possibleCenters.length > 3; i++)
             {
                 var pattern =  this.possibleCenters[i];
-                if (pattern.count >= CENTER_QUORUM)
+
+                if (Math.abs(pattern.estimatedModuleSize - average) > limit)
                 {
-                    confirmedCount++;
-                    totalModuleSize += pattern.estimatedModuleSize;
+                    this.possibleCenters.splice(i,1);
+
+                    i--;
                 }
             }
-            if (confirmedCount < 3)
-            {
-                return false;
-            }
-            // OK, we have at least 3 confirmed centers, but, it's possible that one is a "false positive"
-            // and that we need to keep looking. We detect this by asking if the estimated module sizes
-            // vary too much. We arbitrarily say that when the total deviation from average exceeds
-            // 5% of the total module size estimates, it's too much.
-            var average = totalModuleSize / max;
-            var totalDeviation = 0.0;
-            for (var i = 0; i < max; i++)
-            {
-                pattern = this.possibleCenters[i];
-                totalDeviation += Math.abs(pattern.estimatedModuleSize - average);
-            }
-            return totalDeviation <= 0.05 * totalModuleSize;
         }
 
-    this.findFinderPattern = function(image){
+        if (this.possibleCenters.length > 3)
+        {
+            // Credit for putting a sort function here goes to Jaron Viëtor
+            // https://github.com/Thulinma
+            // Throw away all but those first size candidate points we found.
+            
+            this.possibleCenters.sort(function(a, b){return ((b.count-a.count)>>31)^((a.count-b.count)>>>31)});
+        }
+
+        return [this.possibleCenters[0],  this.possibleCenters[1],  this.possibleCenters[2]]
+    },
+    findRowSkip:function(){
+        var max = this.possibleCenters.length;
+        if (max <= 1)
+        {
+            return 0;
+        }
+        var firstConfirmedCenter = null;
+        for (var i = 0; i < max; i++)
+        {
+            var center =  this.possibleCenters[i];
+            if (center.count >= CENTER_QUORUM)
+            {
+                if (firstConfirmedCenter == null)
+                {
+                    firstConfirmedCenter = center;
+                }
+                else
+                {
+                    // We have two confirmed centers
+                    // How far down can we skip before resuming looking for the next
+                    // pattern? In the worst case, only the difference between the
+                    // difference in the x / y coordinates of the two centers.
+                    // This is the case where you find top left last.
+                    this.hasSkipped = true;
+                    return (Math.abs(firstConfirmedCenter.x - center.x) - Math.abs(firstConfirmedCenter.y - center.y)) >>1; // Math.floor(x/2)
+                }
+            }
+        }
+        return 0;
+    },
+    haveMultiplyConfirmedCenters:function(){
+        var confirmedCount = 0;
+        var totalModuleSize = 0.0;
+        var max = this.possibleCenters.length;
+        for (var i = 0; i < max; i++)
+        {
+            var pattern =  this.possibleCenters[i];
+            if (pattern.count >= CENTER_QUORUM)
+            {
+                confirmedCount++;
+                totalModuleSize += pattern.estimatedModuleSize;
+            }
+        }
+        if (confirmedCount < 3)
+        {
+            return false;
+        }
+        // OK, we have at least 3 confirmed centers, but, it's possible that one is a "false positive"
+        // and that we need to keep looking. We detect this by asking if the estimated module sizes
+        // vary too much. We arbitrarily say that when the total deviation from average exceeds
+        // 5% of the total module size estimates, it's too much.
+        var average = totalModuleSize / max;
+        var totalDeviation = 0.0;
+        for (var i = 0; i < max; i++)
+        {
+            pattern = this.possibleCenters[i];
+            totalDeviation += Math.abs(pattern.estimatedModuleSize - average);
+        }
+        return totalDeviation <= 0.05 * totalModuleSize;
+    },
+    findFinderPattern:function(image){
         var tryHarder = false;
         this.image=image;
         var maxI = qrcode.height;
@@ -2836,9 +2827,8 @@ function FinderPatternFinder()
         qrcode.orderBestPatterns(patternInfo);
 
         return new FinderPatternInfo(patternInfo);
-    };
+    }
 }
-
 
 
 
@@ -2854,207 +2844,201 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
     this.crossCheckStateCount = new Uint16Array(3);
 
 
-    this.centerFromEnd=function(stateCount,  end)
+}
+AlignmentPatternFinder.prototype = {
+    centerFromEnd:function(stateCount,  end){
+        return  (end - stateCount[2]) - stateCount[1] * 0.5; // div by 2
+    },
+    foundPatternCross:function(stateCount){
+        var moduleSize = this.moduleSize;
+        var maxVariance = moduleSize * 0.5; // div by 2
+        for (var i = 0; i < 3; i++)
         {
-            return  (end - stateCount[2]) - stateCount[1] * 0.5; // div by 2
-        }
-    this.foundPatternCross = function(stateCount)
-        {
-            var moduleSize = this.moduleSize;
-            var maxVariance = moduleSize * 0.5; // div by 2
-            for (var i = 0; i < 3; i++)
+            if (Math.abs(moduleSize - stateCount[i]) >= maxVariance)
             {
-                if (Math.abs(moduleSize - stateCount[i]) >= maxVariance)
+                return false;
+            }
+        }
+        return true;
+    },
+    crossCheckVertical:function( startI,  centerJ,  maxCount,  originalStateCountTotal){
+        var image = this.image;
+
+        var maxI = qrcode.height;
+        var stateCount = this.crossCheckStateCount;
+        stateCount[0] = 0;
+        stateCount[1] = 0;
+        stateCount[2] = 0;
+
+        // Start counting up from center
+        var i = startI;
+        while (i >= 0 && image[centerJ + i*qrcode.width] && stateCount[1] <= maxCount)
+        {
+            stateCount[1]++;
+            i--;
+        }
+        // If already too many modules in this state or ran off the edge:
+        if (i < 0 || stateCount[1] > maxCount)
+        {
+            return NaN;
+        }
+        while (i >= 0 && !image[centerJ + i*qrcode.width] && stateCount[0] <= maxCount)
+        {
+            stateCount[0]++;
+            i--;
+        }
+        if (stateCount[0] > maxCount)
+        {
+            return NaN;
+        }
+
+        // Now also count down from center
+        i = startI + 1;
+        while (i < maxI && image[centerJ + i*qrcode.width] && stateCount[1] <= maxCount)
+        {
+            stateCount[1]++;
+            i++;
+        }
+        if (i == maxI || stateCount[1] > maxCount)
+        {
+            return NaN;
+        }
+        while (i < maxI && !image[centerJ + i*qrcode.width] && stateCount[2] <= maxCount)
+        {
+            stateCount[2]++;
+            i++;
+        }
+        if (stateCount[2] > maxCount)
+        {
+            return NaN;
+        }
+
+        var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
+        if (5 * Math.abs(stateCountTotal - originalStateCountTotal) >= 2 * originalStateCountTotal)
+        {
+            return NaN;
+        }
+
+        return this.foundPatternCross(stateCount)?this.centerFromEnd(stateCount, i):NaN;
+    },
+    handlePossibleCenter:function( stateCount,  i,  j){
+        var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
+        var centerJ = this.centerFromEnd(stateCount, j);
+        var centerI = this.crossCheckVertical(i, Math.floor (centerJ), stateCount[1] << 1, stateCountTotal); //  2 * stateCount[1]
+        if (!isNaN(centerI))
+        {
+            var estimatedModuleSize = (stateCount[0] + stateCount[1] + stateCount[2]) * 0.333333333 // div by 3
+            var max = this.possibleCenters.length;
+            for (var index = 0; index < max; index++)
+            {
+                var center =  this.possibleCenters[index];
+                // Look for about the same center and module size:
+                if (center.aboutEquals(estimatedModuleSize, centerI, centerJ))
                 {
-                    return false;
+                    return new qrPattern(centerJ, centerI, estimatedModuleSize);
                 }
             }
-            return true;
+            // Hadn't found this before; save it
+            var point = new qrPattern(centerJ, centerI, estimatedModuleSize);
+            this.possibleCenters.push(point);
+
         }
-
-    this.crossCheckVertical=function( startI,  centerJ,  maxCount,  originalStateCountTotal)
+        return null;
+    },
+    find:function(){
+        var startX = this.startX;
+        var height = this.height;
+        var maxJ = startX +this.width;
+        var middleI = this.startY + (height >> 1);
+        var image = this.image
+        var tmp
+        // We are looking for black/white/black modules in 1:1:1 ratio;
+        // this tracks the number of black/white/black modules seen so far
+        var stateCount = new Uint16Array(3);
+        for (var iGen = 0; iGen < height; iGen++)
         {
-            var image = this.image;
-
-            var maxI = qrcode.height;
-            var stateCount = this.crossCheckStateCount;
+            // Search from middle outwards
+            var i = middleI + (tmp = -(iGen & 0x01)>>31,(((iGen + 1) >> 1)^tmp)+(tmp&1));
             stateCount[0] = 0;
             stateCount[1] = 0;
             stateCount[2] = 0;
-
-            // Start counting up from center
-            var i = startI;
-            while (i >= 0 && image[centerJ + i*qrcode.width] && stateCount[1] <= maxCount)
+            var j = startX;
+            // Burn off leading white pixels before anything else; if we start in the middle of
+            // a white run, it doesn't make sense to count its length, since we don't know if the
+            // white run continued to the left of the start point
+            while (j < maxJ && !image[j + qrcode.width* i])
             {
-                stateCount[1]++;
-                i--;
+                j++;
             }
-            // If already too many modules in this state or ran off the edge:
-            if (i < 0 || stateCount[1] > maxCount)
+            var currentState = 0;
+            while (j < maxJ)
             {
-                return NaN;
-            }
-            while (i >= 0 && !image[centerJ + i*qrcode.width] && stateCount[0] <= maxCount)
-            {
-                stateCount[0]++;
-                i--;
-            }
-            if (stateCount[0] > maxCount)
-            {
-                return NaN;
-            }
-
-            // Now also count down from center
-            i = startI + 1;
-            while (i < maxI && image[centerJ + i*qrcode.width] && stateCount[1] <= maxCount)
-            {
-                stateCount[1]++;
-                i++;
-            }
-            if (i == maxI || stateCount[1] > maxCount)
-            {
-                return NaN;
-            }
-            while (i < maxI && !image[centerJ + i*qrcode.width] && stateCount[2] <= maxCount)
-            {
-                stateCount[2]++;
-                i++;
-            }
-            if (stateCount[2] > maxCount)
-            {
-                return NaN;
-            }
-
-            var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
-            if (5 * Math.abs(stateCountTotal - originalStateCountTotal) >= 2 * originalStateCountTotal)
-            {
-                return NaN;
-            }
-
-            return this.foundPatternCross(stateCount)?this.centerFromEnd(stateCount, i):NaN;
-        }
-
-    this.handlePossibleCenter=function( stateCount,  i,  j)
-        {
-            var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
-            var centerJ = this.centerFromEnd(stateCount, j);
-            var centerI = this.crossCheckVertical(i, Math.floor (centerJ), stateCount[1] << 1, stateCountTotal); //  2 * stateCount[1]
-            if (!isNaN(centerI))
-            {
-                var estimatedModuleSize = (stateCount[0] + stateCount[1] + stateCount[2]) * 0.333333333 // div by 3
-                var max = this.possibleCenters.length;
-                for (var index = 0; index < max; index++)
+                if (image[j + i*qrcode.width])
                 {
-                    var center =  this.possibleCenters[index];
-                    // Look for about the same center and module size:
-                    if (center.aboutEquals(estimatedModuleSize, centerI, centerJ))
+                    // Black pixel
+                    if (currentState == 1)
                     {
-                        return new qrPattern(centerJ, centerI, estimatedModuleSize);
-                    }
-                }
-                // Hadn't found this before; save it
-                var point = new qrPattern(centerJ, centerI, estimatedModuleSize);
-                this.possibleCenters.push(point);
-    
-            }
-            return null;
-        }
-
-    this.find = function()
-    {
-            var startX = this.startX;
-            var height = this.height;
-            var maxJ = startX + width;
-            var middleI = startY + (height >> 1);
-            // We are looking for black/white/black modules in 1:1:1 ratio;
-            // this tracks the number of black/white/black modules seen so far
-            var stateCount = new Uint16Array(3);
-            for (var iGen = 0; iGen < height; iGen++)
-            {
-                // Search from middle outwards
-                var i = middleI + ((iGen & 0x01) == 0?((iGen + 1) >> 1):- ((iGen + 1) >> 1));
-                stateCount[0] = 0;
-                stateCount[1] = 0;
-                stateCount[2] = 0;
-                var j = startX;
-                // Burn off leading white pixels before anything else; if we start in the middle of
-                // a white run, it doesn't make sense to count its length, since we don't know if the
-                // white run continued to the left of the start point
-                while (j < maxJ && !image[j + qrcode.width* i])
-                {
-                    j++;
-                }
-                var currentState = 0;
-                while (j < maxJ)
-                {
-                    if (image[j + i*qrcode.width])
-                    {
-                        // Black pixel
-                        if (currentState == 1)
-                        {
-                            // Counting black pixels
-                            stateCount[currentState]++;
-                        }
-                        else
-                        {
-                            // Counting white pixels
-                            if (currentState == 2)
-                            {
-                                // A winner?
-                                if (this.foundPatternCross(stateCount))
-                                {
-                                    // Yes
-                                    var confirmed = this.handlePossibleCenter(stateCount, i, j);
-                                    if (confirmed != null)
-                                    {
-                                        return confirmed;
-                                    }
-                                }
-                                stateCount[0] = stateCount[2];
-                                stateCount[1] = 1;
-                                stateCount[2] = 0;
-                                currentState = 1;
-                            }
-                            else
-                            {
-                                stateCount[++currentState]++;
-                            }
-                        }
+                        // Counting black pixels
+                        stateCount[currentState]++;
                     }
                     else
                     {
-                        // White pixel
-                        if (currentState == 1)
+                        // Counting white pixels
+                        if (currentState == 2)
                         {
-                            // Counting black pixels
-                            currentState++;
+                            // A winner?
+                            if (this.foundPatternCross(stateCount))
+                            {
+                                // Yes
+                                var confirmed = this.handlePossibleCenter(stateCount, i, j);
+                                if (confirmed != null)
+                                {
+                                    return confirmed;
+                                }
+                            }
+                            stateCount[0] = stateCount[2];
+                            stateCount[1] = 1;
+                            stateCount[2] = 0;
+                            currentState = 1;
                         }
-                        stateCount[currentState]++;
+                        else
+                        {
+                            stateCount[++currentState]++;
+                        }
                     }
-                    j++;
                 }
-                if (this.foundPatternCross(stateCount))
+                else
                 {
-                    var confirmed = this.handlePossibleCenter(stateCount, i, maxJ);
-                    if (confirmed != null)
+                    // White pixel
+                    if (currentState == 1)
                     {
-                        return confirmed;
+                        // Counting black pixels
+                        currentState++;
                     }
+                    stateCount[currentState]++;
+                }
+                j++;
+            }
+            if (this.foundPatternCross(stateCount))
+            {
+                var confirmed = this.handlePossibleCenter(stateCount, i, maxJ);
+                if (confirmed != null)
+                {
+                    return confirmed;
                 }
             }
-
-            // Hmm, nothing we saw was observed and confirmed twice. If we had
-            // any guess at all, return it.
-            if (!(this.possibleCenters.length == 0))
-            {
-                return  this.possibleCenters[0];
-            }
-            return null
-
         }
 
-}
+        // Hmm, nothing we saw was observed and confirmed twice. If we had
+        // any guess at all, return it.
+        if (!(this.possibleCenters.length == 0))
+        {
+            return  this.possibleCenters[0];
+        }
+        return null
 
+    }
+}
 
 function QRCodeDataBlockReader(blocks,  version,  numErrorCorrectionCode)
 {
