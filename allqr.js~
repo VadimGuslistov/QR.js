@@ -1898,70 +1898,56 @@ function Detector(image,w,h)
     this.width = w
     this.height = h
     this.finderPatternFinder = new FinderPatternFinder(image,w,h)
-    this.sizeOfBlackWhiteBlackRun=function( fromX,  fromY,  toX,  toY)
-        {
-            // Mild variant of Bresenham's algorithm;
-            // see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
-            var steep = Math.abs(toY - fromY) > Math.abs(toX - fromX);
-            if (steep)
+    this.sizeOfBlackWhiteBlackRun=function( fromX,  fromY,  toX,  toY){
+        var tmp,tmp2
+        // Mild variant of Bresenham's algorithm;
+        // see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
+        var steep = (((((tmp=(toX - fromX))+ (tmp >>=31))^tmp) - (((tmp2=(toY - fromY))+ (tmp2 >>=31))^tmp2)))>>31
+        var notSteep = steep^-1
+
+        // xor swap if steep has all bits set (-1) (only will work with the values -1 and 0)
+        fromX ^= fromY&steep
+        fromY ^= fromX&steep
+        fromX ^= fromY&steep
+        //
+        // xor swap
+        toX ^= toY&steep
+        toY ^= toX&steep
+        toX ^= toY&steep
+        //
+        
+
+        var dx = ((tmp=(toX - fromX)) + (tmp >>=31))^tmp
+        var xstep = tmp|1
+        var dy = ((tmp2=(toY - fromY)) + (tmp2 >>=31))^tmp2
+        var ystep = tmp2|1
+        var error = - dx >> 1;
+
+        var state = 0; // In black pixels, looking for white, first or second time
+        var x = fromX
+        var y = fromY
+        do{
+
+            var realX = (y&steep)|(x&notSteep)
+            var realY = (x&steep)|(y&notSteep)
+            state += (tmp = this.image[realX + realY*this.width],tmp2=state&1,(tmp&tmp2)|((tmp^1)&(tmp2^1)))
+   
+
+            if (state == 3) return Math.sqrt(((tmp=x-fromX)*tmp)+((tmp2=y-fromY)*tmp2))
+            error += dy;
+            if (error > 0)
             {
-                var temp = fromX;
-                fromX = fromY;
-                fromY = temp;
-                temp = toX;
-                toX = toY;
-                toY = temp;
+                if (y == toY)
+                {
+                    break;
+                }
+                y += ystep;
+                error -= dx;
             }
-
-            var dx = Math.abs(toX - fromX);
-            var dy = Math.abs(toY - fromY);
-            var error = - dx >> 1;
-            var ystep = fromY < toY?1:- 1;
-            var xstep = fromX < toX?1:- 1;
-            var state = 0; // In black pixels, looking for white, first or second time
-            for (var x = fromX, y = fromY; x != toX; x += xstep)
-            {
-
-                var realX = steep?y:x;
-                var realY = steep?x:y;
-                if (state == 1)
-                {
-                    // In white pixels, looking for black
-                    if (this.image[realX + realY*this.width])
-                    {
-                        state++;
-                    }
-                }
-                else
-                {
-                    if (!this.image[realX + realY*this.width])
-                    {
-                        state++;
-                    }
-                }
-
-                if (state == 3)
-                {
-                    // Found black, white, black, and stumbled back onto white; done
-                    var diffX = x - fromX;
-                    var diffY = y - fromY;
-                    return  Math.sqrt( (diffX * diffX + diffY * diffY));
-                }
-                error += dy;
-                if (error > 0)
-                {
-                    if (y == toY)
-                    {
-                        break;
-                    }
-                    y += ystep;
-                    error -= dx;
-                }
-            }
-            var diffX2 = toX - fromX;
-            var diffY2 = toY - fromY;
-            return  Math.sqrt( (diffX2 * diffX2 + diffY2 * diffY2));
-        }
+            x += xstep
+        }while(x != toX)
+        return Math.sqrt(((tmp=toX-fromX)*tmp)+((tmp2=toY-fromY)*tmp2))
+    }
 
 
     this.sizeOfBlackWhiteBlackRunBothWays=function( fromX,  fromY,  toX,  toY)
@@ -2049,7 +2035,7 @@ function Detector(image,w,h)
                     break;
 
                 case 3: 
-                    throw "Error";
+                    throw "dimension Error";
                 }
             return dimension;
         }
@@ -2211,7 +2197,7 @@ qrcode.decode_utf8 = function ( s )
         return s; // fix me WAT 
 }
 
-qrcode.process = function(det,w,h,det){
+qrcode.process = function(det,w,h){
 
 
         qrcode.width = w
