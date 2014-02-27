@@ -1919,6 +1919,7 @@ function Detector(image,w,h)
 
         var dx = ((tmp=(toX - fromX)) + (tmp >>=31))^tmp
         var xstep = tmp|1
+        
         var dy = ((tmp2=(toY - fromY)) + (tmp2 >>=31))^tmp2
         var ystep = tmp2|1
         var error = - dx >> 1;
@@ -1926,28 +1927,26 @@ function Detector(image,w,h)
         var state = 0; // In black pixels, looking for white, first or second time
         var x = fromX
         var y = fromY
-        var realX
-        var realY
+        
+        var realX= (fromY&steep)|(fromX&notSteep)
+        var realY = ((x&steep)|(y&notSteep)) * this.width
+        var realYstep = ((xstep&steep)|(ystep&notSteep))* this.width
+        var errorTruth
+        var keepGoing = -1
         do{
-
-            realX = (y&steep)|(x&notSteep)
-            realY = (x&steep)|(y&notSteep)
-            state += (tmp = this.image[realX + realY*this.width],tmp2=state&1,(tmp&tmp2)|((tmp^1)&(tmp2^1)))
+            state += (tmp = this.image[realX + realY],tmp2=state&1,(tmp&tmp2)|((tmp^1)&(tmp2^1)))
    
 
             if (state == 3) return Math.sqrt(((tmp=x-fromX)*tmp)+((tmp2=y-fromY)*tmp2))
             error += dy;
-            if (error > 0)
-            {
-                if (y == toY)
-                {
-                    break;
-                }
-                y += ystep;
-                error -= dx;
-            }
+            errorTruth = (error >> 31)^-1
+            keepGoing -= errorTruth&(((y-toY|toY-y)>>31)^-1)
+            y += ystep&errorTruth
+            error -= dx&errorTruth
             x += xstep
-        }while(x != toX)
+            realY += realYstep&(steep | (errorTruth&notSteep) )
+            realX = (y&steep)|(x&notSteep)
+        }while((x-toX|toX-x) & keepGoing)
         return Math.sqrt(((tmp=toX-fromX)*tmp)+((tmp2=toY-fromY)*tmp2))
     }
 
