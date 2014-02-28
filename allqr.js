@@ -2029,6 +2029,73 @@ function Detector(image,w,h)
 }
 
 Detector.prototype = {
+    sizeOfBlackWhiteBlackRun__:function(fromX,  fromY,  toX,  toY){
+        
+
+        // Mild variant of Bresenham's algorithm;
+        // see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
+        var tmp = 0
+        var tmp2 = 0
+        var steep = Math.abs(toY - fromY) > Math.abs(toX - fromX);
+        if (steep) {
+          //xor swap
+          fromX ^= fromY
+          fromY ^= fromX
+          fromX ^= fromY
+          //
+          // xor swap
+          toX ^= toY
+          toY ^= toX
+          toX ^= toY
+          //
+        }
+
+        var dx = Math.abs(toX - fromX);
+        var dy = Math.abs(toY - fromY);
+        var error = -dx >> 1;
+        var xstep = fromX < toX ? 1 : -1;
+        var ystep = fromY < toY ? 1 : -1;
+
+        // In black pixels, looking for white, first or second time.
+        var state = 0;
+        // Loop up until x == toX, but not beyond
+        var xLimit = toX + xstep;
+        for (var x = fromX, y = fromY; x != xLimit; x += xstep) {
+            var realX = steep ? y : x;
+            var realY = steep ? x : y;
+
+          // Does current pixel mean we have moved white to black or vice versa?
+          // Scanning black in state 0,2 and white in state 1, so if we find the wrong
+          // color, advance to next state or end if we are in state 2 already
+          if ((state == 1) == this.image[realX + realY*this.width]) {
+            if (state == 2) {
+
+                return Math.sqrt(((tmp=x-fromX)*tmp)+((tmp2=y-fromY)*tmp2))
+            }
+            state++;
+          }
+
+          error += dy;
+          if (error > 0) {
+            if (y == toY) {
+              break;
+            }
+            y += ystep;
+            error -= dx;
+          }
+        }
+        // Found black-white-black; give the benefit of the doubt that the next pixel outside the image
+        // is "white" so this last point at (toX+xStep,toY) is the right ending. This is really a
+        // small approximation; (toX+xStep,toY+yStep) might be really correct. Ignore this.
+        if (state == 2) {
+
+            return Math.sqrt((tmp=(toX + xstep)-fromX)*tmp + (tmp2=toY-fromY)*tmp2);
+        }
+        // else we didn't find even black-white-black; no estimate is really possible
+        return NaN;
+
+    },    
+    
     sizeOfBlackWhiteBlackRun_:function( fromX,  fromY,  toX,  toY){
         var tmp,tmp2
         // Mild variant of Bresenham's algorithm;
@@ -2175,7 +2242,7 @@ Detector.prototype = {
     sizeOfBlackWhiteBlackRunBothWays:function( fromX,  fromY,  toX,  toY){
 
         var result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
-        var deleteme = this.sizeOfBlackWhiteBlackRun_(fromX, fromY, toX, toY)
+        var deleteme = this.sizeOfBlackWhiteBlackRun__(fromX, fromY, toX, toY)
         if(result != deleteme) console.log(deleteme-result + ' badness ' ) 
 
         // Now count other way -- don't run off image though of course
@@ -3836,8 +3903,8 @@ addEventListener('message', function(e) {
             ended.count++
             ended.sum+= new Date() - start1
             //console.log(new Date() - start2 + ' 2')
-            console.log(e)
-            console.log(e.stack)
+            //console.log(e)
+            //console.log(e.stack)
             
         }
         //console.log(Object.keys(self))
