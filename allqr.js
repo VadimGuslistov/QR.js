@@ -393,10 +393,10 @@ GridSampler.prototype = {
         {
             var x = Math.floor (this.points[offset]);
             var y = Math.floor(this.points[offset + 1]);
-            if (x < - 1 || x > this.width || y < - 1 || y > this.height)
-            {
-                throw "Error.checkAndNudgePoints ";
-            }
+            x = (x<-1)?-1:x
+            x = (x>this.width)?this.width:x
+            y = (y<-1)?-1:y
+            y = (y>this.height)?this.height:y
             nudged = false;
             if (x == - 1)
             {
@@ -425,10 +425,11 @@ GridSampler.prototype = {
         {
             var x = Math.floor( this.points[offset]);
             var y = Math.floor( this.points[offset + 1]);
-            if (x < - 1 || x > this.width || y < - 1 || y > this.height)
-            {
-                throw "Error.checkAndNudgePoints ";
-            }
+            x = (x<-1)?-1:x
+            x = (x>this.width)?this.width:x
+            y = (y<-1)?-1:y
+            y = (y>this.height)?this.height:y
+            
             nudged = false;
             if (x == - 1)
             {
@@ -614,7 +615,7 @@ Version.prototype = {
         var j = 0
         var tmp
         //(i/2 + j/3) % 2 == 0
-        do{ // bit shift short-cuts can not be taken here ! X 0.3333333333 short-cuts can not be taken here 
+        do{ // X 0.3333333333 short-cuts can not be taken here 
             if( -(( (i>>1) + (j/3)|0) &0x01)>>31^-1 )bitMatrix.set_Renamed(j,i)
             
             j++
@@ -1900,11 +1901,7 @@ PerspectiveTransform.quadrilateralToSquare=function( x0,  y0,  x1,  y1,  x2,  y2
     return this.squareToQuadrilateral(x0, y0, x1, y1, x2, y2, x3, y3).buildAdjoint();
 }
 
-function DetectorResult(bits,  points)
-{
-    this.bits = bits;
-    this.points = points;
-}
+
 
 
 function Detector(image,w,h)
@@ -2004,16 +2001,16 @@ function Detector(image,w,h)
         var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(otherPattern.X, otherPattern.Y, pattern.X, pattern.Y);
         if (isNaN(moduleSizeEst1))
         {
-            return moduleSizeEst2 *0.142857143 // div by 7
+            return moduleSizeEst2/7 // *0.142857143 // div by 7
         }
         if (isNaN(moduleSizeEst2))
         {
-            return moduleSizeEst1 *0.142857143 // div by 7
+            return moduleSizeEst1/7 // *0.142857143 // div by 7
         }
         // fix me can 2 NAN's happen here
         // Average them, and divide by 7 since we've counted the width of 3 black modules,
         // and 1 white and 1 black module on either side. Ergo, divide sum by 14.
-        return (moduleSizeEst1 + moduleSizeEst2) * 0.071428571 // div by 14
+        return (moduleSizeEst1 + moduleSizeEst2)/14 // * 0.071428571 // div by 14
     }
 
 
@@ -2078,22 +2075,23 @@ function Detector(image,w,h)
             // Kind of arbitrary -- expand search radius before giving up
 
             var i = 4
-            alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+            //alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
             // fix me re enabled commented out code by returning null on a error
             // it works better idono 
             // check the code in zxing and see what they are doing here
-            //do{
+            // note this has more good scans so i guess it is a good idea
+            do{
                 //try
                 //{
-                    //alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+                    alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
                     
                 //}
                 //catch (re)
                 //{
                     // try next round
                 //}
-                //i <<= 1 
-            //}while(alignmentPattern !== null && i<16)
+                i <<= 1 
+            }while(!alignmentPattern && i<16)
             //if(alignmentPattern === null){
               //  throw "Couldn't find enough alignment patterns";
             //}
@@ -2179,6 +2177,7 @@ qrcode.process = function(det,w,h){
 
 var MIN_SKIP = 3;
 var MAX_MODULES = 57;
+var MAX_MODULESx4 = MAX_MODULES*4
 var INVERSE_MAX_MODULESx4 = 0.004385965
 var CENTER_QUORUM = 2;
 
@@ -2300,7 +2299,7 @@ FinderPatternFinder.prototype = {
         {
             return false;
         }
-        var moduleSize = Math.floor((totalModuleSize << 8) *0.142857143); // div by 7
+        var moduleSize = Math.floor((totalModuleSize << 8)/7); // div by 7
         var maxVariance = moduleSize >>1 // div by 2
         // Allow less than 50% variance from 1-1-3-1-1 proportions
         return Math.abs(moduleSize - (stateCount[0] << 8)) < maxVariance && Math.abs(moduleSize - (stateCount[1] << 8)) < maxVariance && Math.abs(3 * moduleSize - (stateCount[2] << 8)) < 3 * maxVariance && Math.abs(moduleSize - (stateCount[3] << 8)) < maxVariance && Math.abs(moduleSize - (stateCount[4] << 8)) < maxVariance;
@@ -2478,7 +2477,7 @@ FinderPatternFinder.prototype = {
             centerJ = this.crossCheckHorizontal(Math.floor( centerJ), Math.floor( centerI), stateCount[2], stateCountTotal);
             if (!isNaN(centerJ))
             {
-                var estimatedModuleSize =   stateCountTotal *0.142857143; // div by 7
+                var estimatedModuleSize =   stateCountTotal/7 //*0.142857143; // div by 7
                 var found = false;
                 var max = this.possibleCenters.length;
                 for (var index = 0; index < max; index++)
@@ -2621,7 +2620,7 @@ FinderPatternFinder.prototype = {
         var tryHarder = false;
         var maxI = this.height;
         var maxJ = this.width;
-        var iSkip = Math.floor((3 * maxI) * INVERSE_MAX_MODULESx4);
+        var iSkip = Math.floor((3 * maxI) / MAX_MODULESx4);
         if (iSkip < MIN_SKIP || tryHarder)
         {
                 iSkip = MIN_SKIP;
@@ -2850,7 +2849,7 @@ AlignmentPatternFinder.prototype = {
         var centerI = this.crossCheckVertical(i, Math.floor (centerJ), stateCount[1] << 1, stateCountTotal); //  2 * stateCount[1]
         if (!isNaN(centerI))
         {
-            var estimatedModuleSize = (stateCount[0] + stateCount[1] + stateCount[2]) * 0.333333333 // div by 3
+            var estimatedModuleSize = (stateCount[0] + stateCount[1] + stateCount[2])/3 //* 0.333333333 // div by 3
             var max = this.possibleCenters.length;
             for (var index = 0; index < max; index++)
             {
