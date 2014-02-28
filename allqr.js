@@ -740,7 +740,7 @@ Version.prototype = {
 
 
 Version.VERSIONS = buildVersions();
-
+/*
 Version.getVersionForNumber=function( versionNumber){
     var ret = this.VERSIONS[versionNumber-1]
     if(ret) return ret
@@ -753,8 +753,7 @@ Version.getProvisionalVersionForDimension=function(dimension){
     throw "Error Version.getProvisionalVersionForDimension";
 }
 
-Version.VERSION_DECODE_INFO = new Uint32Array([0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78, 0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EC, 0x18EC4, 0x191E1, 0x1AFAB, 0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B, 0x2542E, 0x26A64, 0x27541, 0x28C69]);
-Version.VERSION_DECODE_INFO_LENGTH = Version.VERSION_DECODE_INFO.length|0
+
 
 
 
@@ -779,6 +778,61 @@ Version.decodeVersionInformation=function( versionBits){
     // We can tolerate up to 3 bits of error since no two version info codewords will
     // differ in less than 4 bits.
     if (bestDifference < 4) return this.getVersionForNumber(bestVersion)
+    // If we didn't find a close enough match, fail
+    return null;
+}
+*/
+
+Version.getVersionForNumber=function( versionNumber)
+{
+    if (versionNumber < 1 || versionNumber > 40)
+    {
+        throw "ArgumentException";
+    }
+    return Version.VERSIONS[versionNumber - 1];
+}
+
+Version.getProvisionalVersionForDimension=function(dimension)
+{
+    if (dimension % 4 != 1)
+    {
+        throw "Error getProvisionalVersionForDimension";
+    }
+    
+        return Version.getVersionForNumber((dimension - 17) >> 2);
+   
+}
+Version.VERSION_DECODE_INFO = new Uint32Array([0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78, 0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EC, 0x18EC4, 0x191E1, 0x1AFAB, 0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B, 0x2542E, 0x26A64, 0x27541, 0x28C69]);
+Version.VERSION_DECODE_INFO_LENGTH = Version.VERSION_DECODE_INFO.length|0
+
+Version.decodeVersionInformation=function( versionBits)
+{
+    var bestDifference = 0xffffffff;
+    var bestVersion = 0;
+    for (var i = 0; i < Version.VERSION_DECODE_INFO.length; i++)
+    {
+        var targetVersion = Version.VERSION_DECODE_INFO[i];
+        // Do the version info bits match exactly? done.
+        if (targetVersion == versionBits)
+        {
+            return this.getVersionForNumber(i + 7);
+        }
+        // Otherwise see if this is the closest to a real version info bit string
+        // we have seen so far
+        //var bitsDifference = FormatInformation.numBitsDiffering(versionBits, targetVersion);
+        var bitsDifference = numBitsDiffering(versionBits, targetVersion);
+        if (bitsDifference < bestDifference)
+        {
+            bestVersion = i + 7;
+            bestDifference = bitsDifference;
+        }
+    }
+    // We can tolerate up to 3 bits of error since no two version info codewords will
+    // differ in less than 4 bits.
+    if (bestDifference <= 3)
+    {
+        return this.getVersionForNumber(bestVersion);
+    }
     // If we didn't find a close enough match, fail
     return null;
 }
@@ -840,7 +894,51 @@ function FormatInformation(formatInfo)
 }
 
 
+var FORMAT_INFO_MASK_QR = 0x5412;
+var FORMAT_INFO_DECODE_LOOKUP = new Uint32Array([0x541200, 0x512501, 0x5E7C02, 0x5B4B03, 0x45F904, 0x40CE05, 0x4F9706, 0x4AA007, 0x77C408, 0x72F309, 0x7DAA0A, 0x789D0B, 0x662F0C, 0x63180D, 0x6C410E, 0x69760F, 0x168910, 0x13BE11, 0x1CE712, 0x19D013, 0x076214, 0x025515, 0x0D0C16, 0x083B17, 0x355F18, 0x306819, 0x3F311A, 0x3A061B, 0x24B41C, 0x21831D, 0x2EDA1E, 0x2BED1F])
 
+
+
+
+
+
+FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail)
+{
+   // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
+	var bestDifference = 0xffffffff;
+	var bestFormatInfo = 0;
+	var decodeInfo,targetInfo
+	var l = FORMAT_INFO_DECODE_LOOKUP.length
+	var bitsDifference
+	var i = 0
+	do{
+	   decodeInfo = targetInfo =  FORMAT_INFO_DECODE_LOOKUP[i++]
+	   targetInfo = targetInfo >>> 8
+	   decodeInfo = decodeInfo & 0xff
+	   if (targetInfo == maskedFormatInfo){
+			// Found an exact match
+			return new FormatInformation(decodeInfo);
+	   }
+       bitsDifference = numBitsDiffering(maskedFormatInfo, targetInfo);
+       if (bitsDifference < bestDifference){
+			bestFormatInfo = decodeInfo;
+			bestDifference = bitsDifference;
+		}
+	}while(i<l)
+    // Hamming distance of the 32 masked codes is 7, by construction, so <= 3 bits
+    // differing means we found a match
+    if (bestDifference <= 3)
+    {
+        return new FormatInformation(bestFormatInfo);
+    }
+    if(fail){
+        return null;
+    }
+    return FormatInformation.fromMaskedFormatInfo(maskedFormatInfo ^ FORMAT_INFO_MASK_QR,true)
+    
+}
+
+/*
 
 FormatInformation.fromMaskedFormatInfo=function( maskedFormatInfo,fail){
    // Find the int in FORMAT_INFO_DECODE_LOOKUP with fewest bits differing
@@ -873,7 +971,7 @@ FormatInformation.FORMAT_INFO_MASK_QR = 0x5412;
 FormatInformation.FORMAT_INFO_DECODE_LOOKUP = new Uint32Array([0x541200, 0x512501, 0x5E7C02, 0x5B4B03, 0x45F904, 0x40CE05, 0x4F9706, 0x4AA007, 0x77C408, 0x72F309, 0x7DAA0A, 0x789D0B, 0x662F0C, 0x63180D, 0x6C410E, 0x69760F, 0x168910, 0x13BE11, 0x1CE712, 0x19D013, 0x076214, 0x025515, 0x0D0C16, 0x083B17, 0x355F18, 0x306819, 0x3F311A, 0x3A061B, 0x24B41C, 0x21831D, 0x2EDA1E, 0x2BED1F])
 FormatInformation.FORMAT_INFO_DECODE_LOOKUP_LENGTH = FormatInformation.FORMAT_INFO_DECODE_LOOKUP.length|0
 
-
+*/
     
 function ErrorCorrectionLevel(ordinal,  bits)
 {
@@ -2077,7 +2175,7 @@ Detector.prototype = {
             //do{
                 //try
                 //{
-                    alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+                    //alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
                     
                 //}
                 //catch (re)
@@ -3266,10 +3364,17 @@ function numBitsDiffering(a,b){
 
     // Count bits with ultra fast method
     // see http://graphics.stanford.edu/~seander/bithacks.html
-    a = a ^ b // now 2nd half has 1 bit exactly where its bit differs with b's
-    a = a - ((a >> 1) & 0x55555555); 
-    a = (a & 0x33333333) + ((a >> 2) & 0x33333333); 
-    return (((a + (a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24)
+    // this needs to be done in half’s as JavaScript will jam unsigned data into singed data making life hard
+    var _a,c
+    _a = (a>>>16) ^ (b>>>16) // now first half has 1 bit exactly where its bit differs with b's
+    _a = _a - ((_a >> 1) & 0x55555555); 
+    _a = (_a & 0x33333333) + ((_a >> 2) & 0x33333333); 
+    c = ((_a + (_a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24
+    
+    _a = (a&0xFFFF) ^ (b&0xFFFF) // now 2nd half has 1 bit exactly where its bit differs with b's
+    _a = _a - ((_a >> 1) & 0x55555555); 
+    _a = (_a & 0x33333333) + ((_a >> 2) & 0x33333333); 
+    return c+ (((_a + (_a >> 4) & 0xF0F0F0F) * 0x1010101) >> 24)
     
 }
 
@@ -3292,7 +3397,7 @@ function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
    
     this.bits =  bits
     this.middle = new Uint16Array(middleLength)
-    this.blurDiffMachine = new blurDiffMachine(img,3,6,w,h)
+    this.blurDiffMachine = new blurDiffMachine(img,2,4,w,h)
     this.detector= new Detector(bits,w,h)
 
 }
@@ -3329,22 +3434,9 @@ ECMA_QR_Image.prototype = {
 
                 dark = (dark=_min-pix,(dark+(tmp=dark>>31) ^ tmp))*_1per|0
                 light = (light=_max-pix,(light+(tmp=light>>31) ^ tmp))*_1per|0
-                if(pix <= _min){
-                    this.bits[point] = 1
-                }  else if(cur <0) {
-                    if(light > 15){
-                       this.bits[point] = 1 
-                    } else {
-                        this.bits[point] = 0
-                    }
-                }else if( dark <= 30){
-                    this.bits[point] = 1 
-                } else {
-                    this.bits[point] = 0
-                }
-                //tmp = (cur+3)>>31
-                //this.bits[point] = 1
-                //this.bits[point] = ( (pix-_minPlus1)>>31 | ((15-light)>>31 & tmp ) | (dark-41)>>31 &  (tmp^-1) )&1
+
+                tmp = (cur+3)>>31
+                this.bits[point] = ( (pix-_minPlus1)>>31 | ((25-light)>>31 & tmp ) | (dark-25)>>31 &  (tmp^-1) )&1
               
                 dx++
                 tmp = (dx-this.areaWidth)>>31
@@ -3369,7 +3461,7 @@ ECMA_QR_Image.prototype = {
 }
 
 function ECMA_QR(w,h){
-    var numSqrtArea = 8;
+    var numSqrtArea = 3;
     var numSqrtAreaX = 1/numSqrtArea
     var areaWidth = (w * numSqrtAreaX)|0
     var areaHeight = (h * numSqrtAreaX)|0
@@ -3386,27 +3478,19 @@ function ECMA_QR(w,h){
     this.numSqrtAreaPlus1 = (numSqrtArea+1)|0
     this.areaWidth = areaWidth|0
     this.areaHeight = areaHeight|0
-    this.image1 = new ECMA_QR_Image(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
-    this.image2 = new ECMA_QR_Image(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
-    this.count = new Int32Array(256)
-    this.zeroCount = new Int32Array(256)
+    this.image = new ECMA_QR_Image(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
+
 }
 ECMA_QR.prototype = {
     processCanvasRGB:function (imageData){
         var image = new Int32Array(imageData.buffer)
         var point
         var r,b,g
-        var _min,_max,_min1,_max1,_min2,_max2
-        var max_c
-        var min_c
-        var tmp,tmp2,tmp3
-        var _mid
-        var upper1,upper2,lower1,lower2
-        var upper_val1,upper_val2
-        var lower_val1,lower_val2
-        var i,l
+        var _min1,_max1
+    
+        var tmp,tmp2
+
         var cur
-        var upper_set,upper_other,lower_set,lower_other,upperX,lowerX
 
         var areaPoint1,areaPoint2,areaPoint3,dx
         var numSqrtAreaPoint 
@@ -3416,10 +3500,9 @@ ECMA_QR.prototype = {
         areaPoint2 = areaPoint1 = numSqrtAreaPoint = 0
         do{
             
-            _min = 0xFF
-            _max = 0
-            _min1= _min2 = 255.01
-            _max1 = _max2 = 0.01
+
+            _min1 = 255.01
+            _max1 = 0.01
             // zero out count with a static empty array
             // this is faster than making a new  one and faster then zeroing it out in js
             
@@ -3441,16 +3524,13 @@ ECMA_QR.prototype = {
                 min_c = g + ((tmp=min_c - g ) & (tmp >> 31))                //----min for a int of 32 bits or less
                 /// max and min  of r g and b ^^^^^^^^^^^^^^^^^^
                 ///------------------------ 
-                   
-                cur = (max_c+min_c)>>1 // avg
+                //cur =(r*0.299 + g*0.587 + b * 0.114)|0
+                cur = (tmp = ((max_c+min_c)>>1)-((max_c-min_c)))& (tmp>>31^-1) // avg
                 
-                this.image1.image[point]= cur
-                this.count[cur]++
+                this.image.image[point]= cur
+
     
-                _max = _max - ((tmp  = _max - cur) & (tmp >> 31)) //----Max for a int of 32 bits or less
-                
-                _min = cur + ((tmp = _min - cur) & (tmp >> 31)) //----min for a int of 32 bits or less
-                
+           
                 
                 _max1 = (_max1<cur) ? (_max1*3+cur)*0.25:_max1
                 _min1 = (_min1>cur) ? (_min1*3+cur)*0.25:_min1
@@ -3464,99 +3544,8 @@ ECMA_QR.prototype = {
                 areaPoint3 += this.width&(tmp^-1)
                 //-----------------
             }while(areaPoint3<yEnd)
-            this.image1.middle[numSqrtAreaPoint] =  (_min1<<8) | _max1
-            
-            _mid = (_max - _min)>>1
-            
-            upper_val1=upper_val2=upper1=upper2=lower1=lower2=0
-            
-            i = _min
-            
-            do{
-                cur = this.count[i]
-                tmp = upper1 - cur
-                tmp2 = tmp>>31
-                upper1 = upper1 - (tmp & tmp2) //----max for a int of 32 bits or less 
-                tmp = tmp2^-1
-                upper_val1 = (i&tmp2) | (upper_val1&tmp)
-                cur &= tmp // if the first passed make sure the 2nd fails 
-                   
-                   
-                tmp = upper2 - cur
-                tmp2 = tmp>>31
-                upper2 = upper2 - (tmp & tmp2) //----max for a int of 32 bits or less 
-            	upper_val2 = (i&tmp2) | (upper_val2&(tmp2^-1))
-                i++
-            }while(i<_mid)
-            
-            i = _mid
-            l = _max+1
-            do{
-                cur = this.count[i]
-                tmp = lower1 - cur
-                tmp2 = tmp>>31
-                lower1 = lower1 - (tmp & tmp2) //----max for a int of 32 bits or less 
-                tmp = tmp2^-1
-                lower_val1 = (i&tmp2)|(lower_val1&tmp)
-                cur &=tmp // if the first passed make sure the 2nd fails 
-                   
-                tmp = lower2  - cur
-                tmp2 = tmp>>31
-                lower2 = lower2 - (tmp & tmp2) //----max for a int of 32 bits or less 
-            	lower_val2 = (i&tmp2)|(lower_val2&(tmp2^-1))
-                  
-                
-                i++
-            }while(i<l)
-    
-            
-            tmp = ((tmp  = upper_val2 - upper_val1) & (tmp >> 31))
-            upper_set = upper_val1 + tmp  //----min for a int of 32 bits or less   
-            upper_other = upper_val2 - tmp
-            
-            
-            lower_other = lower_val2 + ((tmp = lower_val1-lower_val2) & (tmp >> 31))
-            
-            upperX = upper_other/upper_set
-            lowerX = 254/lower_other 
-            
-            areaPoint3 = areaPoint2
-            dx  = 0
-
-            do{
-                point = areaPoint1 + dx + areaPoint3
-                cur = this.image1.image[point]
-    
-    
-                if(cur >=upper_set && cur <= upper_other){
-                    cur = upper_set
-                } else if(cur <= _mid){
-                    cur = (cur * upperX)|0
-                }else if(cur >= lower_other ){
-                    cur = 255
-                } else{
-                    cur = (cur * lowerX)|0
-                }
-    
-               
-                
-                 
-                _max2 = (_max2<cur) ? (_max2*3+cur)*0.25:_max2
-                _min2 = (_min2>cur) ? (_min2*3+cur)*0.25:_min2
-                
-                this.image2.image[point] = cur
-    
-                /*
-                this code will increment dx and dy to loop x y blocks 
-                */
-                dx++
-                tmp = (dx-this.areaWidth)>>31
-                dx &= tmp
-                areaPoint3 += this.width&(tmp^-1)
-                //-----------------
-            }while(areaPoint3<yEnd)
-            this.image2.middle[numSqrtAreaPoint] = (_min2<<8) | _max2
-      
+            this.image.middle[numSqrtAreaPoint] =  (_min1<<8) | _max1
+          
             
             /*
             this code will increment ax and ay to loop x y blocks 
@@ -3568,7 +3557,7 @@ ECMA_QR.prototype = {
             numSqrtAreaPoint += this.numSqrtAreaPlus1&tmp
             areaPoint2 += this.areaHeightXWidth&tmp
             //-----------------
-            this.count.set(this.zeroCount) 
+
         }while(numSqrtAreaPoint<this.middleLength)
 
     }
@@ -3710,8 +3699,8 @@ addEventListener('message', function(e) {
           console.log(new Date() - start2 + ' fin')
           console.log(new Date() - start1 + ' fin all')
           console.log((ended.sum/ended.count) + ' avg')
-          ended.isEnded = true
-          postMessage(ret)
+          //ended.isEnded = true
+          //postMessage(ret)
           //var test1 = (ret == "6JKeKYJ4SGrK4h1xwT3MJ6TfyGfn1kK57QuMJED5ap5NmDqViqaEZwGrRqhimZuXAFKUrM6vrKvNR4pRCicmCwBXo7AC2DWeWrNPCJGpTKzuCYZUHVvhX62aYpYWGLAABmJRGc97M6RQHsonR4fn2y7J2fHtEybAVevX")
           //var test2 = (ret == "MXp8FodxoKZcLsQt9NpG94nUWoQk133Qo6cyNPTzjtq7udUP563u9VoKV9VAjH88fGbVZfjNimg5DHpAQwCGZCkbsrdFvnRguYsL7KveEf9tyx6UPaU3gk3pYUMgPWmzNTEqCN8MPsajrr8pxSfvWAfz5uLRtiqNpgQV3ayWguDw2Yc2UsAvA6sadhL55KQzVzS43WRYqMShNy47wv4v6UwYa3qhT3QRCMqrf3AobW3av5EzpvyWzq4FFJkSvGH7nCBptSgXTBvgdL12qmAez6iPkiFtDT2pdVpE4qSi5TEGcDpRttWXRH4ZFX3uUntJrgLBmTAE")          
           /*if(test1 || test2){
@@ -3744,13 +3733,14 @@ addEventListener('message', function(e) {
 
 
   qr.processCanvasRGB(e.data.buff)
-  qr.image1.doBinary()
-  qr.image2.doBinary()
+  qr.image.doBinary()
+  //qr.image2.doBinary()
   //postMessage(bitmatX_to_canvas_buff( Version.getVersionForNumber(20).getMask(6)))
 
-  post(qr.image1.detector)
-  post(qr.image2.detector)
-  postMessage(bits_to_canvas_buff(qr.image2.bits))
+  post(qr.image.detector)
+ // post(qr.image2.detector)
+ postMessage(bits_to_canvas_buff(qr.image.bits))
+ //postMessage(gray_to_canvas_buff(qr.image.image))
 
 
   return
