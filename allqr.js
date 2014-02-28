@@ -1556,9 +1556,9 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
     do{
         result[j].codewords[i] = rawCodewords[rawCodewordsOffset++];
         j++
-        tmp = (j-numResultBlocks)>>>31
-        j *= tmp
-        i+= tmp^1
+        tmp = (j-numResultBlocks)>>31
+        j &= tmp
+        i+= 1&(tmp^-1)
     }while( i < shorterBlocksNumDataCodewords)
     // Fill out the last data block in the longer ones
     
@@ -2033,7 +2033,7 @@ Detector.prototype = {
 
         var alignmentAreaTopY = ((tmp=estAlignmentY - allowance)&(tmp>>31^-1))
         var alignmentAreaBottomY = this.heightMinus1 + ((tmp2=(estAlignmentY + allowance)-this.heightMinus1)&tmp2>>31)
-        return new AlignmentPatternFinder(this.image, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize).find()
+        return new AlignmentPatternFinder(this.image,this.width,this.height, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize).find()
     },
     processFinderPatternInfo:function( info){
 
@@ -2068,12 +2068,12 @@ Detector.prototype = {
             // Kind of arbitrary -- expand search radius before giving up
 
             var i = 4
-            //alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+            alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
             // fix me re enabled commented out code by returning null on a error
             // it works better idono 
             // check the code in zxing and see what they are doing here
             // note this has more good scans so i guess it is a good idea
-            do{
+            //do{
                 //try
                 //{
                     alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
@@ -2083,8 +2083,8 @@ Detector.prototype = {
                 //{
                     // try next round
                 //}
-                i <<= 1 
-            }while(!alignmentPattern && i<16)
+                //i <<= 1 
+            //}while(!alignmentPattern && i<16)
             //if(alignmentPattern === null){
               //  throw "Couldn't find enough alignment patterns";
             //}
@@ -2102,8 +2102,7 @@ Detector.prototype = {
 
 var qrcode = {};
 
-qrcode.width = 0;
-qrcode.height = 0;
+
 qrcode.qrCodeSymbol = null;
 qrcode.debug = false;
 qrcode.maxImgSize = 1024*1024;
@@ -2122,11 +2121,10 @@ qrcode.decode_utf8 = function ( s )
         return s; // fix me WAT 
 }
 
-qrcode.process = function(det,w,h){
+qrcode.process = function(det){
 
 
-        qrcode.width = w
-        qrcode.height = h
+  
 
 
        
@@ -2746,15 +2744,20 @@ FinderPatternFinder.prototype = {
 
 
 
-function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  moduleSize)
+function AlignmentPatternFinder( image,imageWidth,imageHeight,  startX,  startY,  width,  height,  moduleSize)
 {
-    this.image = image;
-    this.possibleCenters = new Array();
+    
     this.startX = startX;
     this.startY = startY;
     this.width = width;
     this.height = height;
+    this.imageWidth = imageWidth
+    this.imageHeight = imageHeight
     this.moduleSize = moduleSize;
+    this.image = image;
+    
+    this.possibleCenters = new Array();
+
     this.crossCheckStateCount = new Uint16Array(3);
 
 
@@ -2778,7 +2781,7 @@ AlignmentPatternFinder.prototype = {
     crossCheckVertical:function( startI,  centerJ,  maxCount,  originalStateCountTotal){
         var image = this.image;
 
-        var maxI = qrcode.height;
+        var maxI = this.imageHeight;
         var stateCount = this.crossCheckStateCount;
         stateCount[0] = 0;
         stateCount[1] = 0;
@@ -2786,7 +2789,7 @@ AlignmentPatternFinder.prototype = {
 
         // Start counting up from center
         var i = startI;
-        while (i >= 0 && image[centerJ + i*qrcode.width] && stateCount[1] <= maxCount)
+        while (i >= 0 && image[centerJ + i*this.imageWidth] && stateCount[1] <= maxCount)
         {
             stateCount[1]++;
             i--;
@@ -2796,7 +2799,7 @@ AlignmentPatternFinder.prototype = {
         {
             return NaN;
         }
-        while (i >= 0 && !image[centerJ + i*qrcode.width] && stateCount[0] <= maxCount)
+        while (i >= 0 && !image[centerJ + i*this.imageWidth] && stateCount[0] <= maxCount)
         {
             stateCount[0]++;
             i--;
@@ -2808,7 +2811,7 @@ AlignmentPatternFinder.prototype = {
 
         // Now also count down from center
         i = startI + 1;
-        while (i < maxI && image[centerJ + i*qrcode.width] && stateCount[1] <= maxCount)
+        while (i < maxI && image[centerJ + i*this.imageWidth] && stateCount[1] <= maxCount)
         {
             stateCount[1]++;
             i++;
@@ -2817,7 +2820,7 @@ AlignmentPatternFinder.prototype = {
         {
             return NaN;
         }
-        while (i < maxI && !image[centerJ + i*qrcode.width] && stateCount[2] <= maxCount)
+        while (i < maxI && !image[centerJ + i*this.imageWidth] && stateCount[2] <= maxCount)
         {
             stateCount[2]++;
             i++;
@@ -2880,14 +2883,14 @@ AlignmentPatternFinder.prototype = {
             // Burn off leading white pixels before anything else; if we start in the middle of
             // a white run, it doesn't make sense to count its length, since we don't know if the
             // white run continued to the left of the start point
-            while (j < maxJ && !image[j + qrcode.width* i])
+            while (j < maxJ && !image[j + qrcode.imageWidth* i])
             {
                 j++;
             }
             var currentState = 0;
             while (j < maxJ)
             {
-                if (image[j + i*qrcode.width])
+                if (image[j + i*this.imageWidth])
                 {
                     // Black pixel
                     if (currentState == 1)
@@ -3325,7 +3328,7 @@ ECMA_QR_Image.prototype = {
 
                 dark = (dark=_min-pix,(dark+(tmp=dark>>31) ^ tmp))*_1per|0
                 light = (light=_max-pix,(light+(tmp=light>>31) ^ tmp))*_1per|0
-                tmp = 
+                tmp = (cur+3)>>31
                 //this.bits[point] = 1
                 this.bits[point] = ( (pix-_minPlus1)>>31 | ((15-light)>>31 & tmp ) | (dark-41)>>31 &  (tmp^-1) )&1
               
@@ -3371,13 +3374,12 @@ function ECMA_QR(w,h){
     this.areaHeight = areaHeight|0
     this.image1 = new ECMA_QR_Image(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
     this.image2 = new ECMA_QR_Image(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
-    this.baseImage = new Int32Array(length)
     this.count = new Int32Array(256)
     this.zeroCount = new Int32Array(256)
 }
 ECMA_QR.prototype = {
     processCanvasRGB:function (imageData){
-        this.baseImage.set(new Int32Array(imageData.buffer))
+        var image = new Int32Array(imageData.buffer)
         var point
         var r,b,g
         var _min,_max,_min1,_max1,_min2,_max2
@@ -3413,7 +3415,7 @@ ECMA_QR.prototype = {
             yEnd = this.yLen + areaPoint2
             do{
                 point = areaPoint1 + dx + areaPoint3
-                cur = this.baseImage[point];
+                cur = image[point];
                 r = (cur>>>16)&0xff
                 b = (cur>>>8)&0xff
                 g = cur&0xff
@@ -3668,8 +3670,8 @@ addEventListener('message', function(e) {
           console.log(new Date() - start2 + ' fin')
           console.log(new Date() - start1 + ' fin all')
           console.log((ended.sum/ended.count) + ' avg')
-          //ended.isEnded = true
-          //postMessage(ret)
+          ended.isEnded = true
+          postMessage(ret)
           //var test1 = (ret == "6JKeKYJ4SGrK4h1xwT3MJ6TfyGfn1kK57QuMJED5ap5NmDqViqaEZwGrRqhimZuXAFKUrM6vrKvNR4pRCicmCwBXo7AC2DWeWrNPCJGpTKzuCYZUHVvhX62aYpYWGLAABmJRGc97M6RQHsonR4fn2y7J2fHtEybAVevX")
           //var test2 = (ret == "MXp8FodxoKZcLsQt9NpG94nUWoQk133Qo6cyNPTzjtq7udUP563u9VoKV9VAjH88fGbVZfjNimg5DHpAQwCGZCkbsrdFvnRguYsL7KveEf9tyx6UPaU3gk3pYUMgPWmzNTEqCN8MPsajrr8pxSfvWAfz5uLRtiqNpgQV3ayWguDw2Yc2UsAvA6sadhL55KQzVzS43WRYqMShNy47wv4v6UwYa3qhT3QRCMqrf3AobW3av5EzpvyWzq4FFJkSvGH7nCBptSgXTBvgdL12qmAez6iPkiFtDT2pdVpE4qSi5TEGcDpRttWXRH4ZFX3uUntJrgLBmTAE")          
           /*if(test1 || test2){
@@ -3689,8 +3691,8 @@ addEventListener('message', function(e) {
             ended.count++
             ended.sum+= new Date() - start1
             //console.log(new Date() - start2 + ' 2')
-            console.log(e)
-            console.log(e.stack)
+            //console.log(e)
+            //console.log(e.stack)
             
         }
         //console.log(Object.keys(self))
@@ -3705,9 +3707,11 @@ addEventListener('message', function(e) {
   qr.processCanvasRGB(e.data.buff)
   qr.image1.doBinary()
   qr.image2.doBinary()
+  
+
   post(qr.image1.detector)
   post(qr.image2.detector)
-  postMessage(bits_to_canvas_buff(qr.image2.bits))
+  postMessage(bits_to_canvas_buff(qr.image1.bits))
 
 
   return
