@@ -2029,8 +2029,8 @@ function Detector(image,w,h)
 }
 
 Detector.prototype = {
-    sizeOfBlackWhiteBlackRun__:function(fromX,  fromY,  toX,  toY){
-        
+    sizeOfBlackWhiteBlackRun:function(fromX,  fromY,  toX,  toY){
+        // this function was ported from xzing and speed tweeked by Kenneth Lichtenberger 2014
 
         // Mild variant of Bresenham's algorithm;
         // see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
@@ -2093,132 +2093,14 @@ Detector.prototype = {
         // Found black-white-black; give the benefit of the doubt that the next pixel outside the image
         // is "white" so this last point at (toX+xStep,toY) is the right ending. This is really a
         // small approximation; (toX+xStep,toY+yStep) might be really correct. Ignore this.
-        if (state == 2) {
+        return (state == 2)? Math.sqrt((tmp=(toX + xstep)-fromX)*tmp + (tmp2=toY-fromY)*tmp2):NaN
 
-            return Math.sqrt((tmp=(toX + xstep)-fromX)*tmp + (tmp2=toY-fromY)*tmp2);
-        }
-        // else we didn't find even black-white-black; no estimate is really possible
-        return NaN;
+        // NAN if we didn't find even black-white-black; no estimate is really possible
+
 
     },    
     
-    sizeOfBlackWhiteBlackRun_:function( fromX,  fromY,  toX,  toY){
-        var tmp,tmp2
-        // Mild variant of Bresenham's algorithm;
-        // see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
-        var steep = (((((tmp=(toX - fromX))+ (tmp >>=31))^tmp) - (((tmp2=(toY - fromY))+ (tmp2 >>=31))^tmp2)))>>31
-        var notSteep = steep^-1
-
-        // xor swap if steep has all bits set (-1) (only will work with the values -1 and 0)
-        fromX ^= fromY&steep
-        fromY ^= fromX&steep
-        fromX ^= fromY&steep
-        //
-        // xor swap
-        toX ^= toY&steep
-        toY ^= toX&steep
-        toX ^= toY&steep
-        //
-        
-
-        var dx = ((tmp=(toX - fromX)) + (tmp >>=31))^tmp
-        var xstep = tmp|1
-        
-        var dy = ((tmp2=(toY - fromY)) + (tmp2 >>=31))^tmp2
-        var ystep = tmp2|1
-        var error = - dx >> 1;
-
-        var state = 0; // In black pixels, looking for white, first or second time
-        var x = fromX
-        var y = fromY
-        
-        var realX= (fromY&steep)|(fromX&notSteep)
-        var realY = ((x&steep)|(y&notSteep)) * this.width
-        var realYstep = ((xstep&steep)|(ystep&notSteep))* this.width
-        var errorTruth
-        var keepGoing = -1
-        do{
-            state += (tmp = this.image[realX + realY],tmp2=state&1,(tmp&tmp2)|((tmp^1)&(tmp2^1)))
-   
-
-            if (state == 3) return Math.sqrt(((tmp=x-fromX)*tmp)+((tmp2=y-fromY)*tmp2))
-            error += dy;
-            errorTruth = (error >> 31)^-1
-            keepGoing -= errorTruth&(((y-toY|toY-y)>>31)^-1)
-            y += ystep&errorTruth
-            error -= dx&errorTruth
-            x += xstep
-            realY += realYstep&(steep | (errorTruth&notSteep) )
-            realX = (y&steep)|(x&notSteep)
-        }while((x-toX|toX-x) & keepGoing)
-        return Math.sqrt(((tmp=toX-fromX)*tmp)+((tmp2=toY-fromY)*tmp2))
-    },
-    sizeOfBlackWhiteBlackRun:function(fromX,  fromY,  toX,  toY){
-        
-
-        // Mild variant of Bresenham's algorithm;
-        // see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
-        var tmp = 0
-        var tmp2 = 0
-        var steep = Math.abs(toY - fromY) > Math.abs(toX - fromX);
-        if (steep) {
-          //xor swap
-          fromX ^= fromY
-          fromY ^= fromX
-          fromX ^= fromY
-          //
-          // xor swap
-          toX ^= toY
-          toY ^= toX
-          toX ^= toY
-          //
-        }
-
-        var dx = Math.abs(toX - fromX);
-        var dy = Math.abs(toY - fromY);
-        var error = -dx >> 1;
-        var xstep = fromX < toX ? 1 : -1;
-        var ystep = fromY < toY ? 1 : -1;
-
-        // In black pixels, looking for white, first or second time.
-        var state = 0;
-        // Loop up until x == toX, but not beyond
-        var xLimit = toX + xstep;
-        for (var x = fromX, y = fromY; x != xLimit; x += xstep) {
-            var realX = steep ? y : x;
-            var realY = steep ? x : y;
-
-          // Does current pixel mean we have moved white to black or vice versa?
-          // Scanning black in state 0,2 and white in state 1, so if we find the wrong
-          // color, advance to next state or end if we are in state 2 already
-          if ((state == 1) == this.image[realX + realY*this.width]) {
-            if (state == 2) {
-
-                return Math.sqrt(((tmp=x-fromX)*tmp)+((tmp2=y-fromY)*tmp2))
-            }
-            state++;
-          }
-
-          error += dy;
-          if (error > 0) {
-            if (y == toY) {
-              break;
-            }
-            y += ystep;
-            error -= dx;
-          }
-        }
-        // Found black-white-black; give the benefit of the doubt that the next pixel outside the image
-        // is "white" so this last point at (toX+xStep,toY) is the right ending. This is really a
-        // small approximation; (toX+xStep,toY+yStep) might be really correct. Ignore this.
-        if (state == 2) {
-
-            return Math.sqrt((tmp=(toX + xstep)-fromX)*tmp + (tmp2=toY-fromY)*tmp2);
-        }
-        // else we didn't find even black-white-black; no estimate is really possible
-        return NaN;
-
-    },
+    
 
     sizeOfBlackWhiteBlackRunBothWays_:function( fromX,  fromY,  toX,  toY){
 
@@ -2251,8 +2133,7 @@ Detector.prototype = {
     sizeOfBlackWhiteBlackRunBothWays:function( fromX,  fromY,  toX,  toY){
 
         var result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
-        var deleteme = this.sizeOfBlackWhiteBlackRun__(fromX, fromY, toX, toY)
-        if(result != deleteme) console.log(deleteme + ' ' + result + ' badness ' ) 
+
 
         // Now count other way -- don't run off image though of course
         var scale = 1.0;
@@ -2283,8 +2164,6 @@ Detector.prototype = {
         otherToX = Math.floor (fromX + (otherToX - fromX) * scale);
 
         result += this.sizeOfBlackWhiteBlackRun(fromX, fromY, otherToX, otherToY);
-        deleteme += this.sizeOfBlackWhiteBlackRun__(fromX, fromY, otherToX, otherToY)
-        if(result != deleteme) console.log(deleteme + ' ' + result + ' badness ' ) 
         return result - 1.0; // -1 because we counted the middle pixel twice
     },
     calculateModuleSizeOneWay:function( pattern,  otherPattern){

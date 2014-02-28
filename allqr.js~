@@ -2030,7 +2030,7 @@ function Detector(image,w,h)
 
 Detector.prototype = {
     sizeOfBlackWhiteBlackRun__:function(fromX,  fromY,  toX,  toY){
-        
+        // this function was ported from xzing and speed tweeked by Kenneth Lichtenberger 2014
 
         // Mild variant of Bresenham's algorithm;
         // see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
@@ -2093,12 +2093,10 @@ Detector.prototype = {
         // Found black-white-black; give the benefit of the doubt that the next pixel outside the image
         // is "white" so this last point at (toX+xStep,toY) is the right ending. This is really a
         // small approximation; (toX+xStep,toY+yStep) might be really correct. Ignore this.
-        if (state == 2) {
+        return (state == 2)? Math.sqrt((tmp=(toX + xstep)-fromX)*tmp + (tmp2=toY-fromY)*tmp2):NaN
 
-            return Math.sqrt((tmp=(toX + xstep)-fromX)*tmp + (tmp2=toY-fromY)*tmp2);
-        }
-        // else we didn't find even black-white-black; no estimate is really possible
-        return NaN;
+        // NAN if we didn't find even black-white-black; no estimate is really possible
+
 
     },    
     
