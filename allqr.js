@@ -145,6 +145,7 @@ function blurMachineGray(width, height, radius){
     this.height = height|0
     this.pixels = new Uint8Array(width*height)
     //this.length = (width*height)|0
+    
 }
 blurMachineGray.prototype = {
     blur:function(buff){
@@ -376,6 +377,7 @@ function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmen
         var pointsLength = dimension << 1
         this.width=w|0
         this.height=h|0
+        this.length = w*h|0
         this.dimension = dimension
         this.pointsLength = pointsLength   
         this.image = image
@@ -393,10 +395,11 @@ GridSampler.prototype = {
         {
             var x = Math.floor (this.points[offset]);
             var y = Math.floor(this.points[offset + 1]);
-            x = (x<-1)?-1:x
-            x = (x>this.width)?this.width:x
-            y = (y<-1)?-1:y
-            y = (y>this.height)?this.height:y
+
+            if (x < - 1 || x > this.width || y < - 1 || y > this.height)
+            {
+                throw "Error.checkAndNudgePoints ";
+            }
             nudged = false;
             if (x == - 1)
             {
@@ -454,6 +457,8 @@ GridSampler.prototype = {
         }
     },
     process:function(){
+        var x1,x2,x3,y1,y2,y3
+        var point1,point2,point3
         for (var y = 0; y < this.dimension; y++)
         {
             var max = this.pointsLength;
@@ -472,7 +477,17 @@ GridSampler.prototype = {
            
             for (var x = 0; x < max; x += 2)
             {
-                var bit = this.image[Math.floor( this.points[x])+ this.width* Math.floor( this.points[x + 1])];
+                x2 = this.points[x]|0
+                y2 = this.points[x+1]|0
+                x1 = x2 - 1
+                x3 = x2 + 1
+                y1 = y2 - 1
+                y3 = y2 + 1
+                point2 = x2 + y2*this.width
+                point1 = (point1 = (point1 = x1 + y1*this.width)&((this.length-point1)>>31^-1))&(point1>>31^-1)
+                point3 = (point3 = (point3 = x3 + y3*this.width)&((this.length-point3)>>31^-1))&(point1>>31^-1)
+                var bit = (((this.image[point1] + this.image[point2] + this.image[point3])-2)>>31^-1)&1
+                //var bit = this.image[Math.floor( this.points[x])+ this.width* Math.floor( this.points[x + 1])];
 
                 //bits[x >> 1][ y]=bit;
                 if(bit)
@@ -2014,7 +2029,7 @@ function Detector(image,w,h)
 }
 
 Detector.prototype = {
-    sizeOfBlackWhiteBlackRun:function( fromX,  fromY,  toX,  toY){
+    sizeOfBlackWhiteBlackRun_:function( fromX,  fromY,  toX,  toY){
         var tmp,tmp2
         // Mild variant of Bresenham's algorithm;
         // see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
@@ -2065,7 +2080,71 @@ Detector.prototype = {
         }while((x-toX|toX-x) & keepGoing)
         return Math.sqrt(((tmp=toX-fromX)*tmp)+((tmp2=toY-fromY)*tmp2))
     },
-    sizeOfBlackWhiteBlackRunBothWays:function( fromX,  fromY,  toX,  toY){
+    sizeOfBlackWhiteBlackRun:function( fromX,  fromY,  toX,  toY){
+        // Mild variant of Bresenham's algorithm;
+        // see http://en.wikipedia.org/wiki/Bresenham's_line_algorithm
+        var steep = Math.abs(toY - fromY) > Math.abs(toX - fromX);
+        if (steep)
+        {
+            var temp = fromX;
+            fromX = fromY;
+            fromY = temp;
+            temp = toX;
+            toX = toY;
+            toY = temp;
+        }
+
+        var dx = Math.abs(toX - fromX);
+        var dy = Math.abs(toY - fromY);
+        var error = - dx >> 1;
+        var ystep = fromY < toY?1:- 1;
+        var xstep = fromX < toX?1:- 1;
+        var state = 0; // In black pixels, looking for white, first or second time
+        for (var x = fromX, y = fromY; x != toX; x += xstep)
+        {
+
+            var realX = steep?y:x;
+            var realY = steep?x:y;
+            if (state == 1)
+            {
+                // In white pixels, looking for black
+                if (this.image[realX + realY*this.width])
+                {
+                    state++;
+                }
+            }
+            else
+            {
+                if (!this.image[realX + realY*this.width])
+                {
+                    state++;
+                }
+            }
+
+            if (state == 3)
+            {
+                // Found black, white, black, and stumbled back onto white; done
+                var diffX = x - fromX;
+                var diffY = y - fromY;
+                return  Math.sqrt( (diffX * diffX + diffY * diffY));
+            }
+            error += dy;
+            if (error > 0)
+            {
+                if (y == toY)
+                {
+                    break;
+                }
+                y += ystep;
+                error -= dx;
+            }
+        }
+        var diffX2 = toX - fromX;
+        var diffY2 = toY - fromY;
+        return  Math.sqrt( (diffX2 * diffX2 + diffY2 * diffY2));
+    },
+
+    sizeOfBlackWhiteBlackRunBothWays_:function( fromX,  fromY,  toX,  toY){
 
         var result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
         // Now count other way -- don't run off image though of course
@@ -2089,6 +2168,43 @@ Detector.prototype = {
         otherToY = (otherToY&tmp3)|(this.heightMinus1&tmp2)
 
         otherToX = (fromX + (otherToX - fromX) * (div2/div3))|0
+
+        result += this.sizeOfBlackWhiteBlackRun(fromX, fromY, otherToX, otherToY);
+        return result - 1.0; // -1 because we counted the middle pixel twice
+    },
+    sizeOfBlackWhiteBlackRunBothWays:function( fromX,  fromY,  toX,  toY){
+
+        var result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
+        var deleteme = this.sizeOfBlackWhiteBlackRun_(fromX, fromY, toX, toY)
+        if(result != deleteme) console.log(deleteme-result + ' badness ' ) 
+
+        // Now count other way -- don't run off image though of course
+        var scale = 1.0;
+        var otherToX = fromX - (toX - fromX);
+        if (otherToX < 0)
+        {
+            scale =  fromX /  (fromX - otherToX);
+            otherToX = 0;
+        }
+        else if (otherToX >= this.width)
+        {
+            scale =  (this.width - 1 - fromX) /  (otherToX - fromX);
+            otherToX = this.width - 1;
+        }
+        var otherToY = Math.floor (fromY - (toY - fromY) * scale);
+
+        scale = 1.0;
+        if (otherToY < 0)
+        {
+            scale =  fromY /  (fromY - otherToY);
+            otherToY = 0;
+        }
+        else if (otherToY >= this.height)
+        {
+            scale =  (this.height - 1 - fromY) /  (otherToY - fromY);
+            otherToY = this.height - 1;
+        }
+        otherToX = Math.floor (fromX + (otherToX - fromX) * scale);
 
         result += this.sizeOfBlackWhiteBlackRun(fromX, fromY, otherToX, otherToY);
         return result - 1.0; // -1 because we counted the middle pixel twice
@@ -2230,7 +2346,7 @@ qrcode.process = function(det){
         
         
         var d = det.detect()
-        //postMessage(bitmatX_to_canvas_buff( d.bits ))
+        postMessage(bitmatX_to_canvas_buff( d.bits ))
         var decoder = new Decoder( d.bits )
         
        
@@ -3739,7 +3855,7 @@ addEventListener('message', function(e) {
 
   post(qr.image.detector)
  // post(qr.image2.detector)
- postMessage(bits_to_canvas_buff(qr.image.bits))
+ //postMessage(bits_to_canvas_buff(qr.image.bits))
  //postMessage(gray_to_canvas_buff(qr.image.image))
 
 
