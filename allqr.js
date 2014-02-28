@@ -357,118 +357,132 @@ return blurMachineGray
 
 */
 
-
-var GridSampler = {};
-
-GridSampler.checkAndNudgePoints=function( image,  points)
-        {
-            var width = qrcode.width;
-            var height = qrcode.height;
-            // Check and nudge points from start until we see some that are OK:
-            var nudged = true;
-            for (var offset = 0; offset < points.length && nudged; offset += 2)
-            {
-                var x = Math.floor (points[offset]);
-                var y = Math.floor( points[offset + 1]);
-                if (x < - 1 || x > width || y < - 1 || y > height)
-                {
-                    throw "Error.checkAndNudgePoints ";
-                }
-                nudged = false;
-                if (x == - 1)
-                {
-                    points[offset] = 0.0;
-                    nudged = true;
-                }
-                else if (x == width)
-                {
-                    points[offset] = width - 1;
-                    nudged = true;
-                }
-                if (y == - 1)
-                {
-                    points[offset + 1] = 0.0;
-                    nudged = true;
-                }
-                else if (y == height)
-                {
-                    points[offset + 1] = height - 1;
-                    nudged = true;
-                }
-            }
-            // Check and nudge points from end:
-            nudged = true;
-            for (var offset = points.length - 2; offset >= 0 && nudged; offset -= 2)
-            {
-                var x = Math.floor( points[offset]);
-                var y = Math.floor( points[offset + 1]);
-                if (x < - 1 || x > width || y < - 1 || y > height)
-                {
-                    throw "Error.checkAndNudgePoints ";
-                }
-                nudged = false;
-                if (x == - 1)
-                {
-                    points[offset] = 0.0;
-                    nudged = true;
-                }
-                else if (x == width)
-                {
-                    points[offset] = width - 1;
-                    nudged = true;
-                }
-                if (y == - 1)
-                {
-                    points[offset + 1] = 0.0;
-                    nudged = true;
-                }
-                else if (y == height)
-                {
-                    points[offset + 1] = height - 1;
-                    nudged = true;
-                }
-            }
+function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmentPattern){
+        var dimMinusThree =  dimension - 3.5;
+        var bottomRightX;
+        var bottomRightY;
+        var sourceBottomRightX;
+        var sourceBottomRightY;
+        if (alignmentPattern){
+            bottomRightX = alignmentPattern.X;
+            bottomRightY = alignmentPattern.Y;
+            sourceBottomRightX = sourceBottomRightY = dimMinusThree - 3.0;
+        }else{
+            // Don't have an alignment pattern, just make up the bottom-right point
+            bottomRightX = (topRight.X - topLeft.X) + bottomLeft.X;
+            bottomRightY = (topRight.Y - topLeft.Y) + bottomLeft.Y;
+            sourceBottomRightX = sourceBottomRightY = dimMinusThree;
         }
+        var pointsLength = dimension << 1
+        this.width=w|0
+        this.height=h|0
+        this.dimension = dimension
+        this.pointsLength = pointsLength   
+        this.image = image
+        this.transform =  PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, topLeft.X, topLeft.Y, topRight.X, topRight.Y, bottomRightX, bottomRightY, bottomLeft.X, bottomLeft.Y)
 
-
-
-GridSampler.sampleGrid3=function( image,  dimension,  transform)
-        {
-            var bits = new BitMatrix(dimension);
-            var points = new Float32Array(dimension << 1);
-            for (var y = 0; y < dimension; y++)
-            {
-                var max = points.length;
-                var iValue =  y + 0.5;
-                for (var x = 0; x < max; x += 2)
-                {
-                    points[x] =  (x >> 1) + 0.5;
-                    points[x + 1] = iValue;
-                }
-                transform.transformPoints1(points);
-                // Quick check to see if points transformed to something inside the image;
-                // sufficient to check the endpoints
-                GridSampler.checkAndNudgePoints(image, points);
-               
-                    for (var x = 0; x < max; x += 2)
-                    {
-                        var bit = image[Math.floor( points[x])+ qrcode.width* Math.floor( points[x + 1])];
-
-                        //bits[x >> 1][ y]=bit;
-                        if(bit)
-                            bits.set_Renamed(x >> 1, y);
-                    }
-               
-            }
-            return bits;
-        }
-
-GridSampler.sampleGridx=function( image,  dimension,  p1ToX,  p1ToY,  p2ToX,  p2ToY,  p3ToX,  p3ToY,  p4ToX,  p4ToY,  p1FromX,  p1FromY,  p2FromX,  p2FromY,  p3FromX,  p3FromY,  p4FromX,  p4FromY)
-{
-    var transform = PerspectiveTransform.quadrilateralToQuadrilateral(p1ToX, p1ToY, p2ToX, p2ToY, p3ToX, p3ToY, p4ToX, p4ToY, p1FromX, p1FromY, p2FromX, p2FromY, p3FromX, p3FromY, p4FromX, p4FromY);
-
-    return GridSampler.sampleGrid3(image, dimension, transform);
+        this.bits = new BitMatrix(dimension)
+        this.points = new Float32Array(pointsLength)
 }
+GridSampler.prototype = {
+    checkAndNudgePoints:function (){
+
+        // Check and nudge points from start until we see some that are OK:
+        var nudged = true;
+        for (var offset = 0; offset < this.pointsLength && nudged; offset += 2)
+        {
+            var x = Math.floor (this.points[offset]);
+            var y = Math.floor(this.points[offset + 1]);
+            if (x < - 1 || x > this.width || y < - 1 || y > this.height)
+            {
+                throw "Error.checkAndNudgePoints ";
+            }
+            nudged = false;
+            if (x == - 1)
+            {
+                this.points[offset] = 0.0;
+                nudged = true;
+            }
+            else if (x == this.width)
+            {
+                this.points[offset] = this.width - 1;
+                nudged = true;
+            }
+            if (y == - 1)
+            {
+                this.points[offset + 1] = 0.0;
+                nudged = true;
+            }
+            else if (y == this.height)
+            {
+                this.points[offset + 1] = this.height - 1;
+                nudged = true;
+            }
+        }
+        // Check and nudge points from end:
+        nudged = true;
+        for (var offset = this.pointsLength - 2; offset >= 0 && nudged; offset -= 2)
+        {
+            var x = Math.floor( this.points[offset]);
+            var y = Math.floor( this.points[offset + 1]);
+            if (x < - 1 || x > this.width || y < - 1 || y > this.height)
+            {
+                throw "Error.checkAndNudgePoints ";
+            }
+            nudged = false;
+            if (x == - 1)
+            {
+                this.points[offset] = 0.0;
+                nudged = true;
+            }
+            else if (x == this.width)
+            {
+                this.points[offset] = this.width - 1;
+                nudged = true;
+            }
+            if (y == - 1)
+            {
+                this.points[offset + 1] = 0.0;
+                nudged = true;
+            }
+            else if (y == this.height)
+            {
+                this.points[offset + 1] = this.height - 1;
+                nudged = true;
+            }
+        }
+    },
+    process:function(){
+        for (var y = 0; y < this.dimension; y++)
+        {
+            var max = this.pointsLength;
+            var iValue =  y + 0.5;
+            for (var x = 0; x < max; x += 2)
+            {
+                this.points[x] =  (x >> 1) + 0.5;
+                this.points[x + 1] = iValue;
+            }
+            // fix me call for every loop?
+            this.transform.transformPoints1(this.points);
+            // Quick check to see if points transformed to something inside the image;
+            // sufficient to check the endpoints
+            // fix me call for every loop?
+            this.checkAndNudgePoints();
+           
+            for (var x = 0; x < max; x += 2)
+            {
+                var bit = this.image[Math.floor( this.points[x])+ this.width* Math.floor( this.points[x + 1])];
+
+                //bits[x >> 1][ y]=bit;
+                if(bit)
+                    this.bits.set_Renamed(x >> 1, y);
+            }
+           
+        }
+        return this
+    }
+}
+
 
 
 
@@ -1725,6 +1739,7 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
         }
         readingUp ^= 1; // readingUp = !readingUp; // switch directions
     }
+    // fix me why do we care if we can rebuild broken data?
     if (resultOffset != version.totalCodewords)
     {
         throw "Error readCodewords";
@@ -1984,170 +1999,110 @@ function Detector(image,w,h)
 
 
 
-    this.calculateModuleSizeOneWay=function( pattern,  otherPattern)
+    this.calculateModuleSizeOneWay=function( pattern,  otherPattern){
+        var moduleSizeEst1 = this.sizeOfBlackWhiteBlackRunBothWays(pattern.X, pattern.Y, otherPattern.X, otherPattern.Y);
+        var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(otherPattern.X, otherPattern.Y, pattern.X, pattern.Y);
+        if (isNaN(moduleSizeEst1))
         {
-            var moduleSizeEst1 = this.sizeOfBlackWhiteBlackRunBothWays(pattern.X, pattern.Y, otherPattern.X, otherPattern.Y);
-            var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(otherPattern.X, otherPattern.Y, pattern.X, pattern.Y);
-            if (isNaN(moduleSizeEst1))
-            {
-                return moduleSizeEst2 *0.142857143 // div by 7
-            }
-            if (isNaN(moduleSizeEst2))
-            {
-                return moduleSizeEst1 *0.142857143 // div by 7
-            }
-            // fix me can 2 NAN's happen here
-            // Average them, and divide by 7 since we've counted the width of 3 black modules,
-            // and 1 white and 1 black module on either side. Ergo, divide sum by 14.
-            return (moduleSizeEst1 + moduleSizeEst2) * 0.071428571 // div by 14
+            return moduleSizeEst2 *0.142857143 // div by 7
         }
-
-
-    this.calculateModuleSize=function( topLeft,  topRight,  bottomLeft)
+        if (isNaN(moduleSizeEst2))
         {
-            // Take the average
-            return (this.calculateModuleSizeOneWay(topLeft, topRight) + this.calculateModuleSizeOneWay(topLeft, bottomLeft)) *0.5 // div by 2
+            return moduleSizeEst1 *0.142857143 // div by 7
         }
+        // fix me can 2 NAN's happen here
+        // Average them, and divide by 7 since we've counted the width of 3 black modules,
+        // and 1 white and 1 black module on either side. Ergo, divide sum by 14.
+        return (moduleSizeEst1 + moduleSizeEst2) * 0.071428571 // div by 14
+    }
 
 
-    this.computeDimension=function( topLeft,  topRight,  bottomLeft,  moduleSize)
-        {
+    this.calculateModuleSize=function( topLeft,  topRight,  bottomLeft){
+        // Take the average
+        return (this.calculateModuleSizeOneWay(topLeft, topRight) + this.calculateModuleSizeOneWay(topLeft, bottomLeft)) *0.5 // div by 2
+    }
 
-            var tltrCentersDimension = Math.round(topLeft.distance(topRight) / moduleSize);
-            var tlblCentersDimension = Math.round(topLeft.distance(bottomLeft) / moduleSize);
-            var dimension = ((tltrCentersDimension + tlblCentersDimension) >> 1) + 7;
-            dimension += 1-(dimension & 0x03)
-            return dimension;
+
+    this.computeDimension=function( topLeft,  topRight,  bottomLeft,  moduleSize){
+
+        var dimension = ((Math.round(topLeft.distance(topRight) / moduleSize) + Math.round(topLeft.distance(bottomLeft) / moduleSize)) >> 1) + 7;
+        dimension += 1-(dimension & 0x03)
+        return dimension;
+    }
+
+    this.findAlignmentInRegion=function( overallEstModuleSize,  estAlignmentX,  estAlignmentY,  allowanceFactor){
+        // Look for an alignment pattern (3 modules in size) around where it
+        // should be
+        var tmp,tmp2
+        var allowance = (allowanceFactor * overallEstModuleSize)|0;
+        var alignmentAreaLeftX = ((tmp=estAlignmentX - allowance)&(tmp>>31^-1))
+        
+        var alignmentAreaRightX = this.widthMinus1 + ((tmp2=(estAlignmentX + allowance)-this.widthMinus1)&(tmp2>>31))
+        
+        if (alignmentAreaRightX - alignmentAreaLeftX < overallEstModuleSize * 3) return null
+
+        var alignmentAreaTopY = ((tmp=estAlignmentY - allowance)&(tmp>>31^-1))
+        var alignmentAreaBottomY = this.heightMinus1 + ((tmp2=(estAlignmentY + allowance)-this.heightMinus1)&tmp2>>31)
+        return new AlignmentPatternFinder(this.image, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize).find()
+    }
+    this.processFinderPatternInfo = function( info){
+
+        var topLeft = info.topLeft;
+        var topRight = info.topRight;
+        var bottomLeft = info.bottomLeft;
+        // fix me the finder pattern finder probly should compute this
+        var moduleSize = this.calculateModuleSize(topLeft, topRight, bottomLeft);
+        if (moduleSize < 1.0){
+            throw "moduleSize is too small";
         }
+        // this too
+        var dimension = this.computeDimension(topLeft, topRight, bottomLeft, moduleSize);
+        // and this
+        var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
 
-    this.findAlignmentInRegion=function( overallEstModuleSize,  estAlignmentX,  estAlignmentY,  allowanceFactor)
+
+        var alignmentPattern;
+        // Anything above version 1 has an alignment pattern
+        if (provisionalVersion.alignmentPatternCenters.length > 0)
         {
-            // Look for an alignment pattern (3 modules in size) around where it
-            // should be
-            var allowance = Math.floor (allowanceFactor * overallEstModuleSize);
-            var alignmentAreaLeftX = Math.max(0, estAlignmentX - allowance);
-            var alignmentAreaRightX = Math.min(this.width - 1, estAlignmentX + allowance);
-            
-            if (alignmentAreaRightX - alignmentAreaLeftX < overallEstModuleSize * 3)
-            {
-                return null
-            }
 
-            var alignmentAreaTopY = Math.max(0, estAlignmentY - allowance);
-            var alignmentAreaBottomY = Math.min(this.height - 1, estAlignmentY + allowance);
+            // Guess where a "bottom right" finder pattern would have been
+            var bottomRightX = topRight.X - topLeft.X + bottomLeft.X;
+            var bottomRightY = topRight.Y - topLeft.Y + bottomLeft.Y;
 
-            var alignmentFinder = new AlignmentPatternFinder(this.image, alignmentAreaLeftX, alignmentAreaTopY, alignmentAreaRightX - alignmentAreaLeftX, alignmentAreaBottomY - alignmentAreaTopY, overallEstModuleSize);
-            return alignmentFinder.find();
+            // Estimate that alignment pattern is closer by 3 modules
+            // from "bottom right" to known top left location
+            var estAlignmentX = Math.floor (topLeft.X + provisionalVersion.correctionToTopLeft * (bottomRightX - topLeft.X));
+            var estAlignmentY = Math.floor (topLeft.Y + provisionalVersion.correctionToTopLeft * (bottomRightY - topLeft.Y));
+
+            // Kind of arbitrary -- expand search radius before giving up
+
+            var i = 4
+            alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+            // fix me re enabled commented out code by returning null on a error
+            // it works better idono 
+            // check the code in zxing and see what they are doing here
+            //do{
+                //try
+                //{
+                    //alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+                    
+                //}
+                //catch (re)
+                //{
+                    // try next round
+                //}
+                //i <<= 1 
+            //}while(alignmentPattern !== null && i<16)
+            //if(alignmentPattern === null){
+              //  throw "Couldn't find enough alignment patterns";
+            //}
+            // If we didn't find alignment pattern... well try anyway without it
         }
+        return new GridSampler(this.image,this.width,this.height,dimension,topLeft, topRight, bottomLeft, alignmentPattern).process()
 
-    this.createTransform=function( topLeft,  topRight,  bottomLeft, alignmentPattern, dimension)
-        {
-            var dimMinusThree =  dimension - 3.5;
-            var bottomRightX;
-            var bottomRightY;
-            var sourceBottomRightX;
-            var sourceBottomRightY;
-            if (alignmentPattern != null)
-            {
-                bottomRightX = alignmentPattern.X;
-                bottomRightY = alignmentPattern.Y;
-                sourceBottomRightX = sourceBottomRightY = dimMinusThree - 3.0;
-            }
-            else
-            {
-                // Don't have an alignment pattern, just make up the bottom-right point
-                bottomRightX = (topRight.X - topLeft.X) + bottomLeft.X;
-                bottomRightY = (topRight.Y - topLeft.Y) + bottomLeft.Y;
-                sourceBottomRightX = sourceBottomRightY = dimMinusThree;
-            }
-
-            var transform = PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, topLeft.X, topLeft.Y, topRight.X, topRight.Y, bottomRightX, bottomRightY, bottomLeft.X, bottomLeft.Y);
-
-            return transform;
-        }        
-
-    this.sampleGrid=function( image,  transform,  dimension)
-        {
-
-            var sampler = GridSampler;
-            return sampler.sampleGrid3(image, dimension, transform);
-        }
-
-    this.processFinderPatternInfo = function( info)
-        {
-
-            var topLeft = info.topLeft;
-            var topRight = info.topRight;
-            var bottomLeft = info.bottomLeft;
-
-            var moduleSize = this.calculateModuleSize(topLeft, topRight, bottomLeft);
-            if (moduleSize < 1.0)
-            {
-                throw "moduleSize is too small";
-            }
-            var dimension = this.computeDimension(topLeft, topRight, bottomLeft, moduleSize);
-            var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
-
-
-            var alignmentPattern;
-            // Anything above version 1 has an alignment pattern
-            if (provisionalVersion.alignmentPatternCenters.length > 0)
-            {
-
-                // Guess where a "bottom right" finder pattern would have been
-                var bottomRightX = topRight.X - topLeft.X + bottomLeft.X;
-                var bottomRightY = topRight.Y - topLeft.Y + bottomLeft.Y;
-
-                // Estimate that alignment pattern is closer by 3 modules
-                // from "bottom right" to known top left location
-                var estAlignmentX = Math.floor (topLeft.X + provisionalVersion.correctionToTopLeft * (bottomRightX - topLeft.X));
-                var estAlignmentY = Math.floor (topLeft.Y + provisionalVersion.correctionToTopLeft * (bottomRightY - topLeft.Y));
-
-                // Kind of arbitrary -- expand search radius before giving up
-
-                var i = 4
-                alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
-                // fix me re enabled commented out code by returning null on a error
-                // it works better idono 
-                // check the code in zxing and see what they are doing here
-                //do{
-                    //try
-                    //{
-                        //alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
-                        
-                    //}
-                    //catch (re)
-                    //{
-                        // try next round
-                    //}
-                    //i <<= 1 
-                //}while(alignmentPattern !== null && i<16)
-                if(alignmentPattern === null){
-                    throw "Couldn't find enough alignment patterns";
-                }
-                // If we didn't find alignment pattern... well try anyway without it
-            }
-
-            var transform = this.createTransform(topLeft, topRight, bottomLeft, alignmentPattern, dimension);
-
-            var bits = this.sampleGrid(this.image, transform, dimension);
-
-            var points;
-            if (alignmentPattern === null)
-            {
-                points = [bottomLeft, topLeft, topRight];
-            }
-            else
-            {
-                points = [bottomLeft, topLeft, topRight, alignmentPattern];
-            }
-            return new DetectorResult(bits, points);
-        }
-
-
-
-    this.detect=function()
-    {
+    }
+    this.detect=function(){
         //var info =  new FinderPatternFinder(this.image,this.width,this.height).findFinderPattern();
         this.finderPatternFinder.reset()
         return this.processFinderPatternInfo(this.finderPatternFinder.findFinderPattern()); 
@@ -2437,7 +2392,7 @@ FinderPatternFinder.prototype = {
     crossCheckHorizontal:function( startJ,  centerI,  maxCount, originalStateCountTotal){
         var image = this.image;
 
-        var maxJ = qrcode.width;
+        var maxJ = this.width;
         var stateCount = this.crossCheckStateCount;
         stateCount[0] = 0;
         stateCount[1] = 0;
@@ -2484,7 +2439,7 @@ FinderPatternFinder.prototype = {
         {
             return NaN;
         }
-        while (j < this.width && !image[j+ centerI*qrcode.width] && stateCount[3] < maxCount)
+        while (j < this.width && !image[j+ centerI*this.width] && stateCount[3] < maxCount)
         {
             stateCount[3]++;
             j++;
