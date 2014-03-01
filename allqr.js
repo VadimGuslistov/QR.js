@@ -2100,8 +2100,8 @@ Detector.prototype = {
 
     },    
     
-    sizeOfBlackWhiteBlackRunBothWays__:function(fromX,fromY,toX,toY){
-
+    sizeOfBlackWhiteBlackRunBothWays:function(fromX,fromY,toX,toY){
+        // fix me explain my self
         var result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
         
         // Now count other way -- don't run off image though of course
@@ -2131,71 +2131,6 @@ Detector.prototype = {
         // Middle pixel is double-counted this way; subtract 1
         return result - 1.0;
  
-    },    
-
-    sizeOfBlackWhiteBlackRunBothWays_:function( fromX,  fromY,  toX,  toY){
-
-        var result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
-        // Now count other way -- don't run off image though of course
-
-        var otherToX = fromX - (toX - fromX)
-        var tmp = otherToX>>31
-        var tmp2 = (this.width-otherToX)>>31
-        var tmp3 = (tmp2|tmp)^-1
-        var div1 = 1&tmp3
-        var div2 = div1|(fromX&tmp)|((this.widthMinus1-fromX)&tmp2)
-        var div3 = div1|((fromX - otherToX)&tmp)|((otherToX - fromX)&tmp2)
-        otherToX = (otherToX&tmp3) | (this.widthMinus1&tmp2)
-
-        var otherToY = (fromY - (toY - fromY) * (div2/div3))|0
-        tmp = otherToY>>31
-        tmp2 = (this.height - otherToY)
-        tmp3 = (tmp2|tmp)^-1
-        div1 = 1&tmp3
-        div2 = div1|(fromY&tmp)|((this.heightMinus1-fromY)&tmp2)
-        div3 = div1|((fromY - otherToY)&tmp)|((otherToY - fromY)&tmp2)
-        otherToY = (otherToY&tmp3)|(this.heightMinus1&tmp2)
-
-        otherToX = (fromX + (otherToX - fromX) * (div2/div3))|0
-
-        result += this.sizeOfBlackWhiteBlackRun(fromX, fromY, otherToX, otherToY);
-        return result - 1.0; // -1 because we counted the middle pixel twice
-    },
-    sizeOfBlackWhiteBlackRunBothWays:function( fromX,  fromY,  toX,  toY){
-
-        var result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
-
-
-        // Now count other way -- don't run off image though of course
-        var scale = 1.0;
-        var otherToX = fromX - (toX - fromX);
-        if (otherToX < 0)
-        {
-            scale =  fromX /  (fromX - otherToX);
-            otherToX = 0;
-        }
-        else if (otherToX >= this.width)
-        {
-            scale =  (this.width - 1 - fromX) /  (otherToX - fromX);
-            otherToX = this.width - 1;
-        }
-        var otherToY = Math.floor (fromY - (toY - fromY) * scale);
-
-        scale = 1.0;
-        if (otherToY < 0)
-        {
-            scale =  fromY /  (fromY - otherToY);
-            otherToY = 0;
-        }
-        else if (otherToY >= this.height)
-        {
-            scale =  (this.height - 1 - fromY) /  (otherToY - fromY);
-            otherToY = this.height - 1;
-        }
-        otherToX = Math.floor (fromX + (otherToX - fromX) * scale);
-
-        result += this.sizeOfBlackWhiteBlackRun(fromX, fromY, otherToX, otherToY);
-        return result - 1.0; // -1 because we counted the middle pixel twice
     },
     calculateModuleSizeOneWay:function( pattern,  otherPattern){
         var moduleSizeEst1 = this.sizeOfBlackWhiteBlackRunBothWays(pattern.X, pattern.Y, otherPattern.X, otherPattern.Y);
