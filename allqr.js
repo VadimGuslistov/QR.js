@@ -2100,7 +2100,38 @@ Detector.prototype = {
 
     },    
     
+    sizeOfBlackWhiteBlackRunBothWays__:function(fromX,fromY,toX,toY){
+
+        var result = this.sizeOfBlackWhiteBlackRun(fromX, fromY, toX, toY);
+        
+        // Now count other way -- don't run off image though of course
+
+        var otherToX = fromX - (toX - fromX);
+        var tmp = otherToX>>31
+        var tmp2 = (otherToX+1-this.width)>>31^-1
+        var tmp3 = (tmp2|tmp)^-1
+        var div1 = 1&tmp3
+        var div2 = div1|(fromX&tmp)|((this.widthMinus1-fromX)&tmp2)
+        var div3 = div1|((fromX - otherToX)&tmp)|((otherToX - fromX)&tmp2)
+        otherToX = (otherToX&tmp3) | (this.widthMinus1&tmp2)
+
+        var otherToY = (fromY - (toY - fromY) * (div2/div3))|0
+        tmp = otherToY>>31
+        tmp2 = (otherToY+1-this.height)>>31^-1
+        tmp3 = (tmp2|tmp)^-1
+        div1 = 1&tmp3
+        div2 = div1|(fromY&tmp)|((this.heightMinus1-fromY)&tmp2)
+        div3 = div1|((fromY - otherToY)&tmp)|((otherToY - fromY)&tmp2)
+        otherToY = (otherToY&tmp3)|(this.heightMinus1&tmp2)
+        
+        otherToX = (fromX + (otherToX - fromX) * (div2/div3))|0
     
+        result += this.sizeOfBlackWhiteBlackRun(fromX, fromY, otherToX, otherToY);
+
+        // Middle pixel is double-counted this way; subtract 1
+        return result - 1.0;
+ 
+    },    
 
     sizeOfBlackWhiteBlackRunBothWays_:function( fromX,  fromY,  toX,  toY){
 
@@ -2168,7 +2199,11 @@ Detector.prototype = {
     },
     calculateModuleSizeOneWay:function( pattern,  otherPattern){
         var moduleSizeEst1 = this.sizeOfBlackWhiteBlackRunBothWays(pattern.X, pattern.Y, otherPattern.X, otherPattern.Y);
+        var deleteme1 = this.sizeOfBlackWhiteBlackRunBothWays__(pattern.X, pattern.Y, otherPattern.X, otherPattern.Y);
+        if(moduleSizeEst1 != deleteme1) console.log('badness ' + moduleSizeEst1 +' ' + deleteme1  )
         var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(otherPattern.X, otherPattern.Y, pattern.X, pattern.Y);
+         var deleteme2 = this.sizeOfBlackWhiteBlackRunBothWays__(otherPattern.X, otherPattern.Y, pattern.X, pattern.Y);
+         if(moduleSizeEst2 != deleteme2) console.log('badness ' + moduleSizeEst2 +' ' + deleteme2  )
         if (isNaN(moduleSizeEst1))
         {
             return moduleSizeEst2/7 // *0.142857143 // div by 7
@@ -3793,8 +3828,8 @@ addEventListener('message', function(e) {
             ended.count++
             ended.sum+= new Date() - start1
             //console.log(new Date() - start2 + ' 2')
-            //console.log(e)
-            //console.log(e.stack)
+            console.log(e)
+            console.log(e.stack)
             
         }
         //console.log(Object.keys(self))
