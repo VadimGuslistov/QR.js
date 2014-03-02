@@ -2377,6 +2377,61 @@ qrPattern.prototype = {
     
     
 }
+/*
+ FinderPattern combineEstimate(float i, float j, float newModuleSize) {
+    int combinedCount = count + 1;
+    float combinedX = (count * getX() + j) / combinedCount;
+    float combinedY = (count * getY() + i) / combinedCount;
+    float combinedModuleSize = (count * estimatedModuleSize + newModuleSize) / combinedCount;
+    return new FinderPattern(combinedX, combinedY, combinedModuleSize, combinedCount);
+  }
+   boolean aboutEquals(float moduleSize, float i, float j) {
+    if (Math.abs(i - getY()) <= moduleSize && Math.abs(j - getX()) <= moduleSize) {
+      float moduleSizeDiff = Math.abs(moduleSize - estimatedModuleSize);
+      return moduleSizeDiff <= 1.0f || moduleSizeDiff <= estimatedModuleSize;
+    }
+    return false;
+  }
+  */
+function AlignmentPattern(posX, posY,  estimatedModuleSize)
+{
+    this.x=posX;
+    this.y=posY;
+    this.estimatedModuleSize = estimatedModuleSize;
+    this.X = posX|0
+    this.Y = posY|0
+  
+}
+AlignmentPattern.prototype = {
+    aboutEquals:function( moduleSize,  i,  j){
+        var moduleSizeDiff
+        if (Math.abs(i - this.y) <= moduleSize && Math.abs(j - this.x) <= moduleSize)
+        {
+            moduleSizeDiff = Math.abs(moduleSize - this.estimatedModuleSize);
+            return moduleSizeDiff <= 1.0 ||  moduleSizeDiff <= this.estimatedModuleSize;
+        }
+        return false;
+    },
+    distance:function(b){
+        var x = this.x - b.x
+        var y = this.y - b.y
+        return Math.sqrt(x*x+y*y)
+    },
+    intDistance:function(b){
+        var x = this.X-b.X
+        var y = this.Y-b.Y
+        return Math.sqrt(x*x+y*y)
+    },
+    combineEstimate:function (i,j,newModuleSize) {
+    var combinedX = (this.x + j) *0.5;
+    var combinedY = (this.y + i) *0.5;
+    var combinedModuleSize = (estimatedModuleSize + newModuleSize) *0.5;
+    return new AlignmentPattern(combinedX, combinedY, combinedModuleSize);
+  }
+    
+    
+}
+  
 qrPattern.crossProductZ = function( a,  b,  c){
     return ((c.x - b.x) * (a.y - b.y)) - ((c.y - b.y) * (a.x - b.y));
 }
@@ -2874,6 +2929,7 @@ FinderPatternFinder.prototype = {
     }
 }
 
+                         
 function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  moduleSize,  resultPointCallback)
 {
     this.image = image;
@@ -2883,13 +2939,15 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
     this.width = width;
     this.height = height;
     this.moduleSize = moduleSize;
-    this.crossCheckStateCount = new Array(0,0,0);
+    this.crossCheckStateCount = new Int16Array(3);
     this.resultPointCallback = resultPointCallback;
+    
 
     this.centerFromEnd=function(stateCount,  end)
         {
             return  (end - stateCount[2]) - stateCount[1] * 0.5; // div by 2
         }
+   
     this.foundPatternCross = function(stateCount)
         {
             var moduleSize = this.moduleSize;
@@ -2904,69 +2962,82 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
             return true;
         }
 
-    this.crossCheckVertical=function( startI,  centerJ,  maxCount,  originalStateCountTotal)
-        {
-            var image = this.image;
-
-            var maxI = qrcode.height;
-            var stateCount = this.crossCheckStateCount;
-            stateCount[0] = 0;
-            stateCount[1] = 0;
-            stateCount[2] = 0;
-
-            // Start counting up from center
-            var i = startI;
-            while (i >= 0 && image[centerJ + i*qrcode.width] && stateCount[1] <= maxCount)
-            {
-                stateCount[1]++;
-                i--;
-            }
-            // If already too many modules in this state or ran off the edge:
-            if (i < 0 || stateCount[1] > maxCount)
-            {
-                return NaN;
-            }
-            while (i >= 0 && !image[centerJ + i*qrcode.width] && stateCount[0] <= maxCount)
-            {
-                stateCount[0]++;
-                i--;
-            }
-            if (stateCount[0] > maxCount)
-            {
-                return NaN;
-            }
-
-            // Now also count down from center
-            i = startI + 1;
-            while (i < maxI && image[centerJ + i*qrcode.width] && stateCount[1] <= maxCount)
-            {
-                stateCount[1]++;
-                i++;
-            }
-            if (i == maxI || stateCount[1] > maxCount)
-            {
-                return NaN;
-            }
-            while (i < maxI && !image[centerJ + i*qrcode.width] && stateCount[2] <= maxCount)
-            {
-                stateCount[2]++;
-                i++;
-            }
-            if (stateCount[2] > maxCount)
-            {
-                return NaN;
-            }
-
-            var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
-            if (5 * Math.abs(stateCountTotal - originalStateCountTotal) >= 2 * originalStateCountTotal)
-            {
-                return NaN;
-            }
-
-            return this.foundPatternCross(stateCount)?this.centerFromEnd(stateCount, i):NaN;
+    this.crossCheckVertical=function( startI,  centerJ,  maxCount,  originalStateCountTotal){
+        var image = this.image;
+        
+        var maxI = this.height
+        var stateCount = this.crossCheckStateCount;
+        stateCount[0] = 0;
+        stateCount[1] = 0;
+        stateCount[2] = 0;
+        
+        // Start counting up from center
+        var i = startI;
+        while (i >= 0 && this.image[centerJ + i*this.width] && stateCount[1] <= maxCount) {
+          stateCount[1]++;
+          i--;
         }
-
-    this.handlePossibleCenter=function( stateCount,  i,  j)
+        // If already too many modules in this state or ran off the edge:
+        if (i < 0 || stateCount[1] > maxCount) {
+          return NaN;
+        }
+        while (i >= 0 && !this.image[centerJ + i*this.width] && stateCount[0] <= maxCount) {
+          stateCount[0]++;
+          i--;
+        }
+        if (stateCount[0] > maxCount) {
+          return NaN;
+        }
+        
+        // Now also count down from center
+        i = startI + 1;
+        while (i < maxI && this.image[centerJ + i*this.width] && stateCount[1] <= maxCount) {
+          stateCount[1]++;
+          i++;
+        }
+        if (i == maxI || stateCount[1] > maxCount) {
+          return NaN;
+        }
+        while (i < maxI && !this.image[centerJ + i*this.width] && stateCount[2] <= maxCount) {
+          stateCount[2]++;
+          i++;
+        }
+        if (stateCount[2] > maxCount) {
+          return NaN;
+        }
+        
+        var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
+        if (5 * Math.abs(stateCountTotal - originalStateCountTotal) >= 2 * originalStateCountTotal) {
+          return NaN;
+        }
+        
+        return this.foundPatternCross(stateCount) ? this.centerFromEnd(stateCount, i) : NaN;
+  }
+    this.handlePossibleCenter=function( stateCount,  i,  j) {
+        var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
+        var centerJ = this.centerFromEnd(stateCount, j);
+        var centerI = this.crossCheckVertical(i, centerJ|0, 2 * stateCount[1], stateCountTotal);
+        if (!isNaN(centerI)) {
+          var estimatedModuleSize = (stateCount[0] + stateCount[1] + stateCount[2]) / 3.0;
+          var i = 0
+          var l = this.possibleCenters.length
+          var center
+          while(i<l){
+              center = this.possibleCenters[i++]
+              if(center.aboutEquals(estimatedModuleSize, centerI, centerJ)){
+                  return center.combineEstimate(centerI, centerJ, estimatedModuleSize)
+              }
+          }while(i<l)
+          
+          // Hadn't found this before; save it
+          this.possibleCenters.push(new AlignmentPattern(centerJ, centerI, estimatedModuleSize));
+          
+        }
+        return;
+      }
+    
+    }
+    this.handlePossibleCenter_=function( stateCount,  i,  j)
         {
             var stateCountTotal = stateCount[0] + stateCount[1] + stateCount[2];
             var centerJ = this.centerFromEnd(stateCount, j);
@@ -2992,98 +3063,72 @@ function AlignmentPatternFinder( image,  startX,  startY,  width,  height,  modu
             return null;
         }
 
-    this.find = function()
-    {
-            var startX = this.startX;
-            var height = this.height;
-            var maxJ = startX + width;
-            var middleI = startY + (height >> 1);
-            // We are looking for black/white/black modules in 1:1:1 ratio;
-            // this tracks the number of black/white/black modules seen so far
-            var stateCount = new Array(0,0,0);
-            for (var iGen = 0; iGen < height; iGen++)
-            {
-                // Search from middle outwards
-                var i = middleI + ((iGen & 0x01) == 0?((iGen + 1) >> 1):- ((iGen + 1) >> 1));
-                stateCount[0] = 0;
-                stateCount[1] = 0;
-                stateCount[2] = 0;
-                var j = startX;
-                // Burn off leading white pixels before anything else; if we start in the middle of
-                // a white run, it doesn't make sense to count its length, since we don't know if the
-                // white run continued to the left of the start point
-                while (j < maxJ && !image[j + qrcode.width* i])
-                {
-                    j++;
+    this.find = function(){
+        var startX = this.startX;
+        var height = this.height;
+        var maxJ = startX + this.width;
+        var middleI = startY + (height >> 1);
+        // We are looking for black/white/black modules in 1:1:1 ratio;
+        // this tracks the number of black/white/black modules seen so far
+        var stateCount = new Int16Array(3)
+        for (var iGen = 0; iGen < height; iGen++) {
+          // Search from middle outwards
+          var i = middleI + ((iGen & 0x01) == 0 ? (iGen + 1) >> 1 : -((iGen + 1) >> 1));
+          stateCount[0] = 0;
+          stateCount[1] = 0;
+          stateCount[2] = 0;
+          var j = startX;
+          // Burn off leading white pixels before anything else; if we start in the middle of
+          // a white run, it doesn't make sense to count its length, since we don't know if the
+          // white run continued to the left of the start point
+          while (j < maxJ && !this.image[j + i*this.width]) {
+            j++;
+          }
+          var currentState = 0;
+          while (j < maxJ) {
+            if (this.image[j + i*this.width]) {
+              // Black pixel
+              if (currentState == 1) { // Counting black pixels
+                stateCount[currentState]++;
+              } else { // Counting white pixels
+                if (currentState == 2) { // A winner?
+                  if (this.foundPatternCross(stateCount)) { // Yes
+                    var confirmed = this.handlePossibleCenter(stateCount, i, j);
+                    if (confirmed) return confirmed
+                  }
+                  stateCount[0] = stateCount[2];
+                  stateCount[1] = 1;
+                  stateCount[2] = 0;
+                  currentState = 1;
+                } else {
+                  stateCount[++currentState]++;
                 }
-                var currentState = 0;
-                while (j < maxJ)
-                {
-                    if (image[j + i*qrcode.width])
-                    {
-                        // Black pixel
-                        if (currentState == 1)
-                        {
-                            // Counting black pixels
-                            stateCount[currentState]++;
-                        }
-                        else
-                        {
-                            // Counting white pixels
-                            if (currentState == 2)
-                            {
-                                // A winner?
-                                if (this.foundPatternCross(stateCount))
-                                {
-                                    // Yes
-                                    var confirmed = this.handlePossibleCenter(stateCount, i, j);
-                                    if (confirmed != null)
-                                    {
-                                        return confirmed;
-                                    }
-                                }
-                                stateCount[0] = stateCount[2];
-                                stateCount[1] = 1;
-                                stateCount[2] = 0;
-                                currentState = 1;
-                            }
-                            else
-                            {
-                                stateCount[++currentState]++;
-                            }
-                        }
-                    }
-                    else
-                    {
-                        // White pixel
-                        if (currentState == 1)
-                        {
-                            // Counting black pixels
-                            currentState++;
-                        }
-                        stateCount[currentState]++;
-                    }
-                    j++;
-                }
-                if (this.foundPatternCross(stateCount))
-                {
-                    var confirmed = this.handlePossibleCenter(stateCount, i, maxJ);
-                    if (confirmed != null)
-                    {
-                        return confirmed;
-                    }
-                }
+              }
+            } else { // White pixel
+              if (currentState == 1) { // Counting black pixels
+                currentState++;
+              }
+              stateCount[currentState]++;
             }
-
-            // Hmm, nothing we saw was observed and confirmed twice. If we had
-            // any guess at all, return it.
-            if (!(this.possibleCenters.length == 0))
-            {
-                return  this.possibleCenters[0];
+            j++;
+          }
+          if (this.foundPatternCross(stateCount)) {
+            var confirmed = this.handlePossibleCenter(stateCount, i, maxJ);
+            if (confirmed) {
+              return confirmed;
             }
-            return null
-
+          }
+        
         }
+
+    // Hmm, nothing we saw was observed and confirmed twice. If we had
+    // any guess at all, return it.
+    if (this.possibleCenters.length) {
+      return possibleCenters[0];
+    }
+
+    return
+  }
 
 }
 
