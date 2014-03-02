@@ -358,7 +358,7 @@ return blurMachineGray
 
 */
 
-function GridSampler(diff,w,h,dimension,topLeft, topRight, bottomLeft, alignmentPattern){
+function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmentPattern){
         var dimMinusThree =  dimension - 3.5;
         var bottomRightX;
         var bottomRightY;
@@ -381,7 +381,7 @@ function GridSampler(diff,w,h,dimension,topLeft, topRight, bottomLeft, alignment
         this.length = w*h|0
         this.dimension = dimension
         this.pointsLength = pointsLength   
-        this.diff = diff
+        this.image = image
         this.transform =  PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, topLeft.x, topLeft.y, topRight.x, topRight.y, bottomRightX, bottomRightY, bottomLeft.x, bottomLeft.y)
 
         this.bits = new BitMatrix(dimension)
@@ -488,7 +488,7 @@ GridSampler.prototype = {
                 point1 = (point1 = (point1 = x1 + y1*this.width)&((this.length-point1)>>31^-1))&(point1>>31^-1)
                 point3 = (point3 = (point3 = x3 + y3*this.width)&((this.length-point3)>>31^-1))&(point1>>31^-1)
                 */
-                var bit = ((this.diff[x2 + y2*this.width] -190)>>31)&1
+                var bit = this.image[x2 + y2*this.width]
                 //(((this.image[point1] + this.image[point2] + this.image[point3])-2)>>31^-1)&1
                 //tmp = (cur-190)>>31
                 //var bit = this.image[Math.floor( this.points[x])+ this.width* Math.floor( this.points[x + 1])];
@@ -2022,10 +2022,10 @@ PerspectiveTransform.quadrilateralToSquare=function( x0,  y0,  x1,  y1,  x2,  y2
 
 
 
-function Detector(image,diff,w,h)
+function Detector(image,image2,w,h)
 {
     this.image=image;
-    this.diff=diff
+    this.image2=image2
     this.width = w|0
     this.height = h|0
     this.heightMinus1 = (h-1)|0
@@ -2196,8 +2196,8 @@ Detector.prototype = {
         var dimension = this.computeDimension(topLeft, topRight, bottomLeft, moduleSize);
         // and this
         var provisionalVersion = Version.getProvisionalVersionForDimension(dimension);
-
-
+        var modulesBetweenFPCenters = provisionalVersion.dimensionForVersion - 7;
+        var correctionToTopLeft = 1.0 - 3.0 /  modulesBetweenFPCenters
         var alignmentPattern;
         // Anything above version 1 has an alignment pattern
         if (provisionalVersion.alignmentPatternCenters.length > 0)
@@ -2209,9 +2209,9 @@ Detector.prototype = {
 
             // Estimate that alignment pattern is closer by 3 modules
             // from "bottom right" to known top left location
-            var estAlignmentX = Math.floor (topLeft.x + provisionalVersion.correctionToTopLeft * (bottomRightX - topLeft.x));
-            var estAlignmentY = Math.floor (topLeft.y + provisionalVersion.correctionToTopLeft * (bottomRightY - topLeft.x));
-
+            var estAlignmentX = Math.floor (topLeft.x + correctionToTopLeft * (bottomRightX - topLeft.x));
+            var estAlignmentY = Math.floor (topLeft.y + correctionToTopLeft * (bottomRightY - topLeft.x));
+        
             // Kind of arbitrary -- expand search radius before giving up
 
             var i = 4
@@ -2223,7 +2223,7 @@ Detector.prototype = {
             }while(!alignmentPattern && i<16)
             
         }
-        return new GridSampler(this.diff,this.width,this.height,dimension,topLeft, topRight, bottomLeft, alignmentPattern).process()
+        return new GridSampler(this.image2,this.width,this.height,dimension,topLeft, topRight, bottomLeft, alignmentPattern).process()
 
     },
     detect:function(){
@@ -3416,6 +3416,7 @@ function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
     var length = (w*h)|0
     var img = new Uint8Array(length)
     var bits = new Uint8Array(length)
+    var bits2 = new Uint8Array(length)
     this.middleLength = middleLength|0
     this.length = length
     this.width = w|0
@@ -3430,9 +3431,11 @@ function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
     this.image = img
    
     this.bits =  bits
+    this.bits2 = bits2
     this.middle = new Uint16Array(middleLength)
-    this.blurDiffMachine = new blurDiffMachine(img,2,4,11,w,h) //4
-    this.detector= new Detector(bits,this.blurDiffMachine.diff2,w,h)
+    this.blurDiffMachine = new blurDiffMachine(img,2,4,20,w,h) //4
+    //    this.blurDiffMachine = new blurDiffMachine(img,3,4,11,w,h) //good
+    this.detector= new Detector(bits,bits2,w,h)
 
 }
 ECMA_QR_Image.prototype = {
@@ -3444,7 +3447,7 @@ ECMA_QR_Image.prototype = {
         var tmp
         var _1per
         var point
-        var cur,pix
+        var cur,pix,cur2
         var dark,light
         var areaPoint1,areaPoint2,areaPoint3
         var numSqrtAreaPoint 
@@ -3464,13 +3467,19 @@ ECMA_QR_Image.prototype = {
             do{
                 point = areaPoint1 + dx + areaPoint3
                 cur = this.blurDiffMachine.diff1[point]
+                cur2 = this.blurDiffMachine.diff2[point]
                 pix = this.image[point]
 
                 dark = (dark=_min-pix,(dark+(tmp=dark>>31) ^ tmp))*_1per|0
                 light = (light=_max-pix,(light+(tmp=light>>31) ^ tmp))*_1per|0
 
                 tmp = (cur-190)>>31
-                this.bits[point] = ( (pix-_minPlus1)>>31 | tmp | (dark-30)>>31 &  (tmp^-1) )&1
+                // &
+                // ((cur2-197)>>31) very good
+                this.bits[point] =  (   ((dark-80)>>31) & ((cur-198)>>31)   )&1 
+                this.bits2[point] =  (  ((cur2-197)>>31) & ((cur-198)>>31) )&1 
+                //this.bits[point] =  (  ((cur2-190)>>31) & ((cur-195)>>31)  )&1 good 1
+                //( (pix-_minPlus1)>>31 | tmp |  )&1
               
                 dx++
                 tmp = (dx-this.areaWidth)>>31
