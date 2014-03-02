@@ -358,20 +358,21 @@ return blurMachineGray
 
 */
 
-function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmentPattern){
+function GridSampler(diff,w,h,dimension,topLeft, topRight, bottomLeft, alignmentPattern){
         var dimMinusThree =  dimension - 3.5;
         var bottomRightX;
         var bottomRightY;
         var sourceBottomRightX;
         var sourceBottomRightY;
         if (alignmentPattern){
-            bottomRightX = alignmentPattern.X;
-            bottomRightY = alignmentPattern.Y;
+            bottomRightX = alignmentPattern.x;
+            bottomRightY = alignmentPattern.y;
             sourceBottomRightX = sourceBottomRightY = dimMinusThree - 3.0;
         }else{
             // Don't have an alignment pattern, just make up the bottom-right point
-            bottomRightX = (topRight.X - topLeft.X) + bottomLeft.X;
-            bottomRightY = (topRight.Y - topLeft.Y) + bottomLeft.Y;
+            bottomRightX = (topRight.x - topLeft.x) + bottomLeft.x;
+            bottomRightY = (topRight.y - topLeft.y) + bottomLeft.y;
+            
             sourceBottomRightX = sourceBottomRightY = dimMinusThree;
         }
         var pointsLength = dimension << 1
@@ -380,8 +381,8 @@ function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmen
         this.length = w*h|0
         this.dimension = dimension
         this.pointsLength = pointsLength   
-        this.image = image
-        this.transform =  PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, topLeft.X, topLeft.Y, topRight.X, topRight.Y, bottomRightX, bottomRightY, bottomLeft.X, bottomLeft.Y)
+        this.diff = diff
+        this.transform =  PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, topLeft.x, topLeft.y, topRight.x, topRight.y, bottomRightX, bottomRightY, bottomLeft.x, bottomLeft.y)
 
         this.bits = new BitMatrix(dimension)
         this.points = new Float32Array(pointsLength)
@@ -393,13 +394,13 @@ GridSampler.prototype = {
         var nudged = true;
         for (var offset = 0; offset < this.pointsLength && nudged; offset += 2)
         {
-            var x = Math.floor (this.points[offset]);
-            var y = Math.floor(this.points[offset + 1]);
+            var x = Math.round (this.points[offset]);
+            var y = Math.round(this.points[offset + 1]);
 
-            if (x < - 1 || x > this.width || y < - 1 || y > this.height)
-            {
-                throw "Error.checkAndNudgePoints ";
-            }
+            x = (x<-1)?-1:x
+            x = (x>this.width)?this.width:x
+            y = (y<-1)?-1:y
+            y = (y>this.height)?this.height:y
             nudged = false;
             if (x == - 1)
             {
@@ -479,14 +480,17 @@ GridSampler.prototype = {
             {
                 x2 = this.points[x]|0
                 y2 = this.points[x+1]|0
-                x1 = x2 - 1
+                /*x1 = x2 - 1
                 x3 = x2 + 1
                 y1 = y2 - 1
                 y3 = y2 + 1
                 point2 = x2 + y2*this.width
                 point1 = (point1 = (point1 = x1 + y1*this.width)&((this.length-point1)>>31^-1))&(point1>>31^-1)
                 point3 = (point3 = (point3 = x3 + y3*this.width)&((this.length-point3)>>31^-1))&(point1>>31^-1)
-                var bit = (((this.image[point1] + this.image[point2] + this.image[point3])-2)>>31^-1)&1
+                */
+                var bit = ((this.diff[x2 + y2*this.width] -190)>>31)&1
+                //(((this.image[point1] + this.image[point2] + this.image[point3])-2)>>31^-1)&1
+                //tmp = (cur-190)>>31
                 //var bit = this.image[Math.floor( this.points[x])+ this.width* Math.floor( this.points[x + 1])];
 
                 //bits[x >> 1][ y]=bit;
@@ -2018,9 +2022,10 @@ PerspectiveTransform.quadrilateralToSquare=function( x0,  y0,  x1,  y1,  x2,  y2
 
 
 
-function Detector(image,w,h)
+function Detector(image,diff,w,h)
 {
     this.image=image;
+    this.diff=diff
     this.width = w|0
     this.height = h|0
     this.heightMinus1 = (h-1)|0
@@ -2134,11 +2139,11 @@ Detector.prototype = {
     },
     calculateModuleSizeOneWay:function( pattern,  otherPattern){
         var moduleSizeEst1 = this.sizeOfBlackWhiteBlackRunBothWays(pattern.X, pattern.Y, otherPattern.X, otherPattern.Y);
-        var deleteme1 = this.sizeOfBlackWhiteBlackRunBothWays__(pattern.X, pattern.Y, otherPattern.X, otherPattern.Y);
-        if(moduleSizeEst1 != deleteme1) console.log('badness ' + moduleSizeEst1 +' ' + deleteme1  )
+
+
         var moduleSizeEst2 = this.sizeOfBlackWhiteBlackRunBothWays(otherPattern.X, otherPattern.Y, pattern.X, pattern.Y);
-         var deleteme2 = this.sizeOfBlackWhiteBlackRunBothWays__(otherPattern.X, otherPattern.Y, pattern.X, pattern.Y);
-         if(moduleSizeEst2 != deleteme2) console.log('badness ' + moduleSizeEst2 +' ' + deleteme2  )
+
+
         if (isNaN(moduleSizeEst1))
         {
             return moduleSizeEst2/7 // *0.142857143 // div by 7
@@ -2199,40 +2204,26 @@ Detector.prototype = {
         {
 
             // Guess where a "bottom right" finder pattern would have been
-            var bottomRightX = topRight.X - topLeft.X + bottomLeft.X;
-            var bottomRightY = topRight.Y - topLeft.Y + bottomLeft.Y;
+            var bottomRightX = topRight.x - topLeft.x + bottomLeft.x;
+            var bottomRightY = topRight.y - topLeft.y + bottomLeft.y;
 
             // Estimate that alignment pattern is closer by 3 modules
             // from "bottom right" to known top left location
-            var estAlignmentX = Math.floor (topLeft.X + provisionalVersion.correctionToTopLeft * (bottomRightX - topLeft.X));
-            var estAlignmentY = Math.floor (topLeft.Y + provisionalVersion.correctionToTopLeft * (bottomRightY - topLeft.Y));
+            var estAlignmentX = Math.floor (topLeft.x + provisionalVersion.correctionToTopLeft * (bottomRightX - topLeft.x));
+            var estAlignmentY = Math.floor (topLeft.y + provisionalVersion.correctionToTopLeft * (bottomRightY - topLeft.x));
 
             // Kind of arbitrary -- expand search radius before giving up
 
             var i = 4
-            alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
-            // fix me re enabled commented out code by returning null on a error
-            // it works better idono 
-            // check the code in zxing and see what they are doing here
-            // note this has more good scans so i guess it is a good idea
-            //do{
-                //try
-                //{
-                    //alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
-                    
-                //}
-                //catch (re)
-                //{
-                    // try next round
-                //}
-                //i <<= 1 
-            //}while(!alignmentPattern && i<16)
-            //if(alignmentPattern === null){
-              //  throw "Couldn't find enough alignment patterns";
-            //}
-            // If we didn't find alignment pattern... well try anyway without it
+
+            do{
+                alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+            
+                i <<= 1 
+            }while(!alignmentPattern && i<16)
+            
         }
-        return new GridSampler(this.image,this.width,this.height,dimension,topLeft, topRight, bottomLeft, alignmentPattern).process()
+        return new GridSampler(this.diff,this.width,this.height,dimension,topLeft, topRight, bottomLeft, alignmentPattern).process()
 
     },
     detect:function(){
@@ -3440,8 +3431,8 @@ function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
    
     this.bits =  bits
     this.middle = new Uint16Array(middleLength)
-    this.blurDiffMachine = new blurDiffMachine(img,2,4,w,h)
-    this.detector= new Detector(bits,w,h)
+    this.blurDiffMachine = new blurDiffMachine(img,2,4,11,w,h) //4
+    this.detector= new Detector(bits,this.blurDiffMachine.diff2,w,h)
 
 }
 ECMA_QR_Image.prototype = {
@@ -3472,14 +3463,14 @@ ECMA_QR_Image.prototype = {
             yEnd = this.yLen + areaPoint2
             do{
                 point = areaPoint1 + dx + areaPoint3
-                cur = this.blurDiffMachine.diff[point]
+                cur = this.blurDiffMachine.diff1[point]
                 pix = this.image[point]
 
                 dark = (dark=_min-pix,(dark+(tmp=dark>>31) ^ tmp))*_1per|0
                 light = (light=_max-pix,(light+(tmp=light>>31) ^ tmp))*_1per|0
 
-                tmp = (cur+3)>>31
-                this.bits[point] = ( (pix-_minPlus1)>>31 | ((25-light)>>31 & tmp ) | (dark-25)>>31 &  (tmp^-1) )&1
+                tmp = (cur-190)>>31
+                this.bits[point] = ( (pix-_minPlus1)>>31 | tmp | (dark-30)>>31 &  (tmp^-1) )&1
               
                 dx++
                 tmp = (dx-this.areaWidth)>>31
@@ -3504,7 +3495,7 @@ ECMA_QR_Image.prototype = {
 }
 
 function ECMA_QR(w,h){
-    var numSqrtArea = 3;
+    var numSqrtArea = 4;
     var numSqrtAreaX = 1/numSqrtArea
     var areaWidth = (w * numSqrtAreaX)|0
     var areaHeight = (h * numSqrtAreaX)|0
@@ -3568,7 +3559,8 @@ ECMA_QR.prototype = {
                 /// max and min  of r g and b ^^^^^^^^^^^^^^^^^^
                 ///------------------------ 
                 //cur =(r*0.299 + g*0.587 + b * 0.114)|0
-                cur = (tmp = ((max_c+min_c)>>1)-((max_c-min_c)))& (tmp>>31^-1) // avg
+                cur = (max_c+min_c)>>1 // avg
+                //cur = (tmp = ((max_c+min_c)>>1)-((max_c-min_c)+g*0.587)|0)& (tmp>>31^-1) // avg
                 
                 this.image.image[point]= cur
 
@@ -3652,6 +3644,120 @@ function gray_to_canvas_buff(buff){
     }while(i<l)
     return _c
 }
+function diff_to_canvas_buff1(buff,w,h){
+    var _c = new Uint8Array(buff.length*4)
+    var c = new Int32Array(_c.buffer)
+    var bits = new Float32Array(buff.length)
+    var numSqrtArea = 4;
+    var numSqrtAreaX = 1/numSqrtArea
+    var areaWidth = (w * numSqrtAreaX)|0
+    var areaHeight = (h * numSqrtAreaX)|0
+    var middle_l = numSqrtArea*numSqrtArea|0
+    var length = (w*h)|0
+    var middleLength = middle_l
+    var length = length
+    var width = w|0
+    var height = h|0
+    var endX = (areaWidth*numSqrtArea)|0
+    var yLen =  (w*areaHeight)|0
+    var areaHeightXWidth = (areaHeight*w)|0
+    var numSqrtArea= numSqrtArea|0
+    var numSqrtAreaPlus1 = (numSqrtArea+1)|0
+    var areaWidth = areaWidth|0
+    var areaHeight = areaHeight|0
+    var i = 0
+    var l = buff.length
+    var cur,normal
+    var tmp
+    var _min=255.0
+    var _max=0.1
+    var tmp
+    var point
+    var r,b,g
+    var _min1,_max1
+
+    var tmp,tmp2
+
+    var cur
+
+    var areaPoint1,areaPoint2,areaPoint3,dx
+    var numSqrtAreaPoint 
+    var yEnd
+
+    
+    areaPoint2 = areaPoint1 = numSqrtAreaPoint = 0
+    do{
+        
+
+        _min = 255.01
+        _max = 0.01
+        // zero out count with a static empty array
+        // this is faster than making a new  one and faster then zeroing it out in js
+        
+        dx  = 0
+
+        areaPoint3 = areaPoint2
+        yEnd = yLen + areaPoint2   
+        do{
+            point = areaPoint1 + dx + areaPoint3
+            cur = buff[point]
+            normal = (cur + 127)*1.5
+            normal = (normal<0)?0:normal
+            _max = (_max<normal) ? (_max*3+normal)*0.25:_max
+            _min = (_min>normal) ? (_min*3+normal)*0.25:_min
+            
+            bits[point] = normal
+	        dx++
+            tmp = (dx-areaWidth)>>31
+            dx &= tmp
+            areaPoint3 += width&(tmp^-1)
+            //-----------------
+        }while(areaPoint3<yEnd)
+        areaPoint3 = areaPoint2
+        yEnd = yLen + areaPoint2   
+        var _mid = (_min+_max)*0.5
+        do{
+            point = areaPoint1 + dx + areaPoint3
+            normal = bits[point]
+            
+            c[point] = normal<190?0xFF000000:0xFFFFFFFF
+            
+	        dx++
+            tmp = (dx-areaWidth)>>31
+            dx &= tmp
+            areaPoint3 += width&(tmp^-1)
+            //-----------------
+        }while(areaPoint3<yEnd)
+        areaPoint1 += areaWidth
+        tmp = (areaPoint1-endX)>>31
+        areaPoint1 &= tmp
+        tmp ^= -1
+        numSqrtAreaPoint += numSqrtAreaPlus1&tmp
+        areaPoint2 += areaHeightXWidth&tmp
+        //-----------------
+
+    }while(numSqrtAreaPoint<middleLength)
+    
+    /*do{
+        cur = buff[i]
+        normal = (cur + 127)*1.5
+        normal = (normal<0)?0:normal
+        _min = Math.min(normal,_min)
+        _max = Math.max(normal,_max)
+        bits[i] = normal
+        
+        i++
+    }while(i<l)
+    var _mid = (_min+_max)*0.5
+    i=0
+    do{
+        normal = bits[i]
+        c[i] = normal<_mid?0xFF000000:0xFFFFFFFF
+        i++
+    }while(i<l)
+    */
+    return _c
+}
 
 
 function bitmatX_to_canvas_buff(mat){
@@ -3684,14 +3790,16 @@ function bitmatX_to_canvas_buff(mat){
 
 
 
-function blurDiffMachine(img,r1,r2,w,h){
+function blurDiffMachine(img,r1,r2,r3,w,h){
     var l = img.length|0
    
-    this.l = l
-    this.diff = new Int16Array(l)
+    this.l = l|0
+    this.diff1 = new Int16Array(l)
+    this.diff2 = new Int16Array(l)
     this.img = img
-    this.g1 =  new blurMachineGray(w,h,r1)
+    this.g1 = new blurMachineGray(w,h,r1)
     this.g2 = new blurMachineGray(w,h,r2)
+    this.g3 = new blurMachineGray(w,h,r3)
     
 }
 blurDiffMachine.prototype = {
@@ -3699,8 +3807,10 @@ blurDiffMachine.prototype = {
         var i = 0
         this.g1.blur(this.img)
         this.g2.blur(this.img)
+        this.g3.blur(this.img)
         do{
-            this.diff[i] = this.g1.pixels[i] - this.g2.pixels[i]
+            this.diff1[i] = (this.g1.pixels[i] - this.g2.pixels[i] +127) * 1.5
+            this.diff2[i] = (this.g1.pixels[i] - this.g3.pixels[i] +127) * 1.5
             i++
         }while(i<this.l)
     }
@@ -3777,6 +3887,7 @@ addEventListener('message', function(e) {
 
   qr.processCanvasRGB(e.data.buff)
   qr.image.doBinary()
+  //postMessage(diff_to_canvas_buff1(qr.image.blurDiffMachine.diff,w,h))
   //qr.image2.doBinary()
   //postMessage(bitmatX_to_canvas_buff( Version.getVersionForNumber(20).getMask(6)))
 
