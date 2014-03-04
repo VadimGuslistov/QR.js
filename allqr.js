@@ -376,111 +376,113 @@ function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmen
             sourceBottomRightX = sourceBottomRightY = dimMinusThree;
         }
         
-        postMessage(bits_to_canvas_buff_red_dot(image,bottomRightX,bottomRightY))
+        //postMessage(bits_to_canvas_buff_red_dot(image,bottomRightX,bottomRightY))
         var pointsLength = dimension << 1
+        this.topLeft = topLeft
+        this.topRight = topRight
+        this.bottomLeft = bottomLeft
         this.width=w|0
+        this.widhtMinus1 = (w-1)|0
         this.height=h|0
+        this.heightMinus1 = (h-1)|0
         this.length = w*h|0
         this.dimension = dimension
         this.pointsLength = pointsLength   
         this.image = image
         this.transform =  PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, topLeft.x, topLeft.y, topRight.x, topRight.y, bottomRightX, bottomRightY, bottomLeft.x, bottomLeft.y)
         this.bits = new BitMatrix(dimension)
-        this.points = new Float32Array(pointsLength)
 }
 GridSampler.prototype = {
-    checkAndNudgePoints:function (){
-
-        // Check and nudge points from start until we see some that are OK:
-        var nudged = true;
-        for (var offset = 0; offset < this.pointsLength && nudged; offset += 2)
-        {
-            var x = Math.floor (this.points[offset]);
-            var y = Math.floor(this.points[offset + 1]);
-
-            x = (x<-1)?-1:x
-            x = (x>this.width)?this.width:x
-            y = (y<-1)?-1:y
-            y = (y>this.height)?this.height:y
-            nudged = false;
-            if (x == - 1)
-            {
-                this.points[offset] = 0.0;
-                nudged = true;
-            }
-            else if (x == this.width)
-            {
-                this.points[offset] = this.width - 1;
-                nudged = true;
-            }
-            if (y == - 1)
-            {
-                this.points[offset + 1] = 0.0;
-                nudged = true;
-            }
-            else if (y == this.height)
-            {
-                this.points[offset + 1] = this.height - 1;
-                nudged = true;
-            }
-        }
-        // Check and nudge points from end:
-        nudged = true;
-        for (var offset = this.pointsLength - 2; offset >= 0 && nudged; offset -= 2)
-        {
-            var x = Math.floor( this.points[offset]);
-            var y = Math.floor( this.points[offset + 1]);
-            x = (x<-1)?-1:x
-            x = (x>this.width)?this.width:x
-            y = (y<-1)?-1:y
-            y = (y>this.height)?this.height:y
-            
-            nudged = false;
-            if (x == - 1)
-            {
-                this.points[offset] = 0.0;
-                nudged = true;
-            }
-            else if (x == this.width)
-            {
-                this.points[offset] = this.width - 1;
-                nudged = true;
-            }
-            if (y == - 1)
-            {
-                this.points[offset + 1] = 0.0;
-                nudged = true;
-            }
-            else if (y == this.height)
-            {
-                this.points[offset + 1] = this.height - 1;
-                nudged = true;
-            }
-        }
-    },
     process:function(){
-        var x1,x2,x3,y1,y2,y3
-        var point1,point2,point3
+        var x1,x2
+        var tmp1,tmp2,tmp
+        var row1,row2,row3,row4,row5,bestX,bestY,bestOrgX,bestOrgY
+        bestOrgY=bestOrgX=bestY=bestX=row1 = row2 = row3 = row4 = row5 = 0
+        var bestHam = 25
+        var y = this.dimension-16
+        var xstart = this.dimension-16
+
+        var ystop = this.dimension-6
+        var xpoint
+        var shiftPoint
+        var allOff = '00000'
+        var alloff2 = '0000000000000000'
+        var xi = 0
+        var out
+        do{
+            x = xstart
+            shiftPoint = 15
+            do{
+
+                    
+                x2 = this.transform.trasnformPoint(x,y)
+                y2 = x2 & 0xffff
+                x2 >>>= 16
+                x2 = (x2 & (tmp=x2-this.widhtMinus1>>31) | this.widhtMinus1&(tmp^-1))
+                y2 = (y2 & (tmp2=y2-this.heightMinus1>>31) | this.heightMinus1&(tmp2^-1))
+                row5 |= this.image[x2 + y2*this.width] << shiftPoint
+                /*if(((row5>>shiftPoint)&0x1f) == 0x1f || ((row1>>shiftPoint)&0x1f) == 0x1f){
+                    console.log('---------------')
+                    console.log((out=((row1>>shiftPoint)&0x1f).toString(2),allOff.slice(out.length)+out))
+                    console.log((out=((row2>>shiftPoint)&0x1f).toString(2),allOff.slice(out.length)+out))
+                    console.log((out=((row3>>shiftPoint)&0x1f).toString(2),allOff.slice(out.length)+out))
+                    console.log((out=((row4>>shiftPoint)&0x1f).toString(2),allOff.slice(out.length)+out))
+                    console.log((out=((row5>>shiftPoint)&0x1f).toString(2),allOff.slice(out.length)+out))
+                }*/
+                bestHam += ((tmp=numBitsDiffering(((row1>>shiftPoint)&0x1f)<<20 | ((row2>>shiftPoint)&0x1f) << 15 | ((row3>>shiftPoint)&0x1f)<<10 | ((row4>>shiftPoint)&0x1f) << 5 | ((row5>>shiftPoint)&0x1f), 0x1f8d63f) - bestHam ) & (tmp >>= 31))                //----min for a int of 32 bits or less
+                tmp2 = tmp^-1
+                                
+                bestY = (y2&tmp)|(bestY&tmp2)
+                bestX = (x2&tmp)|(bestX&tmp2)
+                bestOrgY = (y&tmp)|(bestOrgY&tmp2)
+                bestOrgX = (x&tmp)|(bestOrgX&tmp2)
+                // 0x1f8d63f is a perfect pattern 
+
+                x++
+                shiftPoint--
+            }while(x<this.dimension)
+            //console.log((out = row5.toString(2),alloff2.slice(out.length)+out))
+            row1 = row2
+            row2 = row3
+            row3 = row4
+            row4 = row5
+            row5 =0
+            y++
+        }while(y<this.dimension)
+        console.log(bestHam + ':ham ' + bestX + ' ' + bestY)
+        console.log(Math.abs(bestOrgX - (this.dimension-5)) + ': X ' + bestOrgX +' '+ Math.abs(bestOrgY - (this.dimension-5)) + ': X ' + bestOrgY)
+        var dimMinusThree =  this.dimension - 3.5;
+        var bottomRightX;
+        var bottomRightY;
+        var sourceBottomRightX;
+        var sourceBottomRightY;
+
+        bottomRightX = bestX;
+        bottomRightY = bestY;
+        sourceBottomRightX = sourceBottomRightY =  this.dimension - 4.5;
+              
+        var transform =  PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, this.topLeft.x, this.topLeft.y, this.topRight.x, this.topRight.y, bottomRightX, bottomRightY, this.bottomLeft.x, this.bottomLeft.y)
+        /*var alignSearch = Float32Array(225)
+        var y = this.dimension-16
+        var x = y
+        do{
+            
+        }while(y<this.dimension)*/
         for (var y = 0; y < this.dimension; y++)
         {
-            var max = this.pointsLength;
-            var iValue =  y + 0.5;
-            for (var x = 0; x < max; x += 2)
-            {
-                this.points[x] =  (x >> 1) + 0.5;
-                this.points[x + 1] = iValue;
-            }
-            // fix me call for every loop?
-            this.transform.transformPoints1(this.points);
             // Quick check to see if points transformed to something inside the image;
             // sufficient to check the endpoints
             // fix me call for every loop?
-            this.checkAndNudgePoints();
+            //this.checkAndNudgePoints();
            
-            for (var x = 0; x < max; x += 2)
+            for (var x = 0; x < this.dimension; x++)
             {
-                x2 = this.points[x]|0
-                y2 = this.points[x+1]|0
+                
+                x2 = transform.trasnformPoint(x,y)
+                y2 = x2 & 0xffff
+                x2 >>>= 16
+                x2 = (x2 & (tmp=x2-this.widhtMinus1>>31) | this.widhtMinus1&(tmp^-1))
+                y2 = (y2 & (tmp2=y2-this.heightMinus1>>31) | this.heightMinus1&(tmp2^-1))
                 /*x1 = x2 - 1
                 x3 = x2 + 1
                 y1 = y2 - 1
@@ -496,7 +498,7 @@ GridSampler.prototype = {
 
                 //bits[x >> 1][ y]=bit;
                 if(bit)
-                    this.bits.set_Renamed(x >> 1, y);
+                    this.bits.set_Renamed(x, y);
             }
            
         }
@@ -1950,6 +1952,16 @@ function PerspectiveTransform( a11,  a21,  a31,  a12,  a22,  a32,  a13,  a23,  a
 
 
 PerspectiveTransform.prototype = {
+    trasnformPoint:function(x,y){
+        var _x = x + 0.5
+        var _y = y + 0.5
+        var tmp = 0
+        var tmp2 = 0
+        var denominator = (this.a13 * _x + this.a23 * _y + this.a33)
+        return ((tmp=((this.a11 * _x + this.a21 * _y + this.a31) /denominator)|0) & (tmp>>31^-1)) <<16 |
+        ((tmp2=((this.a12 * _x + this.a22 * _y + this.a32) /denominator)|0) & (tmp2>>31^-1))
+       
+    },
     transformPoints1:function( points){
         var max = points.length;
         var a11 = this.a11;
@@ -2053,7 +2065,7 @@ PerspectiveTransform.quadrilateralToSquare=function( x0,  y0,  x1,  y1,  x2,  y2
 function Detector(image,image2,w,h)
 {
     this.image=image;
-    this.image2=image2
+    this.image2=image
     this.width = w|0
     this.height = h|0
     this.heightMinus1 = (h-1)|0
@@ -2242,12 +2254,12 @@ Detector.prototype = {
             // Kind of arbitrary -- expand search radius before giving up
 
             var i = 4
-
-            do{
+            alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
+            /*do{
                 alignmentPattern = this.findAlignmentInRegion(moduleSize, estAlignmentX, estAlignmentY,  i);
             
                 i <<= 1 
-            }while(!alignmentPattern && i<16)
+            }while(!alignmentPattern && i<16)*/
             
         }
    
@@ -2292,7 +2304,7 @@ qrcode.process = function(det){
         
         
         var d = det.detect()
-        //postMessage(bitmatX_to_canvas_buff( d.bits ))
+        postMessage(bitmatX_to_canvas_buff( d.bits ))
         var decoder = new Decoder( d.bits )
         
        
