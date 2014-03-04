@@ -367,7 +367,7 @@ function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmen
         if (alignmentPattern){
             bottomRightX = alignmentPattern.x;
             bottomRightY = alignmentPattern.y;
-            sourceBottomRightX = sourceBottomRightY = dimMinusThree - 3.0;
+            sourceBottomRightX = sourceBottomRightY = dimMinusThree - 3;
         }else{
             // Don't have an alignment pattern, just make up the bottom-right point
             bottomRightX = (topRight.x - topLeft.x) + bottomLeft.x;
@@ -375,6 +375,8 @@ function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmen
             
             sourceBottomRightX = sourceBottomRightY = dimMinusThree;
         }
+        
+        postMessage(bits_to_canvas_buff_red_dot(image,bottomRightX,bottomRightY))
         var pointsLength = dimension << 1
         this.width=w|0
         this.height=h|0
@@ -383,7 +385,6 @@ function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmen
         this.pointsLength = pointsLength   
         this.image = image
         this.transform =  PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, topLeft.x, topLeft.y, topRight.x, topRight.y, bottomRightX, bottomRightY, bottomLeft.x, bottomLeft.y)
-
         this.bits = new BitMatrix(dimension)
         this.points = new Float32Array(pointsLength)
 }
@@ -806,7 +807,7 @@ Version.getVersionForNumber=function( versionNumber)
 {
     if (versionNumber < 1 || versionNumber > 40)
     {
-        throw "ArgumentException";
+        throw "Version ArgumentException " + versionNumber;
     }
     return Version.VERSIONS[versionNumber - 1];
 }
@@ -817,8 +818,12 @@ Version.getProvisionalVersionForDimension=function(dimension)
     {
         throw "Error getProvisionalVersionForDimension";
     }
-    
-        return Version.getVersionForNumber((dimension - 17) >> 2);
+    var versionNumber = (dimension - 17) >> 2
+    if (versionNumber < 1 || versionNumber > 40)
+    {
+        throw "Version ArgumgetProvisionalVersionForDimension" + dimension;
+    }
+    return Version.VERSIONS[versionNumber - 1];
    
 }
 Version.VERSION_DECODE_INFO = new Uint32Array([0x07C94, 0x085BC, 0x09A99, 0x0A4D3, 0x0BBF6, 0x0C762, 0x0D847, 0x0E60D, 0x0F928, 0x10B78, 0x1145D, 0x12A17, 0x13532, 0x149A6, 0x15683, 0x168C9, 0x177EC, 0x18EC4, 0x191E1, 0x1AFAB, 0x1B08E, 0x1CC1A, 0x1D33F, 0x1ED75, 0x1F250, 0x209D5, 0x216F0, 0x228BA, 0x2379F, 0x24B0B, 0x2542E, 0x26A64, 0x27541, 0x28C69]);
@@ -1617,7 +1622,7 @@ DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 
     if (rawCodewords.length != version.totalCodewords)
     {
-        throw "ArgumentException"; // fix me can this happen -- investigate 
+        throw "rawCodewords ArgumentException"; // fix me can this happen -- investigate 
     }
 
     // Figure out the number and size of data blocks used by this version and
@@ -1959,9 +1964,9 @@ PerspectiveTransform.prototype = {
         for (var i = 0; i < max; i += 2){
             var x = points[i];
             var y = points[i + 1];
-            var denominatorInverse = 1/(a13 * x + a23 * y + a33);
-            points[i] = (a11 * x + a21 * y + a31) *denominatorInverse;
-            points[i + 1] = (a12 * x + a22 * y + a32) *denominatorInverse;
+            var denominator = (a13 * x + a23 * y + a33);
+            points[i] = (a11 * x + a21 * y + a31)/ denominator;
+            points[i + 1] = (a12 * x + a22 * y + a32) / denominator;
         }
     },
     transformPoints2:function(xValues, yValues){
@@ -1969,22 +1974,39 @@ PerspectiveTransform.prototype = {
         for (var i = 0; i < n; i++){
             var x = xValues[i];
             var y = yValues[i];
-            var denominatorInverse = 1/(this.a13 * x + this.a23 * y + this.a33)
-            xValues[i] = (this.a11 * x + this.a21 * y + this.a31) *denominatorInverse;
-            yValues[i] = (this.a12 * x + this.a22 * y + this.a32) *denominatorInverse;
+            var denominator = (this.a13 * x + this.a23 * y + this.a33)
+            xValues[i] = (this.a11 * x + this.a21 * y + this.a31) /denominator;
+            yValues[i] = (this.a12 * x + this.a22 * y + this.a32) /denominator;
         }
     },
     buildAdjoint:function(){
         // Adjoint is the transpose of the cofactor matrix:
-        return new PerspectiveTransform(this.a22 * this.a33 - this.a23 * this.a32, this.a23 * this.a31 - this.a21 * this.a33, this.a21 * this.a32 - this.a22 * this.a31, this.a13 * this.a32 - this.a12 * this.a33, this.a11 * this.a33 - this.a13 * this.a31, this.a12 * this.a31 - this.a11 * this.a32, this.a12 * this.a23 - this.a13 * this.a22, this.a13 * this.a21 - this.a11 * this.a23, this.a11 * this.a22 - this.a12 * this.a21);
+        return new PerspectiveTransform(this.a22 * this.a33 - this.a23 * this.a32, 
+                                        this.a23 * this.a31 - this.a21 * this.a33,
+                                        this.a21 * this.a32 - this.a22 * this.a31,
+                                        this.a13 * this.a32 - this.a12 * this.a33,
+                                        this.a11 * this.a33 - this.a13 * this.a31,
+                                        this.a12 * this.a31 - this.a11 * this.a32,
+                                        this.a12 * this.a23 - this.a13 * this.a22,
+                                        this.a13 * this.a21 - this.a11 * this.a23,
+                                        this.a11 * this.a22 - this.a12 * this.a21);
     },
     times:function( other){
-        return new PerspectiveTransform(this.a11 * other.a11 + this.a21 * other.a12 + this.a31 * other.a13, this.a11 * other.a21 + this.a21 * other.a22 + this.a31 * other.a23, this.a11 * other.a31 + this.a21 * other.a32 + this.a31 * other.a33, this.a12 * other.a11 + this.a22 * other.a12 + this.a32 * other.a13, this.a12 * other.a21 + this.a22 * other.a22 + this.a32 * other.a23, this.a12 * other.a31 + this.a22 * other.a32 + this.a32 * other.a33, this.a13 * other.a11 + this.a23 * other.a12 +this.a33 * other.a13, this.a13 * other.a21 + this.a23 * other.a22 + this.a33 * other.a23, this.a13 * other.a31 + this.a23 * other.a32 + this.a33 * other.a33);
+        return new PerspectiveTransform(this.a11 * other.a11 + this.a21 * other.a12 + this.a31 * other.a13,
+                                        this.a11 * other.a21 + this.a21 * other.a22 + this.a31 * other.a23,
+                                        this.a11 * other.a31 + this.a21 * other.a32 + this.a31 * other.a33,
+                                        this.a12 * other.a11 + this.a22 * other.a12 + this.a32 * other.a13,
+                                        this.a12 * other.a21 + this.a22 * other.a22 + this.a32 * other.a23,
+                                        this.a12 * other.a31 + this.a22 * other.a32 + this.a32 * other.a33,
+                                        this.a13 * other.a11 + this.a23 * other.a12 + this.a33 * other.a13,
+                                        this.a13 * other.a21 + this.a23 * other.a22 + this.a33 * other.a23,
+                                        this.a13 * other.a31 + this.a23 * other.a32 + this.a33 * other.a33);
     }
 }
 
 
-PerspectiveTransform.quadrilateralToQuadrilateral=function( x0,  y0,  x1,  y1,  x2,  y2,  x3,  y3,  x0p,  y0p,  x1p,  y1p,  x2p,  y2p,  x3p,  y3p)
+PerspectiveTransform.quadrilateralToQuadrilateral=function( x0,  y0,  x1,  y1,  x2,  y2,  x3,  y3,
+                                                            x0p,  y0p,  x1p,  y1p,  x2p,  y2p,  x3p,  y3p)
 {
 
     var qToS = this.quadrilateralToSquare(x0, y0, x1, y1, x2, y2, x3, y3);
@@ -1992,26 +2014,32 @@ PerspectiveTransform.quadrilateralToQuadrilateral=function( x0,  y0,  x1,  y1,  
     return sToQ.times(qToS);
 }
 
-PerspectiveTransform.squareToQuadrilateral=function( x0,  y0,  x1,  y1,  x2,  y2,  x3,  y3)
-{
-    var dy2 = y3 - y2;
+PerspectiveTransform.squareToQuadrilateral=function(x0, y0,
+                                                    x1, y1,
+                                                    x2, y2,
+                                                    x3, y3) {
+    var dx3 = x0 - x1 + x2 - x3;
     var dy3 = y0 - y1 + y2 - y3;
-    if (dy2 == 0.0 && dy3 == 0.0)
-    {
-        return new PerspectiveTransform(x1 - x0, x2 - x1, x0, y1 - y0, y2 - y1, y0, 0.0, 0.0, 1.0);
+    if (dx3 == 0.0 && dy3 == 0.0) {
+      // Affine
+      return new PerspectiveTransform(x1 - x0, x2 - x1, x0,
+                                      y1 - y0, y2 - y1, y0,
+                                      0.0,    0.0,    1.0);
+    } else {
+      var dx1 = x1 - x2;
+      var dx2 = x3 - x2;
+      var dy1 = y1 - y2;
+      var dy2 = y3 - y2;
+      var denominator = dx1 * dy2 - dx2 * dy1;
+      var a13 = (dx3 * dy2 - dx2 * dy3) / denominator;
+      var a23 = (dx1 * dy3 - dx3 * dy1) / denominator;
+      return new PerspectiveTransform(x1 - x0 + a13 * x1, x3 - x0 + a23 * x3, x0,
+                                      y1 - y0 + a13 * y1, y3 - y0 + a23 * y3, y0,
+                                      a13,                a23,                1.0);
     }
-    else
-    {
-         var dx1 = x1 - x2;
-         var dx2 = x3 - x2;
-         var dx3 = x0 - x1 + x2 - x3;
-         var dy1 = y1 - y2;
-         var denominatorInverse = 1/(dx1 * dy2 - dx2 * dy1)
-         var a13 = (dx3 * dy2 - dx2 * dy3) *denominatorInverse;
-         var a23 = (dx1 * dy3 - dx3 * dy1) *denominatorInverse;
-        return new PerspectiveTransform(x1 - x0 + a13 * x1, x3 - x0 + a23 * x3, x0, y1 - y0 + a13 * y1, y3 - y0 + a23 * y3, y0, a13, a23, 1.0);
-    }
-}
+  }
+
+
 
 PerspectiveTransform.quadrilateralToSquare=function( x0,  y0,  x1,  y1,  x2,  y2,  x3,  y3)
 {
@@ -2222,6 +2250,7 @@ Detector.prototype = {
             }while(!alignmentPattern && i<16)
             
         }
+   
         return new GridSampler(this.image2,this.width,this.height,dimension,topLeft, topRight, bottomLeft, alignmentPattern).process()
 
     },
@@ -2263,7 +2292,7 @@ qrcode.process = function(det){
         
         
         var d = det.detect()
-        postMessage(bitmatX_to_canvas_buff( d.bits ))
+        //postMessage(bitmatX_to_canvas_buff( d.bits ))
         var decoder = new Decoder( d.bits )
         
        
@@ -2762,7 +2791,7 @@ FinderPatternFinder.prototype = {
         if (iSkip < MIN_SKIP) {
           iSkip = MIN_SKIP;
         }
-
+        //iSkip = MIN_SKIP
         var done = false;
         var stateCount = new Int16Array(5);
         for (var i = iSkip - 1; i < maxI && !done; i += iSkip) {
@@ -2877,7 +2906,7 @@ FinderPatternFinder.prototype = {
         this.possibleCenters.sort(function(center1,center2) {
           var a=Math.abs(center2.estimatedModuleSize - average);
           var b=Math.abs(center1.estimatedModuleSize - average);
-          return ((a-b)>>31)^((b-a)>>>31) 
+          return ((a-b)>>31)^((b-a)>>>31)
         });
         
         var limit
@@ -3714,7 +3743,7 @@ ECMA_QR_Image.prototype = {
                 tmp = (cur-190)>>31
                 // &
                 // ((cur2-197)>>31) very good
-                this.bits[point] =  (   ((dark-80)>>31) & ((cur-198)>>31)   )&1 
+                this.bits[point] =  (   ((dark-70)>>31) & ((cur-196)>>31)   )&1 
                 this.bits2[point] =  (  ((cur2-197)>>31) & ((cur-198)>>31) )&1 
                 //this.bits[point] =  (  ((cur2-190)>>31) & ((cur-195)>>31)  )&1 good 1
                 //( (pix-_minPlus1)>>31 | tmp |  )&1
@@ -3875,6 +3904,36 @@ function bits_to_canvas_buff(buff){
 
         i++
     }while(i<l)
+    return _c
+}
+function bits_to_canvas_buff_red_dot(buff,x,y){
+    var _c = new Uint8Array(buff.length*4)
+    var c = new Uint32Array(_c.buffer)
+    var i = 0
+    var l = buff.length
+
+    do{
+        if(buff[i]){
+            c[i] = 0xFF000000
+        } else {
+            c[i] = 0xFFFFFFFF
+
+        }
+
+        i++
+    }while(i<l)
+    var _Y = (y*500)|0
+    var point = x+_Y
+    var point2
+    if(point <l && point > -1) c[point] = 0xFF0000FF
+    point2 = point+1
+    if(point2 <l && point2 > -1) c[point2] = 0xFF0000FF
+    point2 = point-1
+    if(point2 <l && point2 > -1) c[point2] = 0xFF0000FF
+    point2 = point+500
+    if(point2 <l && point2 > -1) c[point2] = 0xFF0000FF
+    point2 = point-500
+    if(point2 <l && point2 > -1) c[point2] = 0xFF0000FF
     return _c
 }
 
@@ -4101,8 +4160,8 @@ addEventListener('message', function(e) {
           console.log(new Date() - start2 + ' fin')
           console.log(new Date() - start1 + ' fin all')
           console.log((ended.sum/ended.count) + ' avg')
-          //ended.isEnded = true
-          //postMessage(ret)
+          ended.isEnded = true
+          postMessage(ret)
           //var test1 = (ret == "6JKeKYJ4SGrK4h1xwT3MJ6TfyGfn1kK57QuMJED5ap5NmDqViqaEZwGrRqhimZuXAFKUrM6vrKvNR4pRCicmCwBXo7AC2DWeWrNPCJGpTKzuCYZUHVvhX62aYpYWGLAABmJRGc97M6RQHsonR4fn2y7J2fHtEybAVevX")
           //var test2 = (ret == "MXp8FodxoKZcLsQt9NpG94nUWoQk133Qo6cyNPTzjtq7udUP563u9VoKV9VAjH88fGbVZfjNimg5DHpAQwCGZCkbsrdFvnRguYsL7KveEf9tyx6UPaU3gk3pYUMgPWmzNTEqCN8MPsajrr8pxSfvWAfz5uLRtiqNpgQV3ayWguDw2Yc2UsAvA6sadhL55KQzVzS43WRYqMShNy47wv4v6UwYa3qhT3QRCMqrf3AobW3av5EzpvyWzq4FFJkSvGH7nCBptSgXTBvgdL12qmAez6iPkiFtDT2pdVpE4qSi5TEGcDpRttWXRH4ZFX3uUntJrgLBmTAE")          
           /*if(test1 || test2){
@@ -4138,7 +4197,7 @@ addEventListener('message', function(e) {
   qr.image.doBinary()
   //postMessage(diff_to_canvas_buff1(qr.image.blurDiffMachine.diff,w,h))
   //qr.image2.doBinary()
-  //postMessage(bitmatX_to_canvas_buff( Version.getVersionForNumber(20).getMask(6)))
+  //postMessage(bitmatX_to_canvas_buff( Version.getVersionForNumber(10).buildFunctionPattern()))
 
   post(qr.image.detector)
  // post(qr.image2.detector)
