@@ -78,6 +78,243 @@ FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
 OTHER DEALINGS IN THE SOFTWARE.
 /-----------------------------------------------------
 */
+;stackBlurGray=(function (){
+//===============================
+
+var mul_table = new Uint16Array([
+        512,512,456,512,328,456,335,512,405,328,271,456,388,335,292,512,
+        454,405,364,328,298,271,496,456,420,388,360,335,312,292,273,512,
+        482,454,428,405,383,364,345,328,312,298,284,271,259,496,475,456,
+        437,420,404,388,374,360,347,335,323,312,302,292,282,273,265,512,
+        497,482,468,454,441,428,417,405,394,383,373,364,354,345,337,328,
+        320,312,305,298,291,284,278,271,265,259,507,496,485,475,465,456,
+        446,437,428,420,412,404,396,388,381,374,367,360,354,347,341,335,
+        329,323,318,312,307,302,297,292,287,282,278,273,269,265,261,512,
+        505,497,489,482,475,468,461,454,447,441,435,428,422,417,411,405,
+        399,394,389,383,378,373,368,364,359,354,350,345,341,337,332,328,
+        324,320,316,312,309,305,301,298,294,291,287,284,281,278,274,271,
+        268,265,262,259,257,507,501,496,491,485,480,475,470,465,460,456,
+        451,446,442,437,433,428,424,420,416,412,408,404,400,396,392,388,
+        385,381,377,374,370,367,363,360,357,354,350,347,344,341,338,335,
+        332,329,326,323,320,318,315,312,310,307,304,302,299,297,294,292,
+        289,287,285,282,280,278,275,273,271,269,267,265,263,261,259]);
+        
+   
+var shg_table = new Uint8Array([
+	     9, 11, 12, 13, 13, 14, 14, 15, 15, 15, 15, 16, 16, 16, 16, 17, 
+		17, 17, 17, 17, 17, 17, 18, 18, 18, 18, 18, 18, 18, 18, 18, 19, 
+		19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 20, 20, 20,
+		20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 20, 21,
+		21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 21,
+		21, 21, 21, 21, 21, 21, 21, 21, 21, 21, 22, 22, 22, 22, 22, 22, 
+		22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22,
+		22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 22, 23, 
+		23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+		23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23,
+		23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 23, 
+		23, 23, 23, 23, 23, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 
+		24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+		24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+		24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24,
+		24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24, 24 ]);
+
+
+
+
+
+function stackBlurGray(buff,width, height, radius )
+{
+	if ( isNaN(radius) || radius < 1 ) return;
+	radius |= 0;
+
+	var pixels = new Uint8Array(buff)		
+	var x, y, i, p, yp, yi, yw, sum,
+	out_sum,
+	in_sum,
+	pg, bs;
+
+	var div = radius + radius + 1;
+	var widthMinus1  = width - 1;
+	var heightMinus1 = height - 1;
+	var radiusPlus1  = radius + 1;
+	var sumFactor = radiusPlus1 * ( radiusPlus1 + 1 ) * 0.5;
+
+	var stackStart = new BlurStack();
+	var stack = stackStart;
+	var stackEnd
+	i = 1
+	do{
+		stack = stack.next = new BlurStack();
+		if ( i++ == radiusPlus1 ) stackEnd = stack;
+	}while(i < div)
+	stack.next = stackStart;
+	var stackIn = null;
+	var stackOut = null;
+
+	yw = yi = 0;
+
+	var mul_sum = mul_table[radius];
+	var shg_sum = shg_table[radius];
+	y=0
+	do{
+		in_sum = sum = 0;
+
+		out_sum = radiusPlus1 * ( pg = pixels[yi] );
+
+
+		sum += sumFactor * pg;
+
+
+		stack = stackStart;
+		i = 0
+		do{
+			stack.v = pg;
+			stack = stack.next;
+			i++
+		}while(i < radiusPlus1)
+		i = 1
+		do{
+			p = yi + ( widthMinus1 < i ? widthMinus1 : i );
+			sum += ( stack.v = ( pg = pixels[p])) * ( bs = radiusPlus1 - i );
+
+			in_sum += pg;
+
+			stack = stack.next;
+			i++
+		}while(i < radiusPlus1)
+
+
+		stackIn = stackStart;
+		stackOut = stackEnd;
+		x=0
+
+		do{
+			pixels[yi]   = (sum * mul_sum) >> shg_sum;
+
+
+			sum -= out_sum;
+
+
+			out_sum -= stackIn.v;
+
+
+			p =  ( yw + ( ( p = x + radius + 1 ) < widthMinus1 ? p : widthMinus1 ) );
+
+			in_sum += ( stackIn.v = pixels[p]);
+
+
+			sum += in_sum;
+
+
+			stackIn = stackIn.next;
+
+			out_sum += ( pg = stackOut.v );
+
+
+			in_sum -= pg;
+
+
+			stackOut = stackOut.next;
+
+			yi++;
+			x++
+		}while(x < width)
+		yw += width;
+		y++
+	}while(y < height)
+
+	x=0
+
+	do{
+		in_sum = sum = 0;
+
+		yi = x;
+		out_sum = radiusPlus1 * ( pg = pixels[yi]);
+
+
+		sum += sumFactor * pg;
+
+
+		stack = stackStart;
+
+		for( i = 0; i < radiusPlus1; i++ )
+		{
+			stack.v = pg;
+			stack = stack.next;
+		}
+
+		yp = width;
+
+		i=1
+
+		do{
+			yi = ( yp + x );
+
+			sum += ( stack.v = ( pg = pixels[yi])) * ( bs = radiusPlus1 - i );
+
+
+			in_sum += pg;
+
+
+			stack = stack.next;
+
+			if( i < heightMinus1 )
+			{
+				yp += width;
+			}
+		    i++
+		}while(i <= radius)
+
+		yi = x;
+		stackIn = stackStart;
+		stackOut = stackEnd;
+		y=0
+		do{
+			p = yi;
+			pixels[p]   = (sum * mul_sum) >> shg_sum;
+
+
+			sum -= out_sum;
+
+
+			out_sum -= stackIn.v;
+
+
+			p = ( x + (( ( p = y + radiusPlus1) < heightMinus1 ? p : heightMinus1 ) * width ));
+
+			sum += ( in_sum += ( stackIn.v = pixels[p]));
+
+
+			stackIn = stackIn.next;
+
+			out_sum += ( pg = stackOut.v );
+
+
+			in_sum -= pg;
+
+
+			stackOut = stackOut.next;
+
+			yi += width;
+			y++
+		}while(y < height)
+		x++
+	}while(x < width)
+	return pixels
+
+
+}
+
+function BlurStack()
+{
+    this.v = 0
+	this.next = null;
+}
+return stackBlurGray
+//===============================
+
+})();
+
 
 ;var blurMachineGray=(function (){
 //===============================
@@ -2506,7 +2743,7 @@ qrcode.process = function(det){
         
         
         var d = det.detect()
-        //postMessage(bitmatX_to_canvas_buff( d.bits ))
+        postMessage(bitmatX_to_canvas_buff( d.bits ))
         var decoder = new Decoder( d.bits )
         
        
@@ -3005,7 +3242,7 @@ FinderPatternFinder.prototype = {
         if (iSkip < MIN_SKIP) {
           iSkip = MIN_SKIP;
         }
-        iSkip = MIN_SKIP
+        //iSkip = MIN_SKIP
         var done = false;
         var stateCount = new Int16Array(5);
         for (var i = iSkip - 1; i < maxI && !done; i += iSkip) {
@@ -4355,74 +4592,398 @@ function non_webworker(dat,w,h){
   return
 }
 
+
+function blur_enhanced_binary(g1,g2,bits){
+    var l = bits.length
+    var ret = new Uint8Array(l)
+    var i = 0
+    var diff
+    var pix1,pix2,pix3,pix4,pix5,pix6,
+        pix7,pix8,pix9,pix10,pix11,pix12,x,y
+    do{
+        diff = g1[i] - g2[i]
+        if(diff < 3){
+           
+            pix1 = i+1
+            pix2 = i+2
+            pix3 = i+3
+            pix4 = i-1
+            pix5 = i-2
+            pix6 = i-3
+            
+            if(
+                
+                bits[i] ||
+                (pix1 < l && bits[pix1]) ||
+                (pix2 < l && bits[pix2]) ||
+                (pix3 < l && bits[pix3]) ||
+                
+                (pix4 > -1 && bits[pix4]) ||
+                (pix5 > -1 && bits[pix5]) ||
+                (pix6 > -1 && bits[pix6]) 
+
+
+            ) {
+                ret[i] = 1
+            } 
+        } 
+        i++
+    }while(i<l)
+    return ret
+}
+
+
+function blur_diff(buff,r1,r2,w,h) {
+    var g1 = stackBlurGray(buff,w,h,r1)
+    var g2 = stackBlurGray(buff,w,h,r2)
+    var l = buff.length
+    var diff = new Int16Array(l)
+    i=0
+    do{
+        diff[i] =  g1[i] - g2[i]
+        i++
+    }while(i<l)
+    return diff
+    
+}
+
+
+
+function middleArea(l, numSqrtArea,areaWidth,areaHeight,w,h){
+    this.areaWidth = areaWidth
+    this.areaHeight = areaHeight
+    this.numSqrtArea = numSqrtArea
+    this.width = w
+    this.height = h
+    this.buff = new Uint16Array(l)
+}
+middleArea.prototype = {
+    blur_guided_binary: function(buff,diff){
+        
+        var dx
+        var dy
+        var _min
+        var _max
+        var tmp
+        var _1per
+        var point
+        var cur,pix
+        var dark,light
+        var bits = new Uint8Array(buff.length)
+        var ax=0
+        var ay=0
+        var numSqrtArea = this.numSqrtArea
+        var w = this.width
+        var areaHeight = this.areaHeight
+        var areaWidth = this.areaWidth
+        var middle = this.buff
+        do{
+            dx =0
+            dy = 0
+            _max = middle[ax + ay * numSqrtArea]
+            _min = _max >>> 8
+            _max = _max & 0xff
+   
+            _1per = 1/((_max-_min)*0.01)
+            do{
+                point = (areaWidth * ax + dx+(areaHeight * ay + dy)*w)|0
+                cur = diff[point]
+                pix = buff[point]
+                dark = Math.abs(_min - pix)*_1per
+                light = Math.abs(_max - pix)*_1per
+                if(pix <= _min){
+                     bits[point] = 1
+                }else if(cur <0) {
+                    if(light > 15){
+                       bits[point] = 1 
+                    }
+                }else if(dark <= 40){
+                    bits[point] = 1 
+                }
+                
+                dx++
+                tmp = (dx-areaWidth)>>>31
+                dx *= tmp
+                dy += tmp^1
+                //-----------------
+            }while((dy-areaHeight)>>>31) // (dy < areaHeight)
+             /*
+            this code will increment ax and ay to loop x y blocks 
+            */
+            ax++
+            tmp = (ax-numSqrtArea)>>>31
+            ax *= tmp
+            ay += tmp^1
+            //-----------------
+        }while(ay < numSqrtArea)
+        return bits
+       
+    }
+}
+function gray_from_canvas4(image,w,h)
+{
+    // about the same xy to middle box as org code everything else is quite a bit different
+    image = new Uint32Array(image.buffer)
+    var numSqrtArea = 6;
+    var numSqrtAreaX = 1/numSqrtArea
+    var areaWidth = (w * numSqrtAreaX)|0;
+    var areaHeight = (h * numSqrtAreaX)|0;
+    var middle_l = numSqrtArea*numSqrtArea
+    var image_l = image.length
+    var grey1 = new Uint8Array(image_l)
+    var bits1 = new Uint8Array(image_l)
+    var middle1 = new middleArea(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
+    var grey2 = new Uint8Array(image_l)
+    var bits2 = new Uint8Array(image_l)
+    var middle2 = new middleArea(middle_l,numSqrtArea,areaWidth,areaHeight,w,h)
+    var middle_point,point
+    var r,b,g
+    var _min,_max,_min1,_max1,_min2,_max2
+    var max_c
+    var min_c
+    var tmp,tmp2,tmp3
+    var ax,ay,dx,dy
+    var count = new Uint32Array(256)
+    var _mid
+    var upper1,upper2,lower1,lower2
+    var upper_val1,upper_val2
+    var lower_val1,lower_val2
+    var i,l
+    var cur
+    var upper_set,upper_other,lower_set,lower_other,upperX,lowerX
+    var target
+    var _1per,dark
+
+    ax=0
+    ay=0
+    do{
+        
+        _min= _min1= _min2 = 0xFF
+        _max = _max1 = _max2 = 0
+        // zero out count with a static empty array
+        // this is faster than making a new  one and faster then zeroing it out in js
+        count.set(gray_from_canvas4.zero_count) 
+           
+        dx =0
+        dy = 0
+        middle_point = (ax + ay * numSqrtArea)|0
+        do{
+            point = (areaWidth * ax + dx+(areaHeight * ay + dy)*w)|0
+            target = image[point];
+            r = (target>>>16)&0xff
+            b = (target>>>8)&0xff
+            g = target&0xff
+            ///------------------------
+            tmp  = r - b                    //____________________________________
+            tmp = (tmp & (tmp >> 31))
+            max_c = r - tmp                 //----Max for a int of 32 bits or less
+            min_c = b + tmp                 //----min for a int of 32 bits or less
+            tmp = max_c - g                 //____________________________________
+            max_c = max_c - (tmp & (tmp >> 31))             //----Max for a int of 32 bits or less
+            tmp = min_c - g                 
+            min_c = g + (tmp & (tmp >> 31))                //----min for a int of 32 bits or less
+            /// max and min  of r g and b ^^^^^^^^^^^^^^^^^^
+            ///------------------------ 
+               
+            target = ((max_c+min_c)*0.5)|0
+            
+            grey1[point]= target
+            count[target]++
+            tmp  = _max - target            //____________________________________
+            _max = _max - (tmp & (tmp >> 31)) //----Max for a int of 32 bits or less
+            
+            tmp = _min - target  //____________________________________
+            _min = target + (tmp & (tmp >> 31)) //----min for a int of 32 bits or less
+            
+             tmp  = (_max1 - cur)>>>31            //____________________________________
+            _max1 = (_max1 * (3+(tmp^1))  + cur * tmp  )*0.25   //----Max for float  weighted in
+            
+            tmp = (_min1 - cur)>>>31             //____________________________________
+            _min1 = ( _min1 * (3+tmp) +  cur * (tmp^1))*0.25  //----min for a float weighted in
+            
+            
+            /*
+            this code will increment dx and dy to loop x y blocks 
+            */
+            dx++
+            tmp = (dx-areaWidth)>>>31
+            dx *= tmp
+            dy += tmp^1
+            //-----------------
+        }while((dy-areaHeight)>>>31) // (dy < areaHeight)
+        middle1.buff[middle_point] = (_min1<<8) | _max1
+        
+        _mid = ((_max - _min)*0.5)|0
+        
+        upper1=upper2=lower1=lower2=0
+        upper_val1=upper_val2=0
+        i = _min
+      
+        
+        do{
+            cur = count[i]
+            tmp = upper1 - cur
+            tmp2 = tmp>>>31
+            upper1 = upper1 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less 
+            upper_val1 = (upper_val1 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1 
+            
+            cur *= tmp2^1 // if the first passed make sure the 2nd fails 
+               
+               
+            tmp = upper2 - cur
+            tmp2 = tmp>>>31
+            upper2 = upper2 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less 
+            upper_val2 = (upper_val2 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1 
+            i++
+        }while((i-_mid)>>>31) // (i<_mid) 
+        
+        i = _mid
+        l = _max+1
+        do{
+            cur = count[i]
+            tmp = lower1 - cur
+            tmp2 = tmp>>>31
+            lower1 = lower1 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less 
+            lower_val1 = (lower_val1 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1 
+               
+            cur *= tmp2^1 // if the first passed make sure the 2nd fails 
+               
+            tmp = lower2  - cur
+            tmp2 = tmp>>>31
+            lower2 = lower2 - (tmp & (tmp >> 31)) //----max for a int of 32 bits or less 
+            lower_val2 = (lower_val2 * (tmp2^1)) | (i * tmp2) // if(upper1 < cur) upper_val1 
+              
+            
+            i++
+        }while((i-l)>>>31)
+
+        tmp  = upper_val2 - upper_val1
+        tmp = (tmp & (tmp >> 31))
+        upper_set = upper_val1 + tmp  //----min for a int of 32 bits or less   
+        upper_other = upper_val2 - tmp
+        
+        tmp = lower_val1-lower_val2
+        lower_other = lower_val2 + (tmp & (tmp >> 31))
+        
+        upperX = upper_set/upper_other
+        lowerX = 254/lower_other 
+        
+        dx=0
+        dy=0
+        _1per = 1/((_max1-_min1)*0.01)
+          
+        do{
+            point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
+            cur = grey1[point]
+            dark = _min1-cur
+            tmp = dark >>31
+            dark = ((tmp+dark)^tmp)*_1per // abs for int
+            if(dark <= 40 || cur <= _min1){
+                bits1[point] = 1
+            }
+            if(cur >= upper_set && cur <= upper_other){
+                cur = upper_set
+            } else if(cur <= _mid){
+                cur = (cur * upperX)|0
+            }else if(cur >= lower_other ){
+                cur = 255
+            } else{
+                cur = (cur * lowerX)|0
+            }
+            tmp  = (_max2 - cur)>>>31            //____________________________________
+            _max2 = (_max2 * (3+(tmp^1))  + cur * tmp  )*0.25   //----Max for float  weighted in
+            
+            tmp = (_min2 - cur)>>>31             //____________________________________
+            _min2 = ( _min2 * (3+tmp) +  cur * (tmp^1))*0.25  //----min for a float weighted in
+            grey2[point] = cur
+
+            /*
+            this code will increment dx and dy to loop x y blocks 
+            */
+            dx++
+            tmp = (dx-areaWidth)>>>31
+            dx *= tmp
+            dy += tmp^1
+            //----------------- 
+        }while(dy<areaHeight)
+        middle2.buff[middle_point] = (_min2<<8) | _max2
+        dx=0
+        dy=0
+        _1per = 1/((_max2-_min2)*0.01)
+        do{
+            point = areaWidth * ax + dx+(areaHeight * ay + dy)*w
+            cur = grey2[point]
+            dark = _min2-cur
+            tmp = dark >>31
+            dark = ((tmp+dark)^tmp)*_1per // abs for int
+            if(dark <= 40 || cur <= _min2){
+                bits2[point] = 1
+            }
+            /*
+            this code will increment dx and dy to loop x y blocks 
+            */
+            dx++
+            tmp = (dx-areaWidth)>>>31
+            dx *= tmp
+            dy += tmp^1
+            //----------------- 
+        }while(dy<areaHeight) 
+        
+        /*
+        this code will increment ax and ay to loop x y blocks 
+        */
+        ax++
+        tmp = (ax-numSqrtArea)>>>31
+        ax *= tmp
+        ay += tmp^1
+        //-----------------
+    }while(ay < numSqrtArea)
+
+    
+    
+    return {g1:grey1,g2:grey2,b1:bits1,b2:bits2,m1:middle1,m2:middle2}
+}
+gray_from_canvas4.zero_count = new Uint32Array(256)
+
+
 var ended={isEnded:false,count:0,sum:0,bd:null}
+
+
 addEventListener('message', function(e) {
-  if(ended.isEnded) return
+
   var w = e.data.w
   var h = e.data.h
   qrcode.width = w
   qrcode.height = h
-  var start1 = new Date
+  
   
   //postMessage(gray_to_canvas_buff(gray_from_canvas2(e.data.buff)))
-  function post(det){
+  function post(bits){
       var ret
       var start2 = new Date()
       try{
-
+          var det = new Detector(bits,bits,w,h)
           ret = qrcode.process(det,w,h)
-          ended.count++
-          ended.sum+= new Date() - start1
           console.log(new Date() - start2 + ' fin')
-          console.log(new Date() - start1 + ' fin all')
-          console.log((ended.sum/ended.count) + ' avg')
-          ended.isEnded = true
+          
+
           postMessage(ret)
-          //var test1 = (ret == "6JKeKYJ4SGrK4h1xwT3MJ6TfyGfn1kK57QuMJED5ap5NmDqViqaEZwGrRqhimZuXAFKUrM6vrKvNR4pRCicmCwBXo7AC2DWeWrNPCJGpTKzuCYZUHVvhX62aYpYWGLAABmJRGc97M6RQHsonR4fn2y7J2fHtEybAVevX")
-          //var test2 = (ret == "MXp8FodxoKZcLsQt9NpG94nUWoQk133Qo6cyNPTzjtq7udUP563u9VoKV9VAjH88fGbVZfjNimg5DHpAQwCGZCkbsrdFvnRguYsL7KveEf9tyx6UPaU3gk3pYUMgPWmzNTEqCN8MPsajrr8pxSfvWAfz5uLRtiqNpgQV3ayWguDw2Yc2UsAvA6sadhL55KQzVzS43WRYqMShNy47wv4v6UwYa3qhT3QRCMqrf3AobW3av5EzpvyWzq4FFJkSvGH7nCBptSgXTBvgdL12qmAez6iPkiFtDT2pdVpE4qSi5TEGcDpRttWXRH4ZFX3uUntJrgLBmTAE")          
-          /*if(test1 || test2){
-              console.log('found')
-              
-
-          }else {
-              console.log('bad Data')
-              ended.isEnded = ture
-              //self.close()
-          }     */   
-
-          //postMessage(ret)
           
           //self.close()
         } catch(e){
-            ended.count++
-            ended.sum+= new Date() - start1
-            //console.log(new Date() - start2 + ' 2')
-            console.log(e)
-            console.log(e.stack)
-            
+            console.log(new Date() - start2 + ' 2')
+             console.log(e)
+            return
         }
-        //console.log(Object.keys(self))
   }
-
+  var dat
   
-
-  var qr = ECMA_QR.forWidthHeight(w,h)
-
-
-  qr.processCanvasRGB(e.data.buff)
-  qr.image.doBinary()
-  //postMessage(diff_to_canvas_buff1(qr.image.blurDiffMachine.diff,w,h))
-  //qr.image2.doBinary()
-  //postMessage(bitmatX_to_canvas_buff( Version.getVersionForNumber(10).buildFunctionPattern()))
-
-  post(qr.image.detector)
- // post(qr.image2.detector)
- postMessage(bits_to_canvas_buff(qr.image.bits))
- //postMessage(gray_to_canvas_buff(qr.image.image))
-
-
-  return
- 
+  var start = new Date();
+  dat = gray_from_canvas4(e.data.buff,w,h)
+  var b1 = blur_diff(dat.g2,2,4,w,h)
+  var bits = dat.m2.blur_guided_binary(dat.g2,b1)
+  //postMessage(bits_to_canvas_buff(bits))
+  post(bits)
   
 
  
