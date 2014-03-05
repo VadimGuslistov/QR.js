@@ -358,6 +358,9 @@ return blurMachineGray
 
 */
 
+
+
+
 function GridSampler(image,w,h,dimension,topLeft, topRight, bottomLeft, alignmentPattern){
         var dimMinusThree =  dimension - 3.5;
         var bottomRightX;
@@ -397,8 +400,7 @@ GridSampler.prototype = {
         var x1,x2
         var tmp1,tmp2,tmp
         var row1,row2,row3,row4,row5,bestX,bestY,bestOrgX,bestOrgY
-        bestOrgY=bestOrgX=bestY=bestX=row1 = row2 = row3 = row4 = row5 = 0
-        var bestHam = 25
+        var bestHam
         var y = this.dimension-16
         var xstart = this.dimension-16
 
@@ -407,15 +409,24 @@ GridSampler.prototype = {
         var shiftPoint
         var allOff = '00000'
         var alloff2 = '0000000000000000'
+        var bestLooking = 0
         var xi = 0
         var out
+        var _try = 3
+        var nudge = 0
+        var me
+        var transform = this.transform
+        do{
+            bestOrgY=bestOrgX=bestY=bestX=row1 = row2 = row3 = row4 = row5 = 0
+            bestHam = 25
+            y = this.dimension-16
         do{
             x = xstart
             shiftPoint = 15
             do{
 
                     
-                x2 = this.transform.trasnformPoint(x,y)
+                x2 = transform.trasnformPoint(x,y)
                 y2 = x2 & 0xffff
                 x2 >>>= 16
                 x2 = (x2 & (tmp=x2-this.widhtMinus1>>31) | this.widhtMinus1&(tmp^-1))
@@ -429,6 +440,7 @@ GridSampler.prototype = {
                     console.log((out=((row4>>shiftPoint)&0x1f).toString(2),allOff.slice(out.length)+out))
                     console.log((out=((row5>>shiftPoint)&0x1f).toString(2),allOff.slice(out.length)+out))
                 }*/
+                me = ((row1>>shiftPoint)&0x1f)<<20 | ((row2>>shiftPoint)&0x1f) << 15 | ((row3>>shiftPoint)&0x1f)<<10 | ((row4>>shiftPoint)&0x1f) << 5 | ((row5>>shiftPoint)&0x1f)
                 bestHam += ((tmp=numBitsDiffering(((row1>>shiftPoint)&0x1f)<<20 | ((row2>>shiftPoint)&0x1f) << 15 | ((row3>>shiftPoint)&0x1f)<<10 | ((row4>>shiftPoint)&0x1f) << 5 | ((row5>>shiftPoint)&0x1f), 0x1f8d63f) - bestHam ) & (tmp >>= 31))                //----min for a int of 32 bits or less
                 tmp2 = tmp^-1
                                 
@@ -436,6 +448,7 @@ GridSampler.prototype = {
                 bestX = (x2&tmp)|(bestX&tmp2)
                 bestOrgY = (y&tmp)|(bestOrgY&tmp2)
                 bestOrgX = (x&tmp)|(bestOrgX&tmp2)
+                bestLooking = (me&tmp) | (bestLooking&tmp2)
                 // 0x1f8d63f is a perfect pattern 
 
                 x++
@@ -451,17 +464,24 @@ GridSampler.prototype = {
         }while(y<this.dimension)
         console.log(bestHam + ':ham ' + bestX + ' ' + bestY)
         console.log(Math.abs(bestOrgX - (this.dimension-5)) + ': X ' + bestOrgX +' '+ Math.abs(bestOrgY - (this.dimension-5)) + ': X ' + bestOrgY)
-        var dimMinusThree =  this.dimension - 3.5;
-        var bottomRightX;
-        var bottomRightY;
-        var sourceBottomRightX;
-        var sourceBottomRightY;
-
-        bottomRightX = bestX;
-        bottomRightY = bestY;
-        sourceBottomRightX = sourceBottomRightY =  this.dimension - 4.5;
-              
-        var transform =  PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, this.topLeft.x, this.topLeft.y, this.topRight.x, this.topRight.y, bottomRightX, bottomRightY, this.bottomLeft.x, this.bottomLeft.y)
+        var transform
+        if(bestHam <= 7 && (bestOrgX != (this.dimension-5) ||  bestOrgX != (this.dimension-5)) ){
+            var dimMinusThree =  this.dimension - 3.5;
+            var bottomRightX;
+            var bottomRightY;
+            var sourceBottomRightX;
+            var sourceBottomRightY;
+    
+            bottomRightX = bestX ;
+            bottomRightY = bestY ;
+            sourceBottomRightX = sourceBottomRightY =  this.dimension - (4.75) ;
+            console.log('trigered')
+            console.log((out=(bestLooking).toString(2),alloff2.slice(out.length)+out) +' '+ (out=(0x1f8d63f).toString(2),alloff2.slice(out.length)+out))
+            transform =  PerspectiveTransform.quadrilateralToQuadrilateral(3.5, 3.5, dimMinusThree, 3.5, sourceBottomRightX, sourceBottomRightY, 3.5, dimMinusThree, this.topLeft.x, this.topLeft.y, this.topRight.x, this.topRight.y, bottomRightX, bottomRightY, this.bottomLeft.x, this.bottomLeft.y)
+        }     
+        nudge++
+        //_try--
+    }while(_try !=0 && bestHam <= 6 && (bestOrgX != (this.dimension-5) ||  bestOrgX != (this.dimension-5))) 
         /*var alignSearch = Float32Array(225)
         var y = this.dimension-16
         var x = y
@@ -1618,7 +1638,187 @@ function DataBlocks(rawCodewords,  version,  ecLevel){
 
 }
 */
+var DataMask = {};
 
+DataMask.forReference = function(reference)
+{
+    if (reference < 0 || reference > 7)
+    {
+        throw "System.ArgumentException";
+    }
+    return DataMask.DATA_MASKS[reference];
+}
+
+function DataMask000()
+{
+    this.unmaskBitMatrix=function(bits,  dimension)
+    {
+        for (var i = 0; i < dimension; i++)
+        {
+            for (var j = 0; j < dimension; j++)
+            {
+                if (this.isMasked(i, j))
+                {
+                    bits.flip(j, i);
+                }
+            }
+        }
+    }
+    this.isMasked=function( i,  j)
+    {
+        return ((i + j) & 0x01) == 0;
+    }
+}
+
+function DataMask001()
+{
+    this.unmaskBitMatrix=function(bits,  dimension)
+    {
+        for (var i = 0; i < dimension; i++)
+        {
+            for (var j = 0; j < dimension; j++)
+            {
+                if (this.isMasked(i, j))
+                {
+                    bits.flip(j, i);
+                }
+            }
+        }
+    }
+    this.isMasked=function( i,  j)
+    {
+        return (i & 0x01) == 0;
+    }
+}
+
+function DataMask010()
+{
+    this.unmaskBitMatrix=function(bits,  dimension)
+    {
+        for (var i = 0; i < dimension; i++)
+        {
+            for (var j = 0; j < dimension; j++)
+            {
+                if (this.isMasked(i, j))
+                {
+                    bits.flip(j, i);
+                }
+            }
+        }
+    }
+    this.isMasked=function( i,  j)
+    {
+        return j % 3 == 0;
+    }
+}
+
+function DataMask011()
+{
+    this.unmaskBitMatrix=function(bits,  dimension)
+    {
+        for (var i = 0; i < dimension; i++)
+        {
+            for (var j = 0; j < dimension; j++)
+            {
+                if (this.isMasked(i, j))
+                {
+                    bits.flip(j, i);
+                }
+            }
+        }
+    }
+    this.isMasked=function( i,  j)
+    {
+        return (i + j) % 3 == 0;
+    }
+}
+
+function DataMask100()
+{
+    this.unmaskBitMatrix=function(bits,  dimension)
+    {
+        for (var i = 0; i < dimension; i++)
+        {
+            for (var j = 0; j < dimension; j++)
+            {
+                if (this.isMasked(i, j))
+                {
+                    bits.flip(j, i);
+                }
+            }
+        }
+    }
+    this.isMasked=function( i,  j)
+    {
+        return (((i>> 1) + (j / 3)) & 0x01) == 0;
+    }
+}
+
+function DataMask101()
+{
+    this.unmaskBitMatrix=function(bits,  dimension)
+    {
+        for (var i = 0; i < dimension; i++)
+        {
+            for (var j = 0; j < dimension; j++)
+            {
+                if (this.isMasked(i, j))
+                {
+                    bits.flip(j, i);
+                }
+            }
+        }
+    }
+    this.isMasked=function( i,  j)
+    {
+        var temp = i * j;
+        return (temp & 0x01) + (temp % 3) == 0;
+    }
+}
+
+function DataMask110()
+{
+    this.unmaskBitMatrix=function(bits,  dimension)
+    {
+        for (var i = 0; i < dimension; i++)
+        {
+            for (var j = 0; j < dimension; j++)
+            {
+                if (this.isMasked(i, j))
+                {
+                    bits.flip(j, i);
+                }
+            }
+        }
+    }
+    this.isMasked=function( i,  j)
+    {
+        var temp = i * j;
+        return (((temp & 0x01) + (temp % 3)) & 0x01) == 0;
+    }
+}
+function DataMask111()
+{
+    this.unmaskBitMatrix=function(bits,  dimension)
+    {
+        for (var i = 0; i < dimension; i++)
+        {
+            for (var j = 0; j < dimension; j++)
+            {
+                if (this.isMasked(i, j))
+                {
+                    bits.flip(j, i);
+                }
+            }
+        }
+    }
+    this.isMasked=function( i,  j)
+    {
+        return ((((i + j) & 0x01) + ((i * j) % 3)) & 0x01) == 0;
+    }
+}
+
+DataMask.DATA_MASKS = new Array(new DataMask000(), new DataMask001(), new DataMask010(), new DataMask011(), new DataMask100(), new DataMask101(), new DataMask110(), new DataMask111());
 DataBlock.getDataBlocks=function(rawCodewords,  version,  ecLevel)
 {
 
@@ -1818,8 +2018,10 @@ BitMatrixParser.readCodewords=function(bits,formatInfo,version){
     // Get the data mask for the format used in this QR Code. This will exclude
     // some bits from reading as we wind through the bit matrix.
 
-    bits.XOR_Matrix(version.getMask(formatInfo.dataMask))
-
+    //bits.XOR_Matrix(version.getMask(formatInfo.dataMask))
+    var dataMask = DataMask.forReference( formatInfo.dataMask);
+    var dimension = bits.dimension;
+    dataMask.unmaskBitMatrix(bits, dimension);
     var dimension = bits.dimension;
 
 
@@ -2065,7 +2267,7 @@ PerspectiveTransform.quadrilateralToSquare=function( x0,  y0,  x1,  y1,  x2,  y2
 function Detector(image,image2,w,h)
 {
     this.image=image;
-    this.image2=image
+    this.image2=image2
     this.width = w|0
     this.height = h|0
     this.heightMinus1 = (h-1)|0
@@ -2304,7 +2506,7 @@ qrcode.process = function(det){
         
         
         var d = det.detect()
-        postMessage(bitmatX_to_canvas_buff( d.bits ))
+        //postMessage(bitmatX_to_canvas_buff( d.bits ))
         var decoder = new Decoder( d.bits )
         
        
@@ -2803,7 +3005,7 @@ FinderPatternFinder.prototype = {
         if (iSkip < MIN_SKIP) {
           iSkip = MIN_SKIP;
         }
-        //iSkip = MIN_SKIP
+        iSkip = MIN_SKIP
         var done = false;
         var stateCount = new Int16Array(5);
         for (var i = iSkip - 1; i < maxI && !done; i += iSkip) {
@@ -3712,7 +3914,7 @@ function ECMA_QR_Image(middleLength,numSqrtArea,areaWidth,areaHeight,w,h){
     this.bits =  bits
     this.bits2 = bits2
     this.middle = new Uint16Array(middleLength)
-    this.blurDiffMachine = new blurDiffMachine(img,2,4,20,w,h) //4
+    this.blurDiffMachine = new blurDiffMachine(img,2,4,12,w,h) //4
     //    this.blurDiffMachine = new blurDiffMachine(img,3,4,11,w,h) //good
     this.detector= new Detector(bits,bits2,w,h)
 
@@ -3755,8 +3957,10 @@ ECMA_QR_Image.prototype = {
                 tmp = (cur-190)>>31
                 // &
                 // ((cur2-197)>>31) very good
-                this.bits[point] =  (   ((dark-70)>>31) & ((cur-196)>>31)   )&1 
-                this.bits2[point] =  (  ((cur2-197)>>31) & ((cur-198)>>31) )&1 
+                var set1 = (   ((dark-55)>>31) & ((cur-196)>>31)   )&1 
+                this.bits[point] = set1 
+                //this.bits2[point] =  (  ((cur2-197)>>31) & set1 )&1 
+                this.bits2[point] =  (  ((cur2-200)>>31) & ((cur-210)>>31) )&1 
                 //this.bits[point] =  (  ((cur2-190)>>31) & ((cur-195)>>31)  )&1 good 1
                 //( (pix-_minPlus1)>>31 | tmp |  )&1
               
@@ -4213,7 +4417,7 @@ addEventListener('message', function(e) {
 
   post(qr.image.detector)
  // post(qr.image2.detector)
- //postMessage(bits_to_canvas_buff(qr.image.bits))
+ postMessage(bits_to_canvas_buff(qr.image.bits))
  //postMessage(gray_to_canvas_buff(qr.image.image))
 
 
