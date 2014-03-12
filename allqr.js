@@ -413,6 +413,56 @@ GridSampler.prototype = {
         var bottomRightY = this.bottomRightY;
         var sourceBottomRightX = this.sourceBottomRightX;
         var sourceBottomRightY = this.sourceBottomRightY;
+        
+        var new_dem = (this.dimension+20)*5
+        var img =  new Uint8Array(
+        new_dem 
+        *
+        new_dem 
+        )
+        var bin_img =  new Uint8Array(
+        new_dem 
+        *
+        new_dem 
+        )
+        var demMinus1 = new_dem-1
+
+        var x
+        var y = -10.0
+        var _x
+        var _y = 0
+        var x2
+        var y2
+        var point,point2
+        do{
+            x = -10.0
+            _x = 0
+            do{
+                x2 = transform.trasnformPoint(x,y)
+                y2 = x2 & 0xffff
+                x2 >>>= 16
+                x2 = (x2 & (tmp=x2-this.widhtMinus1>>31) | this.widhtMinus1&(tmp^-1))
+                y2 = (y2 & (tmp2=y2-this.heightMinus1>>31) | this.heightMinus1&(tmp2^-1))
+                point = _x + _y * new_dem
+                point2 = x2+y2*this.width
+                bin_img[point] = this.image[point2]
+                img[point] = this.image2[point2]
+                x+=0.2
+                _x++
+            }while(x<this.dimension+10)
+            _y++
+            y+=0.2
+        }while(y<this.dimension+10)
+        //postMessage(gray_to_canvas_buff3(img,new_dem,new_dem))
+        transform =  PerspectiveTransform.quadrilateralToQuadrilateral(
+                0, 0,  
+                this.dimension, 0,
+                this.dimension, this.dimension,
+                0,  this.dimension,
+                50, 50, 
+                new_dem -50, 50,
+                new_dem -50, new_dem -50, 
+                50, new_dem -50)
         do{
             bestOrgY=bestOrgX=bestY=bestX=row1 = row2 = row3 = row4 = row5 = 0
             bestHam = 25
@@ -426,9 +476,9 @@ GridSampler.prototype = {
                 x2 = transform.trasnformPoint(x,y)
                 y2 = x2 & 0xffff
                 x2 >>>= 16
-                x2 = (x2 & (tmp=x2-this.widhtMinus1>>31) | this.widhtMinus1&(tmp^-1))
-                y2 = (y2 & (tmp2=y2-this.heightMinus1>>31) | this.heightMinus1&(tmp2^-1))
-                row5 |= this.image[x2 + y2*this.width] << shiftPoint
+                x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
+                row5 |=  bin_img[x2 + y2*new_dem] << shiftPoint
   
                 me = ((row1>>shiftPoint)&0x1f)<<20 | ((row2>>shiftPoint)&0x1f) << 15 | ((row3>>shiftPoint)&0x1f)<<10 | ((row4>>shiftPoint)&0x1f) << 5 | ((row5>>shiftPoint)&0x1f)
                 bestHam += ((tmp=numBitsDiffering(((row1>>shiftPoint)&0x1f)<<20 | ((row2>>shiftPoint)&0x1f) << 15 | ((row3>>shiftPoint)&0x1f)<<10 | ((row4>>shiftPoint)&0x1f) << 5 | ((row5>>shiftPoint)&0x1f), 0x1f8d63f) - bestHam ) & (tmp >>= 31))                //----min for a int of 32 bits or less
@@ -466,14 +516,15 @@ GridSampler.prototype = {
             console.log('trigered')
             //console.log((out=(bestLooking).toString(2),alloff2.slice(out.length)+out) +' '+ (out=(0x1f8d63f).toString(2),alloff2.slice(out.length)+out))
             transform =  PerspectiveTransform.quadrilateralToQuadrilateral(
-            3.5, 3.5,
-            dimMinusThree, 3.5, 
-            sourceBottomRightX,sourceBottomRightX, 
-            3.5, dimMinusThree, 
-            this.topLeft.X, this.topLeft.Y, 
-            this.topRight.X, this.topRight.Y, 
-            bestX, bestY,
-            this.bottomLeft.X, this.bottomLeft.Y)
+                0, 0,  
+                this.dimension, 0,
+                 sourceBottomRightX, sourceBottomRightX,
+                  0,  this.dimension,
+                   50, 50, 
+                   new_dem -50, 50,
+                    bestX, bestY, 
+                    50, new_dem -50)            
+
         }     
         nudge++
         _try--
@@ -498,8 +549,8 @@ GridSampler.prototype = {
                 x2 = transform.trasnformPoint(x,y)
                 y2 = x2 & 0xffff
                 x2 >>>= 16
-                x2 = (x2 & (tmp=x2-this.widhtMinus1>>31) | this.widhtMinus1&(tmp^-1))
-                y2 = (y2 & (tmp2=y2-this.heightMinus1>>31) | this.heightMinus1&(tmp2^-1))
+                x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
                
                 var bit = this.image[x2 + y2*this.width]
                 //(((this.image[point1] + this.image[point2] + this.image[point3])-2)>>31^-1)&1
@@ -517,29 +568,29 @@ GridSampler.prototype = {
             var x2 = transform.trasnformPoint(0,0)
             var y2 = x2 & 0xffff
             x2 >>>= 16
-            x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-            y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+            x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+            y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
            var tlY = y2
            var tlX = x2
            x2 = transform.trasnformPoint(_this.dimension-1,0)
             y2 = x2 & 0xffff
             x2 >>>= 16
-            x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-            y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+            x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+            y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
      	   var trY = y2
      	   var trX = x2
      	   x2 = transform.trasnformPoint(_this.dimension-1,_this.dimension-1)
             y2 = x2 & 0xffff
             x2 >>>= 16
-            x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-            y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+            x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+            y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
             var brY = y2
             var brX = x2
            x2 = transform.trasnformPoint(0,_this.dimension-1)
             y2 = x2 & 0xffff
             x2 >>>= 16
-            x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-            y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+            x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+            y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
             var blY = y2
             var blX = x2
            var y = 0
@@ -562,9 +613,9 @@ GridSampler.prototype = {
                     x2 = transform.trasnformPoint(_x,_y)
                     y2 = x2 & 0xffff
                     x2 >>>= 16
-                    x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-                    y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
-                    count += _this.image[x2 + y2*_this.width]
+                    x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                    y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
+                    count += bin_img[x2 + y2*new_dem]
                     
                     _x-= 0.0625
                }while(_x>=0.0)
@@ -584,9 +635,9 @@ GridSampler.prototype = {
                     x2 = transform.trasnformPoint(_x,_y)
                     y2 = x2 & 0xffff
                     x2 >>>= 16
-                    x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-                    y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
-                    count += _this.image[x2 + y2*_this.width]
+                    x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                    y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
+                    count += bin_img[x2 + y2*new_dem]
                     
                     _y-= 0.0625
                }while(_y>=0)
@@ -612,10 +663,10 @@ GridSampler.prototype = {
                     x2 = transform.trasnformPoint(_x,_y)
                     y2 = x2 & 0xffff
                     x2 >>>= 16
-                    x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-                    y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+                    x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                    y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
                     
-                    count += _this.image[x2 + y2*_this.width]
+                    count += bin_img[x2 + y2*new_dem]
                     _x+= 0.0625
                }while(_x< _this.dimension-1)
                isWhite = (count-8)>>31
@@ -635,10 +686,10 @@ GridSampler.prototype = {
                     x2 = transform.trasnformPoint(_x,_y)
                     y2 = x2 & 0xffff
                     x2 >>>= 16
-                    x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-                    y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+                    x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                    y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
                     
-                    count += _this.image[x2 + y2*_this.width]
+                    count += bin_img[x2 + y2*new_dem]
                     _y-= 0.0625
                }while(_y>=0)
                isWhite = (count-8)>>31
@@ -659,10 +710,10 @@ GridSampler.prototype = {
                     x2 = transform.trasnformPoint(_x,_y)
                     y2 = x2 & 0xffff
                     x2 >>>= 16
-                    x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-                    y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+                    x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                    y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
                     
-                    count += _this.image[x2 + y2*_this.width]
+                    count += bin_img[x2 + y2*new_dem]
                     _y+= 0.0625
                }while(_y<_this.dimension)
                isWhite = (count-8)>>31
@@ -686,10 +737,10 @@ GridSampler.prototype = {
                     x2 = transform.trasnformPoint(_x,_y)
                     y2 = x2 & 0xffff
                     x2 >>>= 16
-                    x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-                    y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+                    x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                    y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
                     
-                    count += _this.image[x2 + y2*_this.width]
+                    count += bin_img[x2 + y2*new_dem]
                     _x+= 0.0625
                }while(_x< _this.dimension)
                isWhite = (count-8)>>31
@@ -715,10 +766,10 @@ GridSampler.prototype = {
                     x2 = transform.trasnformPoint(_x,_y)
                     y2 = x2 & 0xffff
                     x2 >>>= 16
-                    x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-                    y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+                    x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                    y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
                     
-                    count += _this.image[x2 + y2*_this.width]
+                    count += bin_img[x2 + y2*new_dem]
                     _x-= 0.0625
                }while(_x>=0)
                isWhite = (count-8)>>31
@@ -726,7 +777,7 @@ GridSampler.prototype = {
                lastWhite = isWhite
                
                _y-=0.0625
-           }while(_y >  _this.dimension-4 && !found)
+           }while(_y >  _this.dimension-4)
 
 
               blY = best
@@ -742,10 +793,10 @@ GridSampler.prototype = {
                     x2 = transform.trasnformPoint(_x,_y)
                     y2 = x2 & 0xffff
                     x2 >>>= 16
-                    x2 = (x2 & (tmp=x2-_this.widhtMinus1>>31) | _this.widhtMinus1&(tmp^-1))
-                    y2 = (y2 & (tmp2=y2-_this.heightMinus1>>31) | _this.heightMinus1&(tmp2^-1))
+                    x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                    y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
                     
-                    count += _this.image[x2 + y2*_this.width]
+                    count += bin_img[x2 + y2*new_dem]
                     _y+= 0.0625
                }while(_y<_this.dimension)
                isWhite = (count-8)>>31
@@ -770,7 +821,7 @@ GridSampler.prototype = {
        }
        adjustCrop()
        adjustCrop()
-       //adjustCrop()
+       adjustCrop()
        //adjustCrop()
        var that = new Uint8Array(((this.dimension))*((this.dimension)))
        var y =0
@@ -789,9 +840,9 @@ GridSampler.prototype = {
                         x2 = transform.trasnformPoint(_x,_y)
                         y2 = x2 & 0xffff
                         x2 >>>= 16
-                        x2 = (x2 & (tmp=x2-this.widhtMinus1>>31) | this.widhtMinus1&(tmp^-1))
-                        y2 = (y2 & (tmp2=y2-this.heightMinus1>>31) | this.heightMinus1&(tmp2^-1))
-                        pix += this.image2[x2 + y2*this.width]
+                        x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                        y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
+                        pix += img[x2 + y2*new_dem]
                         _z++
                         _y+=0.0625
                     }while(_y<y+0.75)
@@ -802,31 +853,43 @@ GridSampler.prototype = {
            }while(x<this.dimension)
            y++
        }while(y<this.dimension)
-       postMessage(gray_to_canvas_buff2(that,(this.dimension),(this.dimension)))
+       //postMessage(gray_to_canvas_buff2(that,(this.dimension),(this.dimension)))
        y = 0
       
        var _min=0,_max=0
        var _mid = 0
+       var blockNum = (this.dimension/12)|0
+       var yPoint = 0
+       var xstop=0
+       var i = 0
        do{
            x = 0
-          _min=255
-          _max=0
-           do{
-               _min = Math.min(that[x+y*this.dimension],_min)
-               _max = Math.max(that[x+y*this.dimension],_max)
-               x++
-           }while(x<this.dimension)
-           x=0
-           _mid = (_min+_max)>>1
+
+          yPoint = y*this.dimension
+          i=0
+          do{
+            _min=255
+            _max=0
+            x2= x
+            xstop = x+12
             do{
-                
-                if(that[x+y*this.dimension] < _mid)
-                    this.bits.set_Renamed(x, y)
-                
-               
-               x++
-           }while(x<this.dimension)
-           y++
+               _min = Math.min(that[x+yPoint],_min)
+               _max = Math.max(that[x+yPoint],_max)
+                x++
+            }while(x<xstop)
+            _mid = (_min+_max)>>1
+            do{
+                if(that[x2+yPoint] <= _mid) this.bits.set_Renamed(x2, y)
+                x2++
+            }while(x2<xstop)
+            i++
+          }while(i<blockNum)
+          while(x<this.dimension){
+              if(that[x+yPoint] <= _mid) this.bits.set_Renamed(x, y)
+              x++
+          }
+          
+          y++
        }while(y<this.dimension)
        //postMessage(bitmatX_to_canvas_buff(this.bits))
        
@@ -844,11 +907,11 @@ GridSampler.prototype = {
                 x2 = transform.trasnformPoint(_x,_y)
                 y2 = x2 & 0xffff
                 x2 >>>= 16
-                x2 = (x2 & (tmp=x2-this.widhtMinus1>>31) | this.widhtMinus1&(tmp^-1))
-                y2 = (y2 & (tmp2=y2-this.heightMinus1>>31) | this.heightMinus1&(tmp2^-1))
+                x2 = (x2 & (tmp=x2-demMinus1>>31) | demMinus1&(tmp^-1))
+                y2 = (y2 & (tmp2=y2-demMinus1>>31) | demMinus1&(tmp2^-1))
    
                 //var bit = this.image[x2 + y2*this.width]
-                that[x+(y*((this.dimension)*16))] = this.image2[x2 + y2*this.width]
+                that[x+(y*((this.dimension)*16))] = img[x2 + y2*new_dem]
                 //(((this.image[point1] + this.image[point2] + this.image[point3])-2)>>31^-1)&1
                 //tmp = (cur-190)>>31
                 //var bit = this.image[Math.floor( this.points[x])+ this.width* Math.floor( this.points[x + 1])];
@@ -1322,7 +1385,8 @@ function buildVersions()
 
 
 var FORMAT_INFO_MASK_QR = 0x5412;
-var FORMAT_INFO_DECODE_LOOKUP = new Array(new Array(0x5412, 0x00), new Array(0x5125, 0x01), new Array(0x5E7C, 0x02), new Array(0x5B4B, 0x03), new Array(0x45F9, 0x04), new Array(0x40CE, 0x05), new Array(0x4F97, 0x06), new Array(0x4AA0, 0x07), new Array(0x77C4, 0x08), new Array(0x72F3, 0x09), new Array(0x7DAA, 0x0A), new Array(0x789D, 0x0B), new Array(0x662F, 0x0C), new Array(0x6318, 0x0D), new Array(0x6C41, 0x0E), new Array(0x6976, 0x0F), new Array(0x1689, 0x10), new Array(0x13BE, 0x11), new Array(0x1CE7, 0x12), new Array(0x19D0, 0x13), new Array(0x0762, 0x14), new Array(0x0255, 0x15), new Array(0x0D0C, 0x16), new Array(0x083B, 0x17), new Array(0x355F, 0x18), new Array(0x3068, 0x19), new Array(0x3F31, 0x1A), new Array(0x3A06, 0x1B), new Array(0x24B4, 0x1C), new Array(0x2183, 0x1D), new Array(0x2EDA, 0x1E), new Array(0x2BED, 0x1F));
+var FORMAT_INFO_DECODE_LOOKUP = new Array(new Array(0x5412, 0x00), new Array(0x5125, 0x01), new Array(0x5E7C, 0x02), new Array(0x5B4B, 0x03), new Array(0x45F9, 0x04), new Array(0x40CE, 0x05), new Array(0x4F97, 0x06), new Array(0x4AA0, 0x07), new Array(0x77C4, 0x08), new Array(0x72F3, 0x09), new Array(0x7DAA, 0x0A), new Array(0x789D, 0x0B), new Array(0x662F, 0x0C), new Array(0x6318, 0x0D), new Array(0x6C41, 0x0E), new Array(0x6976, 0x0F), new Array(0x1689, 0x10), new Array(0x13BE, 0x11), new Array(0x1CE7, 0x12), new Array(0x19D0, 0x13), new Array(0x0762, 0x14), new Array(0x0255, 0x15), new Array(0x0D0C, 0x16), new Array(0x083B, 0x17), new Array(0x355F, 0x18), new Array(0x3068, 0x19), new Array(0x3F31, 0x1A), new Array(0x3A06, 0x1B), new Array(0x24B4, 0x1C), new Array(0x2183, 0x1D), new Array(0x2EDA,
+0x1E), new Array(0x2BED, 0x1F));
 var BITS_SET_IN_HALF_BYTE = new Array(0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4);
 
 
@@ -2826,18 +2890,23 @@ Decoder.prototype = {
 */
 
 
+
 function PerspectiveTransform( a11,  a21,  a31,  a12,  a22,  a32,  a13,  a23,  a33)
 {
-	this.a11 = a11;
-	this.a12 = a12;
-	this.a13 = a13;
-	this.a21 = a21;
-	this.a22 = a22;
-	this.a23 = a23;
-	this.a31 = a31;
-	this.a32 = a32;
-	this.a33 = a33;
-	this.trasnformPoint = function(x,y){
+    this.a11 = a11;
+    this.a12 = a12;
+    this.a13 = a13;
+    this.a21 = a21;
+    this.a22 = a22;
+    this.a23 = a23;
+    this.a31 = a31;
+    this.a32 = a32;
+    this.a33 = a33;
+}
+
+
+PerspectiveTransform.prototype = {
+    trasnformPoint:function(x,y){
         var _x = x 
         var _y = y
         var tmp = 0
@@ -2846,86 +2915,102 @@ function PerspectiveTransform( a11,  a21,  a31,  a12,  a22,  a32,  a13,  a23,  a
         return ((tmp=((this.a11 * _x + this.a21 * _y + this.a31) /denominator)|0) & (tmp>>31^-1)) <<16 |
         ((tmp2=((this.a12 * _x + this.a22 * _y + this.a32) /denominator)|0) & (tmp2>>31^-1))
        
+    },
+    transformPoints1:function( points){
+        var max = points.length;
+        var a11 = this.a11;
+        var a12 = this.a12;
+        var a13 = this.a13;
+        var a21 = this.a21;
+        var a22 = this.a22;
+        var a23 = this.a23;
+        var a31 = this.a31;
+        var a32 = this.a32;
+        var a33 = this.a33;
+        for (var i = 0; i < max; i += 2){
+            var x = points[i];
+            var y = points[i + 1];
+            var denominator = (a13 * x + a23 * y + a33);
+            points[i] = (a11 * x + a21 * y + a31)/ denominator;
+            points[i + 1] = (a12 * x + a22 * y + a32) / denominator;
+        }
+    },
+    transformPoints2:function(xValues, yValues){
+        var n = xValues.length;
+        for (var i = 0; i < n; i++){
+            var x = xValues[i];
+            var y = yValues[i];
+            var denominator = (this.a13 * x + this.a23 * y + this.a33)
+            xValues[i] = (this.a11 * x + this.a21 * y + this.a31) /denominator;
+            yValues[i] = (this.a12 * x + this.a22 * y + this.a32) /denominator;
+        }
+    },
+    buildAdjoint:function(){
+        // Adjoint is the transpose of the cofactor matrix:
+        return new PerspectiveTransform(this.a22 * this.a33 - this.a23 * this.a32, 
+                                        this.a23 * this.a31 - this.a21 * this.a33,
+                                        this.a21 * this.a32 - this.a22 * this.a31,
+                                        this.a13 * this.a32 - this.a12 * this.a33,
+                                        this.a11 * this.a33 - this.a13 * this.a31,
+                                        this.a12 * this.a31 - this.a11 * this.a32,
+                                        this.a12 * this.a23 - this.a13 * this.a22,
+                                        this.a13 * this.a21 - this.a11 * this.a23,
+                                        this.a11 * this.a22 - this.a12 * this.a21);
+    },
+    times:function( other){
+        return new PerspectiveTransform(this.a11 * other.a11 + this.a21 * other.a12 + this.a31 * other.a13,
+                                        this.a11 * other.a21 + this.a21 * other.a22 + this.a31 * other.a23,
+                                        this.a11 * other.a31 + this.a21 * other.a32 + this.a31 * other.a33,
+                                        this.a12 * other.a11 + this.a22 * other.a12 + this.a32 * other.a13,
+                                        this.a12 * other.a21 + this.a22 * other.a22 + this.a32 * other.a23,
+                                        this.a12 * other.a31 + this.a22 * other.a32 + this.a32 * other.a33,
+                                        this.a13 * other.a11 + this.a23 * other.a12 + this.a33 * other.a13,
+                                        this.a13 * other.a21 + this.a23 * other.a22 + this.a33 * other.a23,
+                                        this.a13 * other.a31 + this.a23 * other.a32 + this.a33 * other.a33);
     }
-	this.transformPoints1=function( points)
-		{
-			var max = points.length;
-			var a11 = this.a11;
-			var a12 = this.a12;
-			var a13 = this.a13;
-			var a21 = this.a21;
-			var a22 = this.a22;
-			var a23 = this.a23;
-			var a31 = this.a31;
-			var a32 = this.a32;
-			var a33 = this.a33;
-			for (var i = 0; i < max; i += 2)
-			{
-				var x = points[i];
-				var y = points[i + 1];
-				var denominator = a13 * x + a23 * y + a33;
-				points[i] = (a11 * x + a21 * y + a31) / denominator;
-				points[i + 1] = (a12 * x + a22 * y + a32) / denominator;
-			}
-		}
-	this. transformPoints2=function(xValues, yValues)
-		{
-			var n = xValues.length;
-			for (var i = 0; i < n; i++)
-			{
-				var x = xValues[i];
-				var y = yValues[i];
-				var denominator = this.a13 * x + this.a23 * y + this.a33;
-				xValues[i] = (this.a11 * x + this.a21 * y + this.a31) / denominator;
-				yValues[i] = (this.a12 * x + this.a22 * y + this.a32) / denominator;
-			}
-		}
-
-	this.buildAdjoint=function()
-		{
-			// Adjoint is the transpose of the cofactor matrix:
-			return new PerspectiveTransform(this.a22 * this.a33 - this.a23 * this.a32, this.a23 * this.a31 - this.a21 * this.a33, this.a21 * this.a32 - this.a22 * this.a31, this.a13 * this.a32 - this.a12 * this.a33, this.a11 * this.a33 - this.a13 * this.a31, this.a12 * this.a31 - this.a11 * this.a32, this.a12 * this.a23 - this.a13 * this.a22, this.a13 * this.a21 - this.a11 * this.a23, this.a11 * this.a22 - this.a12 * this.a21);
-		}
-	this.times=function( other)
-		{
-			return new PerspectiveTransform(this.a11 * other.a11 + this.a21 * other.a12 + this.a31 * other.a13, this.a11 * other.a21 + this.a21 * other.a22 + this.a31 * other.a23, this.a11 * other.a31 + this.a21 * other.a32 + this.a31 * other.a33, this.a12 * other.a11 + this.a22 * other.a12 + this.a32 * other.a13, this.a12 * other.a21 + this.a22 * other.a22 + this.a32 * other.a23, this.a12 * other.a31 + this.a22 * other.a32 + this.a32 * other.a33, this.a13 * other.a11 + this.a23 * other.a12 +this.a33 * other.a13, this.a13 * other.a21 + this.a23 * other.a22 + this.a33 * other.a23, this.a13 * other.a31 + this.a23 * other.a32 + this.a33 * other.a33);
-		}
-
 }
 
-PerspectiveTransform.quadrilateralToQuadrilateral=function( x0,  y0,  x1,  y1,  x2,  y2,  x3,  y3,  x0p,  y0p,  x1p,  y1p,  x2p,  y2p,  x3p,  y3p)
+
+PerspectiveTransform.quadrilateralToQuadrilateral=function( x0,  y0,  x1,  y1,  x2,  y2,  x3,  y3,
+                                                            x0p,  y0p,  x1p,  y1p,  x2p,  y2p,  x3p,  y3p)
 {
 
-	var qToS = this.quadrilateralToSquare(x0, y0, x1, y1, x2, y2, x3, y3);
-	var sToQ = this.squareToQuadrilateral(x0p, y0p, x1p, y1p, x2p, y2p, x3p, y3p);
-	return sToQ.times(qToS);
+    var qToS = this.quadrilateralToSquare(x0, y0, x1, y1, x2, y2, x3, y3);
+    var sToQ = this.squareToQuadrilateral(x0p, y0p, x1p, y1p, x2p, y2p, x3p, y3p);
+    return sToQ.times(qToS);
 }
 
-PerspectiveTransform.squareToQuadrilateral=function( x0,  y0,  x1,  y1,  x2,  y2,  x3,  y3)
-{
-	 dy2 = y3 - y2;
-	 dy3 = y0 - y1 + y2 - y3;
-	if (dy2 == 0.0 && dy3 == 0.0)
-	{
-		return new PerspectiveTransform(x1 - x0, x2 - x1, x0, y1 - y0, y2 - y1, y0, 0.0, 0.0, 1.0);
-	}
-	else
-	{
-		 dx1 = x1 - x2;
-		 dx2 = x3 - x2;
-		 dx3 = x0 - x1 + x2 - x3;
-		 dy1 = y1 - y2;
-		 denominator = dx1 * dy2 - dx2 * dy1;
-		 a13 = (dx3 * dy2 - dx2 * dy3) / denominator;
-		 a23 = (dx1 * dy3 - dx3 * dy1) / denominator;
-		return new PerspectiveTransform(x1 - x0 + a13 * x1, x3 - x0 + a23 * x3, x0, y1 - y0 + a13 * y1, y3 - y0 + a23 * y3, y0, a13, a23, 1.0);
-	}
-}
+PerspectiveTransform.squareToQuadrilateral=function(x0, y0,
+                                                    x1, y1,
+                                                    x2, y2,
+                                                    x3, y3) {
+    var dx3 = x0 - x1 + x2 - x3;
+    var dy3 = y0 - y1 + y2 - y3;
+    if (dx3 == 0.0 && dy3 == 0.0) {
+      // Affine
+      return new PerspectiveTransform(x1 - x0, x2 - x1, x0,
+                                      y1 - y0, y2 - y1, y0,
+                                      0.0,    0.0,    1.0);
+    } else {
+      var dx1 = x1 - x2;
+      var dx2 = x3 - x2;
+      var dy1 = y1 - y2;
+      var dy2 = y3 - y2;
+      var denominator = dx1 * dy2 - dx2 * dy1;
+      var a13 = (dx3 * dy2 - dx2 * dy3) / denominator;
+      var a23 = (dx1 * dy3 - dx3 * dy1) / denominator;
+      return new PerspectiveTransform(x1 - x0 + a13 * x1, x3 - x0 + a23 * x3, x0,
+                                      y1 - y0 + a13 * y1, y3 - y0 + a23 * y3, y0,
+                                      a13,                a23,                1.0);
+    }
+  }
+
+
 
 PerspectiveTransform.quadrilateralToSquare=function( x0,  y0,  x1,  y1,  x2,  y2,  x3,  y3)
 {
-	// Here, the adjoint serves as the inverse:
-	return this.squareToQuadrilateral(x0, y0, x1, y1, x2, y2, x3, y3).buildAdjoint();
+    // Here, the adjoint serves as the inverse:
+    return this.squareToQuadrilateral(x0, y0, x1, y1, x2, y2, x3, y3).buildAdjoint();
 }
 
 function DetectorResult(bits,  points)
@@ -3284,7 +3369,7 @@ qrcode.process2 = function(image,w,h){
         
         
         var b = (new Detector(image)).detect().bits
-        //var that = {"dimension":49,"height":49,"rowSize":2,"bits":[2072926591,130336,1082406465,67020,-76255395,95679,-443911843,95380,399660381,95266,341954625,66639,1431655807,130389,1014382080,367,2011802959,94958,-99978702,73368,1917015238,12329,-1469899716,29212,-979072917,74960,-1633033706,100595,2065308244,48530,-1449297763,33046,-836206892,104581,-1467499356,33679,89881537,118480,-1608082791,112490,-1159214522,123182,1944362666,95272,265996283,24473,1816730904,94628,-1922617518,13758,207148310,53610,668510205,65308,-140069852,805,-388868272,36355,580028936,25742,441813739,120818,-1192252387,106634,-642564524,45322,-645108189,61352,-943407640,18724,-616240740,116473,-469074328,122550,-1911402594,72187,2021763682,21052,1948438926,71058,-1479967673,16199,608545536,61853,-1789589377,111932,-1537712063,12794,-1077337507,65358,1671376733,32,-429425315,105089,552779585,29545,113229183,107448],"Width":49,"Height":49,"Dimension":49}
+        
         //b.copyFrom(that)
 
     
@@ -4715,10 +4800,10 @@ middleArea.prototype = {
                 if(pix <= _min){
                      bits[point] = 1
                 }else if(cur <0) {
-                    if(light > 15){
+                    if(light > 25){
                        bits[point] = 1 
                     }
-                }else if(dark <= 40){
+                }else if(dark <= 25){
                     bits[point] = 1 
                 }
                 
@@ -4745,7 +4830,7 @@ function gray_from_canvas4(image,w,h)
 {
     // about the same xy to middle box as org code everything else is quite a bit different
     image = new Uint32Array(image.buffer)
-    var numSqrtArea = 6;
+    var numSqrtArea = 4;
     var numSqrtAreaX = 1/numSqrtArea
     var areaWidth = (w * numSqrtAreaX)|0;
     var areaHeight = (h * numSqrtAreaX)|0;
@@ -4790,37 +4875,34 @@ function gray_from_canvas4(image,w,h)
         middle_point = (ax + ay * numSqrtArea)|0
         do{
             point = (areaWidth * ax + dx+(areaHeight * ay + dy)*w)|0
-            target = image[point];
-            r = (target>>>16)&0xff
-            b = (target>>>8)&0xff
-            g = target&0xff
+
+            cur = image[point];
+            r = (cur>>>16)&0xff
+            b = (cur>>>8)&0xff
+            g = cur&0xff
             ///------------------------
-            tmp  = r - b                    //____________________________________
-            tmp = (tmp & (tmp >> 31))
+            tmp = (tmp=r-b) & (tmp >> 31)
             max_c = r - tmp                 //----Max for a int of 32 bits or less
             min_c = b + tmp                 //----min for a int of 32 bits or less
-            tmp = max_c - g                 //____________________________________
-            max_c = max_c - (tmp & (tmp >> 31))             //----Max for a int of 32 bits or less
-            tmp = min_c - g                 
-            min_c = g + (tmp & (tmp >> 31))                //----min for a int of 32 bits or less
+            max_c = max_c - ((tmp=max_c - g) & (tmp >> 31))             //----Max for a int of 32 bits or less
+            min_c = g + ((tmp=min_c - g ) & (tmp >> 31))                //----min for a int of 32 bits or less
             /// max and min  of r g and b ^^^^^^^^^^^^^^^^^^
             ///------------------------ 
-               
-            target = ((max_c+min_c)*0.5)|0
+            //cur =(r*0.299 + g*0.587 + b * 0.114)|0
+            cur = (cur = (max_c+min_c)>>1) - (((max_c-min_c)+g*0.587)*0.75)|0 // avg
+            cur &= (cur>>31)^-1
+            //cur = (cur & ((tmp=(-cur&0xffffff00)>>31)^-1)) | 255 & tmp
+            //cur = (tmp = ((max_c+min_c)>>1)-((max_c-min_c)+g*0.587)|0)& (tmp>>31^-1) // avg
+            grey1[point]= cur
+            count[cur]++
+
+
+
+       
             
-            grey1[point]= target
-            count[target]++
-            tmp  = _max - target            //____________________________________
-            _max = _max - (tmp & (tmp >> 31)) //----Max for a int of 32 bits or less
+            _max1 = (_max1<cur) ? (_max1*3+cur)*0.25:_max1
+            _min1 = (_min1>cur) ? (_min1*3+cur)*0.25:_min1
             
-            tmp = _min - target  //____________________________________
-            _min = target + (tmp & (tmp >> 31)) //----min for a int of 32 bits or less
-            
-             tmp  = (_max1 - cur)>>>31            //____________________________________
-            _max1 = (_max1 * (3+(tmp^1))  + cur * tmp  )*0.25   //----Max for float  weighted in
-            
-            tmp = (_min1 - cur)>>>31             //____________________________________
-            _min1 = ( _min1 * (3+tmp) +  cur * (tmp^1))*0.25  //----min for a float weighted in
             
             
             /*
@@ -5251,7 +5333,7 @@ addEventListener('message', function(e) {
               self.close()
           }*/      
         console.log(ret)
-          //postMessage(ret)
+        //postMessage(ret)
           
           //self.close()
         } catch(e){
@@ -5265,10 +5347,10 @@ addEventListener('message', function(e) {
   
   var start = new Date();
   dat = gray_from_canvas4(e.data.buff,w,h)
-  var b1 = blur_diff(dat.g2,2,4,w,h)
-  var bits = dat.m2.blur_guided_binary(dat.g2,b1)
-  //postMessage(bits_to_canvas_buff(bits))
-  post(bits,dat.g2)
+  var b1 = blur_diff(dat.g1,3,6,w,h)
+  var bits = dat.m1.blur_guided_binary(dat.g1,b1)
+  postMessage(bits_to_canvas_buff(bits))
+  post(bits,dat.g1)
   
 
  
